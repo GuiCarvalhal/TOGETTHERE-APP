@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, allMemberUserIds, gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
+import { logActivity } from '../../shared/logActivity.ts';
 
 export default async function(req) {
   try {
@@ -27,6 +28,12 @@ export default async function(req) {
       owner_id: user.id,
       owner_user_id: ownerUid,
       member_user_ids: memberUserIds,
+    });
+    await logActivity(base44, {
+      gatheringId: gathering_id, type: 'journey_added',
+      actorUserId: user.id, actorName: me.full_name || user.full_name || 'Someone',
+      summary: `${me.full_name || 'Someone'} added "${payload.title}" to the journey`,
+      ownerUserId: ownerUid, participantUserIds: memberUserIds,
     });
     return Response.json({ item: created });
   } catch (error) {

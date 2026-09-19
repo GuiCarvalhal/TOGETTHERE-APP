@@ -153,13 +153,13 @@ export default function GatheringExpenses() {
               <h3 className="tt-label text-cream/50 mb-3">Settle up suggestions</h3>
               <div className="tt-card p-5 space-y-3">
                 {settle.map((t, i) => (
-                  <div key={i} className="flex items-center gap-3">
+                  <div key={i} className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <MemberAvatar member={memberById[t.from]} size="sm" />
-                    <span className="text-sm text-ink-deep font-medium">{memberById[t.from]?.full_name}</span>
-                    <ArrowRight className="w-4 h-4 text-terra-deep mx-1" />
+                    <span className="text-sm text-ink-deep font-medium min-w-0 truncate">{memberById[t.from]?.full_name}</span>
+                    <ArrowRight className="w-4 h-4 text-terra-deep mx-1 shrink-0" />
                     <MemberAvatar member={memberById[t.to]} size="sm" />
-                    <span className="text-sm text-ink-deep font-medium">{memberById[t.to]?.full_name}</span>
-                    <span className="ml-auto font-display text-lg font-bold text-terra-deep">{formatCurrency(t.amount, expenses[0]?.currency || 'USD')}</span>
+                    <span className="text-sm text-ink-deep font-medium min-w-0 truncate">{memberById[t.to]?.full_name}</span>
+                    <span className="ml-auto font-display text-lg font-bold text-terra-deep shrink-0">{formatCurrency(t.amount, expenses[0]?.currency || 'USD')}</span>
                   </div>
                 ))}
               </div>
@@ -193,13 +193,16 @@ export default function GatheringExpenses() {
                           <ReceiptIcon className="w-5 h-5 text-terra-deep" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-display text-lg font-bold text-ink-deep">{exp.title}</h3>
-                            <span className="px-2 py-0.5 rounded-full bg-cream-pale text-[0.625rem] font-semibold uppercase tracking-wide text-ink-deep/60 border border-ink-charcoal/10">{CAT_LABEL[exp.category]}</span>
-                            {exp.settled && <span className="px-2 py-0.5 rounded-full bg-terra/15 text-[0.625rem] font-semibold uppercase tracking-wide text-terra-deep">Settled</span>}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                              <h3 className="font-display text-lg font-bold text-ink-deep">{exp.title}</h3>
+                              <span className="px-2 py-0.5 rounded-full bg-cream-pale text-[0.625rem] font-semibold uppercase tracking-wide text-ink-deep/60 border border-ink-charcoal/10">{CAT_LABEL[exp.category]}</span>
+                              {exp.settled && <span className="px-2 py-0.5 rounded-full bg-terra/15 text-[0.625rem] font-semibold uppercase tracking-wide text-terra-deep">Settled</span>}
+                            </div>
+                            <span className="font-display text-xl font-bold text-ink-deep shrink-0 whitespace-nowrap">{formatCurrency(exp.amount, exp.currency)}</span>
                           </div>
                           <p className="text-sm text-ink-deep/60 mt-0.5">
-                            {payer?.full_name} paid {formatCurrency(exp.amount, exp.currency)} · {formatDate(exp.date)}
+                            {payer?.full_name} · {formatDate(exp.date)}
                           </p>
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {esplits.map((s) => (
@@ -208,14 +211,11 @@ export default function GatheringExpenses() {
                               </span>
                             ))}
                           </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2 shrink-0">
-                          <span className="font-display text-xl font-bold text-ink-deep">{formatCurrency(exp.amount, exp.currency)}</span>
                           {canEdit && (
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => toggleSettled(exp)} title={exp.settled ? 'Mark unsettled' : 'Mark settled'} className={`p-1.5 rounded-lg ${exp.settled ? 'text-terra-deep' : 'text-ink-deep/40 hover:text-terra-deep'} hover:bg-cream-pale`}><Check className="w-4 h-4" /></button>
-                              <button onClick={() => { setEditing(exp); setOpen(true); }} className="p-1.5 rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale"><Pencil className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => deleteExpense(exp)} className="p-1.5 rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale">✕</button>
+                            <div className="flex items-center gap-1 mt-3 pt-2 border-t border-ink-charcoal/10">
+                              <button onClick={() => toggleSettled(exp)} title={exp.settled ? 'Mark unsettled' : 'Mark settled'} className={`p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg ${exp.settled ? 'text-terra-deep' : 'text-ink-deep/40 hover:text-terra-deep'} hover:bg-cream-pale`}><Check className="w-4 h-4" /></button>
+                              <button onClick={() => { setEditing(exp); setOpen(true); }} className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale"><Pencil className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => deleteExpense(exp)} className="ml-auto p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale">✕</button>
                             </div>
                           )}
                         </div>

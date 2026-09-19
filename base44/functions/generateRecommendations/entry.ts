@@ -25,6 +25,18 @@ export default async function(req) {
       budget: m.budget_level || 'moderate',
     }));
 
+    const dietMap = {};
+    participants.forEach((m) => {
+      (m.dietary_preferences || []).forEach((d) => {
+        const key = (d || '').toLowerCase().trim();
+        if (!key) return;
+        (dietMap[key] = dietMap[key] || []).push(m.full_name || 'A member');
+      });
+    });
+    const combinedDietary = Object.keys(dietMap).length
+      ? Object.entries(dietMap).map(([d, names]) => `${d} (${names.join(', ')})`).join('; ')
+      : 'no specific restrictions mentioned';
+
     const journey = (journeyItems || []).map((j) => ({
       type: j.type,
       title: j.title,
@@ -47,14 +59,19 @@ Dates: ${dateRange}
 GROUP MEMBERS (${participants.length}):
 ${profiles.map((p, i) => `${i + 1}. ${p.name} — home city: ${p.home_city}; dietary: ${p.dietary}; interests: ${p.interests}; budget: ${p.budget}`).join('\n')}
 
+COMBINED DIETARY NEEDS (the group must accommodate ALL of these at shared meals — prioritize restaurants that can serve the full set, not just one):
+${combinedDietary}
+
 JOURNEY (chronological segments):
 ${journey.length ? journey.map((j) => `- ${j.type}: ${j.title}${j.start ? ' @ ' + j.start : ''}${j.place ? ' (' + j.place + ')' : ''}${j.from && j.to ? ' ' + j.from + ' → ' + j.to : ''}`).join('\n') : 'No segments added yet — base suggestions on the destinations and dates.'}
 
-Produce personalized recommendations for restaurants and activities near where the group will actually be on each day/location. Group them by day and location following the journey. For each recommendation:
+Produce personalized recommendations for restaurants and activities near where the group will actually be on each day/location. Group them by day and location following the journey. For restaurants especially, prioritize places that can accommodate the FULL combined set of dietary restrictions — if one member is vegetarian and another is gluten-free, pick places that serve both, not just one. For each recommendation:
 - "matches": list the specific group members (by name) this pick suits, each with a short, specific reason (a dietary match, an interest match, or a budget fit).
 - "why_sentence": ONE crisp, specific sentence tying the pick to concrete member needs — name names and their dietary/interest/budget fit (e.g. "Maya is vegetarian and loves art — this gallery café nails both.").
 - "why": 1-3 short supporting tags for why it was picked — reference concrete member needs and proximity to the group's stay/activity locations.
 Prefer concrete, real places when you know them; otherwise suggest realistic options matching the style. Vary the picks across days so the group isn't repeating the same spot.
+
+Also provide "day_summaries": for each day you cover, one sentence giving the context for that day's picks — where the group is, what's on the journey, and free-time windows (e.g. "You're all free in Positano this afternoon — here's what's nearby.").
 
 Return JSON matching the schema. 6-10 recommendations total.`;
 
@@ -66,6 +83,18 @@ Return JSON matching the schema. 6-10 recommendations total.`;
         type: 'object',
         properties: {
           summary: { type: 'string', description: 'A 1-2 sentence warm intro to the recommendations' },
+          day_summaries: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                day: { type: 'string' },
+                summary: { type: 'string', description: "One sentence: the context for this day's picks — where the group is, what's on the journey, free-time windows" },
+              },
+              required: ['day', 'summary'],
+            },
+            description: 'One summary per day covered',
+          },
           recommendations: {
             type: 'array',
             items: {
@@ -96,11 +125,11 @@ Return JSON matching the schema. 6-10 recommendations total.`;
             },
           },
         },
-        required: ['summary', 'recommendations'],
+        required: ['summary', 'day_summaries', 'recommendations'],
       },
     });
 
-    return Response.json({ summary: result.summary || '', recommendations: result.recommendations || [] });
+    return Response.json({ summary: result.summary || '', recommendations: result.recommendations || [], day_summaries: result.day_summaries || [] });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

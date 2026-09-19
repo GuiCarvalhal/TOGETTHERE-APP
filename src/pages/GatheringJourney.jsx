@@ -167,8 +167,8 @@ export default function GatheringJourney() {
                             )}
                             {canEdit && (
                               <div className="ml-auto flex items-center gap-1">
-                                <button onClick={() => { setEditing(item); setOpen(true); }} className="p-1.5 rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Pencil className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => handleDelete(item)} className="p-1.5 rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Trash2 className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => { setEditing(item); setOpen(true); }} className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Pencil className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => handleDelete(item)} className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Trash2 className="w-3.5 h-3.5" /></button>
                               </div>
                             )}
                           </div>

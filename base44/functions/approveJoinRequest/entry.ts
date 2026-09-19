@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, gatheringOwnerUserId, syncChildArrays } from '../../shared/gatheringAcl.ts';
+import { logActivity } from '../../shared/logActivity.ts';
 
 export default async function(req) {
   try {
@@ -30,7 +31,13 @@ export default async function(req) {
       owner_user_id: ownerUid,
     });
     await base44.asServiceRole.entities.JoinRequest.update(request_id, { status: 'approved' });
-    await syncChildArrays(base44, gathering_id);
+    const { parts } = await syncChildArrays(base44, gathering_id);
+    await logActivity(base44, {
+      gatheringId: gathering_id, type: 'join_approved',
+      actorUserId: user.id, actorName: me.full_name || 'The host',
+      summary: `${me.full_name || 'The host'} approved ${jr.full_name || 'a traveler'}'s request to join`,
+      ownerUserId: ownerUid, participantUserIds: parts,
+    });
     return Response.json({ status: 'approved', role });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

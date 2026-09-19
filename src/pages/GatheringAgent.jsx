@@ -15,6 +15,7 @@ export default function GatheringAgent() {
   const [error, setError] = useState('');
   const [summary, setSummary] = useState('');
   const [recs, setRecs] = useState([]);
+  const [daySummaries, setDaySummaries] = useState([]);
   const storeKey = `tt-agent-${gatheringId}`;
   const [state, setState] = useState(() => {
     try { return JSON.parse(localStorage.getItem(storeKey) || '{"saved":[],"dismissed":[]}'); }
@@ -58,6 +59,7 @@ export default function GatheringAgent() {
       const data = res.data || res;
       setSummary(data.summary || '');
       setRecs(data.recommendations || []);
+      setDaySummaries(data.day_summaries || []);
     } catch (e) {
       setError(e.message || 'The concierge is unavailable right now.');
     } finally {
@@ -73,6 +75,8 @@ export default function GatheringAgent() {
     (byDay[k] = byDay[k] || []).push(r);
   });
   const days = Object.keys(byDay);
+  const daySummaryMap = {};
+  (daySummaries || []).forEach((d) => { daySummaryMap[d.day] = d.summary; });
 
   return (
     <div className="space-y-8">
@@ -89,7 +93,7 @@ export default function GatheringAgent() {
           <div className="w-12 h-12 rounded-2xl bg-terra/15 border border-terra/30 flex items-center justify-center shrink-0">
             <Sparkles className="w-6 h-6 text-terra-deep" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-display text-xl font-bold text-ink-deep">Personalized for your crew</h3>
             <p className="text-sm text-ink-deep/60 mt-1">
               {members.filter((m) => m.role !== 'viewer').length} participants · matching dietary needs, interests, budgets and stay locations.
@@ -163,6 +167,9 @@ export default function GatheringAgent() {
                 </div>
                 <div className="flex-1 h-px bg-white/10 ml-2" />
               </div>
+              {daySummaryMap[day] && (
+                <p className="text-sm text-cream/70 italic font-display leading-relaxed mb-4 pl-1">{daySummaryMap[day]}</p>
+              )}
               <div className="grid sm:grid-cols-2 gap-4">
                 {byDay[day].map((r, i) => {
                   const Icon = CAT_ICON[r.category] || Compass;
@@ -204,11 +211,11 @@ export default function GatheringAgent() {
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-4 pt-3 border-t border-ink-charcoal/10">
-                        <button onClick={() => (isSaved(r.name) ? null : save(r.name))} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${isSaved(r.name) ? 'bg-terra text-cream' : 'bg-cream-pale text-ink-deep hover:bg-cream-warm'}`}>
+                        <button onClick={() => (isSaved(r.name) ? null : save(r.name))} className={`inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-full text-xs font-semibold ${isSaved(r.name) ? 'bg-terra text-cream' : 'bg-cream-pale text-ink-deep hover:bg-cream-warm'}`}>
                           {isSaved(r.name) ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
                           {isSaved(r.name) ? 'Saved' : 'Save'}
                         </button>
-                        <button onClick={() => dismiss(r.name)} className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs text-ink-deep/50 hover:text-terra-deep hover:bg-cream-pale">
+                        <button onClick={() => dismiss(r.name)} className="ml-auto inline-flex items-center gap-1 px-4 py-2.5 min-h-[44px] rounded-full text-xs text-ink-deep/50 hover:text-terra-deep hover:bg-cream-pale">
                           <X className="w-3.5 h-3.5" /> Dismiss
                         </button>
                       </div>

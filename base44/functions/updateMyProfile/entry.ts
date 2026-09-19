@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember } from '../../shared/gatheringAcl.ts';
+import { logActivity } from '../../shared/logActivity.ts';
 
 const ALLOWED = [
   'relationships', 'dietary_preferences', 'interests', 'contact_info', 'private_notes',
@@ -25,6 +26,29 @@ export default async function(req) {
     if (Object.keys(update).length === 0) return Response.json({ error: 'No updatable fields' }, { status: 400 });
 
     await base44.asServiceRole.entities.Member.update(me.id, update);
+
+    if ('relationships' in fields) {
+      const oldRels = (me.relationships || {});
+      const newRels = (fields.relationships || {});
+      const newlyClose = Object.entries(newRels).filter(([uid, rel]) => rel === 'close' && oldRels[uid] !== 'close');
+      if (newlyClose.length) {
+        const [members, gathering] = await Promise.all([
+          base44.asServiceRole.entities.Member.filter({ gathering_id }),
+          base44.asServiceRole.entities.Gathering.get(gathering_id),
+        ]);
+        const parts = (members || []).filter((m) => m.role === 'owner' || m.role === 'member').map((m) => m.user_id).filter(Boolean);
+        const ownerUid = (gathering && gathering.owner_user_id) || (members || []).find((m) => m.role === 'owner')?.user_id || '';
+        for (const [targetUid] of newlyClose) {
+          const target = (members || []).find((m) => m.user_id === targetUid);
+          await logActivity(base44, {
+            gatheringId: gathering_id, type: 'relationship_close',
+            actorUserId: user.id, actorName: me.full_name || user.full_name || 'Someone',
+            summary: `${me.full_name || 'Someone'} marked ${target?.full_name || 'a member'} as close`,
+            ownerUserId: ownerUid, participantUserIds: parts,
+          });
+        }
+      }
+    }
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

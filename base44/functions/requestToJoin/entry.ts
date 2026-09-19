@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, gatheringOwnerUserId, syncChildArrays } from '../../shared/gatheringAcl.ts';
+import { logActivity } from '../../shared/logActivity.ts';
 
 export default async function(req) {
   try {
@@ -29,7 +30,13 @@ export default async function(req) {
         full_name: displayName,
         owner_user_id: ownerUid,
       });
-      await syncChildArrays(base44, gatheringId);
+      const { parts } = await syncChildArrays(base44, gatheringId);
+      await logActivity(base44, {
+        gatheringId, type: 'member_added',
+        actorUserId: user.id, actorName: displayName,
+        summary: `${displayName} joined the gathering`,
+        ownerUserId: ownerUid, participantUserIds: parts,
+      });
       return Response.json({ status: 'joined', role: requestedRole });
     }
     // approval-required
@@ -46,6 +53,12 @@ export default async function(req) {
       status: 'pending',
       owner_user_id: ownerUid,
       participant_user_ids: gathering.participant_user_ids || [],
+    });
+    await logActivity(base44, {
+      gatheringId, type: 'join_requested',
+      actorUserId: user.id, actorName: displayName,
+      summary: `${displayName} requested to join as ${requestedRole === 'viewer' ? 'Viewer' : 'Member'}`,
+      ownerUserId: ownerUid, participantUserIds: gathering.participant_user_ids || [],
     });
     return Response.json({ status: 'requested' });
   } catch (error) {

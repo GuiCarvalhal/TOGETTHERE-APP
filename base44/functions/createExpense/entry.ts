@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, participantUserIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
+import { logActivity } from '../../shared/logActivity.ts';
 
 export default async function(req) {
   try {
@@ -40,6 +41,13 @@ export default async function(req) {
 
     const splitRecords = buildSplitRecords({ expenseId: created.id, gatheringId: gathering_id, splits, ownerUid, payerUid, parts });
     if (splitRecords.length) await base44.asServiceRole.entities.ExpenseSplit.bulkCreate(splitRecords);
+
+    await logActivity(base44, {
+      gatheringId: gathering_id, type: 'expense_added',
+      actorUserId: user.id, actorName: me.full_name || user.full_name || 'Someone',
+      summary: `${me.full_name || 'Someone'} added "${expense.title}" to expenses`,
+      ownerUserId: ownerUid, participantUserIds: parts,
+    });
 
     return Response.json({ expense: created });
   } catch (error) {
