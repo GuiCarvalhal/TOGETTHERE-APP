@@ -4,82 +4,48 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --font-heading: ui-sans-serif, system-ui, sans-serif;
-    --font-body: ui-sans-serif, system-ui, sans-serif;
-    --font-display: ui-sans-serif, system-ui, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+    /* TOGETTHERE — editorial ink-navy + warm cream */
+    --background: 215 8% 8%;        /* Ink Navy #0C131D canvas */
+    --foreground: 40 60% 98%;       /* Soft Cream text on ink */
+    --card: 38 60% 98%;             /* Soft Cream #FDFBF7 cards */
+    --card-foreground: 210 28% 10%; /* Deep Charcoal #121820 on cream */
+    --popover: 38 60% 98%;
+    --popover-foreground: 210 28% 10%;
+    --primary: 8 71% 58%;          /* Warm Terracotta #E05A47 */
+    --primary-foreground: 40 60% 98%;
+    --secondary: 40 36% 93%;        /* Pale Cream #F4EFE6 muted surface */
+    --secondary-foreground: 210 28% 10%;
+    --muted: 215 12% 14%;           /* dark muted ink on canvas */
+    --muted-foreground: 40 22% 76%; /* muted cream text on ink */
+    --accent: 8 82% 67%;            /* Coral Highlight #F07865 */
+    --accent-foreground: 215 8% 8%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 40 60% 98%;
+    --border: 215 26% 16%;          /* Charcoal #1E2633 hairline */
+    --input: 215 20% 18%;
+    --ring: 8 71% 58%;
+    --chart-1: 8 71% 58%;
+    --chart-2: 40 36% 60%;
+    --chart-3: 200 40% 55%;
+    --chart-4: 280 40% 65%;
+    --chart-5: 140 35% 55%;
+    --radius: 1rem;
 
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --sidebar-background: 215 10% 11%;
+    --sidebar-foreground: 40 22% 80%;
+    --sidebar-primary: 8 71% 58%;
+    --sidebar-primary-foreground: 40 60% 98%;
+    --sidebar-accent: 215 12% 16%;
+    --sidebar-accent-foreground: 40 60% 98%;
+    --sidebar-border: 215 20% 20%;
+    --sidebar-ring: 8 71% 58%;
   }
 }
-
-
 
 @layer base {
   * {
@@ -87,6 +53,69 @@
   }
 
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+}
+
+@layer components {
+  /* Editorial cream bento card floating on ink canvas */
+  .tt-card {
+    @apply bg-card text-card-foreground rounded-[1.25rem] border border-[#1E2633]/15;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .tt-card-flat {
+    @apply bg-card text-card-foreground rounded-[1rem] border border-[#1E2633]/10;
+  }
+
+  /* Stamp-style role tag */
+  .tt-stamp {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.6875rem] font-semibold uppercase tracking-[0.1em] border;
+  }
+
+  /* Micro uppercase label */
+  .tt-label {
+    @apply text-[0.6875rem] uppercase tracking-[0.1em] font-semibold;
+  }
+
+  /* Pill switcher surface (glassmorphism dark ink) */
+  .tt-glass {
+    background: rgba(12, 19, 29, 0.72);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(224, 90, 71, 0.18);
+  }
+
+  .tt-divider {
+    @apply border-t border-white/10;
+  }
+
+  .tt-cream-divider {
+    @apply border-t border-[#1E2633]/10;
+  }
+
+  /* Subtle ink panel (on canvas, not cream) */
+  .tt-ink-panel {
+    @apply bg-[#111A26] rounded-[1rem] border border-white/5;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  .tt-shadow-float {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+  .tt-shadow-soft {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  }
+  .tt-text-balance {
+    text-wrap: balance;
   }
 }

@@ -1,0 +1,25 @@
+{
+  "name": "ExpenseSplit",
+  "type": "object",
+  "properties": {
+    "expense_id": {
+      "type": "string"
+    },
+    "gathering_id": {
+      "type": "string"
+    },
+    "member_id": {
+      "type": "string"
+    },
+    "share": {
+      "type": "number"
+    },
+    "amount": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "expense_id",
+    "member_id"
+  ]
+}

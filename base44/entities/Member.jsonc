@@ -1,0 +1,73 @@
+{
+  "name": "Member",
+  "type": "object",
+  "properties": {
+    "gathering_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "member",
+        "viewer"
+      ],
+      "default": "member"
+    },
+    "photo": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "home_city": {
+      "type": "string"
+    },
+    "dietary_preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "budget_level": {
+      "type": "string",
+      "enum": [
+        "budget",
+        "moderate",
+        "premium"
+      ],
+      "default": "moderate"
+    },
+    "arrival_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "departure_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "contact_info": {
+      "type": "string"
+    },
+    "private_notes": {
+      "type": "string"
+    },
+    "relationships": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "gathering_id",
+    "user_id",
+    "role"
+  ]
+}

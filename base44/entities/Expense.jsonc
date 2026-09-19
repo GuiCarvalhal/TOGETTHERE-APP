@@ -1,0 +1,59 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "gathering_id": {
+      "type": "string"
+    },
+    "payer_member_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "split_method": {
+      "type": "string",
+      "enum": [
+        "equal",
+        "custom",
+        "by_share"
+      ],
+      "default": "equal"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "food",
+        "lodging",
+        "transport",
+        "activities",
+        "other"
+      ],
+      "default": "other"
+    },
+    "receipt": {
+      "type": "string"
+    },
+    "settled": {
+      "type": "boolean",
+      "default": false
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "gathering_id",
+    "payer_member_id",
+    "title",
+    "amount"
+  ]
+}

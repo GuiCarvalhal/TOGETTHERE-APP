@@ -1,0 +1,60 @@
+{
+  "name": "JourneyItem",
+  "type": "object",
+  "properties": {
+    "gathering_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "flight",
+        "car",
+        "hotel",
+        "activity",
+        "cruise",
+        "other"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "start_datetime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_datetime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "location_from": {
+      "type": "string"
+    },
+    "location_to": {
+      "type": "string"
+    },
+    "location_name": {
+      "type": "string"
+    },
+    "confirmation_number": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "gathering_id",
+    "type",
+    "title"
+  ]
+}

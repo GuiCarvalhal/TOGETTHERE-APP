@@ -7,12 +7,28 @@ module.exports = {
   		opacity: Object.fromEntries(Array.from({ length: 101 }, (_, i) => [i, `${i / 100}`])),
   		borderRadius: {
   			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			md: 'calc(var(--radius) - 4px)',
+  			sm: 'calc(var(--radius) - 8px)'
   		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
+  			ink: {
+  				DEFAULT: '#0C131D',
+  				soft: '#111A26',
+  				charcoal: '#1E2633',
+  				deep: '#121820'
+  			},
+  			terra: {
+  				DEFAULT: '#E05A47',
+  				coral: '#F07865',
+  				deep: '#C8493A'
+  			},
+  			cream: {
+  				DEFAULT: '#FDFBF7',
+  				pale: '#F4EFE6',
+  				warm: '#EFE7D8'
+  			},
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
@@ -63,32 +79,34 @@ module.exports = {
   			}
   		},
   		fontFamily: {
-  			heading: ['var(--font-heading)'],
-  			body: ['var(--font-body)'],
-  			display: ['var(--font-display)'],
+  			heading: ['Playfair Display', 'Georgia', 'serif'],
+  			body: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			display: ['Playfair Display', 'Georgia', 'serif'],
   			mono: ['var(--font-mono)']
   		},
   		keyframes: {
   			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
+  				from: { height: '0' },
+  				to: { height: 'var(--radix-accordion-content-height)' }
   			},
   			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
+  				from: { height: 'var(--radix-accordion-content-height)' },
+  				to: { height: '0' }
+  			},
+  			'tt-fade-up': {
+  				from: { opacity: '0', transform: 'translateY(10px)' },
+  				to: { opacity: '1', transform: 'translateY(0)' }
+  			},
+  			'tt-pill-in': {
+  				from: { transform: 'scale(0.9)', opacity: '0' },
+  				to: { transform: 'scale(1)', opacity: '1' }
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'tt-fade-up': 'tt-fade-up 0.5s cubic-bezier(0.22,1,0.36,1) both',
+  			'tt-pill-in': 'tt-pill-in 0.35s cubic-bezier(0.22,1,0.36,1) both'
   		}
   	}
   },

@@ -1,0 +1,50 @@
+{
+  "name": "Gathering",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "cover_image": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "destinations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "privacy_mode": {
+      "type": "string",
+      "enum": [
+        "private",
+        "invite",
+        "public"
+      ],
+      "default": "private"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planning",
+        "active",
+        "completed"
+      ],
+      "default": "planning"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
