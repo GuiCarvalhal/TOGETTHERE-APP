@@ -1,18 +1,20 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Route, Receipt, Users } from 'lucide-react';
+import { Sparkles, Route, Receipt, Users, Settings } from 'lucide-react';
+import { canSeeExpenses, canSeeAgent, canManageGathering } from '@/lib/gatheringHelpers';
 
 const ALL_TABS = [
-  { key: 'agent', label: 'Agent', icon: Sparkles, path: 'agent' },
-  { key: 'journey', label: 'Journey', icon: Route, path: 'journey' },
-  { key: 'expenses', label: 'Expenses', icon: Receipt, path: 'expenses' },
-  { key: 'members', label: 'Members', icon: Users, path: 'members' },
+  { key: 'agent', label: 'Agent', icon: Sparkles, path: 'agent', show: canSeeAgent },
+  { key: 'journey', label: 'Journey', icon: Route, path: 'journey', show: () => true },
+  { key: 'expenses', label: 'Expenses', icon: Receipt, path: 'expenses', show: canSeeExpenses },
+  { key: 'members', label: 'Members', icon: Users, path: 'members', show: () => true },
+  { key: 'settings', label: 'Settings', icon: Settings, path: 'settings', show: canManageGathering },
 ];
 
-export default function PillSwitcher({ gatheringId, canSeeExpenses = true }) {
+export default function PillSwitcher({ gatheringId, role }) {
   const location = useLocation();
-  const tabs = ALL_TABS.filter((t) => (t.key === 'expenses' ? canSeeExpenses : true));
+  const tabs = ALL_TABS.filter((t) => t.show(role));
   const activeKey = tabs.find((t) => location.pathname.endsWith(`/${t.path}`))?.key || tabs[0].key;
 
   return (

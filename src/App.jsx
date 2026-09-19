@@ -16,6 +16,8 @@ import GatheringAgent from '@/pages/GatheringAgent';
 import GatheringJourney from '@/pages/GatheringJourney';
 import GatheringExpenses from '@/pages/GatheringExpenses';
 import GatheringMembers from '@/pages/GatheringMembers';
+import GatheringSettings from '@/pages/GatheringSettings';
+import JoinGathering from '@/pages/JoinGathering';
 
 function App() {
   return (
@@ -30,12 +32,14 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
               <Route path="/" element={<Home />} />
+              <Route path="/join/:gatheringId" element={<JoinGathering />} />
               <Route path="/gathering/:id" element={<GatheringShell />}>
                 <Route index element={<Navigate to="journey" replace />} />
                 <Route path="agent" element={<GatheringAgent />} />
                 <Route path="journey" element={<GatheringJourney />} />
                 <Route path="expenses" element={<GatheringExpenses />} />
                 <Route path="members" element={<GatheringMembers />} />
+                <Route path="settings" element={<GatheringSettings />} />
               </Route>
             </Route>
             <Route path="*" element={<PageNotFound />} />

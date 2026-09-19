@@ -16,15 +16,19 @@ export default function GatheringJourney() {
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
       const data = await base44.entities.JourneyItem.filter({ gathering_id: gatheringId });
       data.sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0));
       setItems(data);
+    } catch (e) {
+      setError(e);
     } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, [gatheringId]);
@@ -51,6 +55,14 @@ export default function GatheringJourney() {
   const days = Object.keys(byDay).sort();
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-terra" /></div>;
+  if (error) return (
+    <div className="tt-card p-10 text-center max-w-md mx-auto">
+      <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
+      <p className="font-display text-2xl mb-2 text-ink-deep">Couldn't load the journey</p>
+      <p className="text-ink-deep/60 mb-6 text-sm">{error.message || 'Something went wrong.'}</p>
+      <button onClick={load} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">Try again</button>
+    </div>
+  );
 
   return (
     <div className="space-y-8">

@@ -9,7 +9,7 @@ import { Image } from '@/components/ui/image';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, MapPin, CalendarDays, Compass, ArrowRight } from 'lucide-react';
+import { Loader2, Plus, MapPin, CalendarDays, Compass, ArrowRight, Route, Receipt, Sparkles } from 'lucide-react';
 import { formatDateRange } from '@/lib/gatheringHelpers';
 
 const SAMPLE_COVERS = [
@@ -93,6 +93,25 @@ export default function Home() {
         <p className="text-cream/70 mt-5 max-w-xl text-[0.9375rem] leading-relaxed">
           A living itinerary for your crew — flights and stays on a shared timeline, expenses split fairly, and an AI concierge that tailors each day to where the group actually is.
         </p>
+      </section>
+
+      {/* Why TOGETTHERE */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            { icon: Route, title: 'A living itinerary', body: "Flights, stays and activities on one shared timeline everyone can read." },
+            { icon: Receipt, title: 'Fair splits, sorted', body: 'Track shared costs and see exactly who owes whom — down to the cent.' },
+            { icon: Sparkles, title: 'An AI concierge', body: "Daily picks tailored to your crew's diets, interests and where you'll actually be." },
+          ].map((f) => (
+            <div key={f.title} className="tt-ink-panel p-5 hover:-translate-y-0.5 hover:border-terra/30 transition-all duration-300">
+              <div className="w-10 h-10 rounded-xl bg-terra/15 border border-terra/25 flex items-center justify-center mb-3">
+                <f.icon className="w-5 h-5 text-terra-coral" />
+              </div>
+              <p className="font-display text-lg font-bold text-cream">{f.title}</p>
+              <p className="text-cream/60 text-sm mt-1 leading-relaxed">{f.body}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Gatherings grid */}

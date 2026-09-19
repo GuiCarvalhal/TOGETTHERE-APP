@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
-import { canSeeExpenses, formatDateRange, formatDate } from '@/lib/gatheringHelpers';
+import { formatDateRange, formatDate } from '@/lib/gatheringHelpers';
 import PillSwitcher from '@/components/tt/PillSwitcher';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import RoleStamp from '@/components/tt/RoleStamp';
@@ -50,7 +50,6 @@ function ShellInner() {
     return <Navigate to={`/gathering/${id}/journey`} replace />;
   }
 
-  const showExpenses = canSeeExpenses(role);
   const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
 
   return (
@@ -84,7 +83,7 @@ function ShellInner() {
       {/* Pill switcher */}
       <div className="sticky top-16 z-20 -mt-px pt-4 pb-3 bg-gradient-to-b from-ink/95 to-ink/0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex justify-center">
-          <PillSwitcher gatheringId={id} canSeeExpenses={showExpenses} />
+          <PillSwitcher gatheringId={id} role={role} />
         </div>
       </div>
 

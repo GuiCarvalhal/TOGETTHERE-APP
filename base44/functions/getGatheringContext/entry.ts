@@ -38,7 +38,11 @@ export default async function(req) {
       };
     });
 
-    return Response.json({ gathering, currentMember: me, members: masked });
+    let joinRequests = [];
+    if (me.role === 'owner') {
+      joinRequests = await base44.asServiceRole.entities.JoinRequest.filter({ gathering_id: gatheringId, status: 'pending' }) || [];
+    }
+    return Response.json({ gathering, currentMember: me, members: masked, joinRequests });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

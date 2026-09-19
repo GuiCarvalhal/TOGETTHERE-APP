@@ -16,7 +16,7 @@ export default async function(req) {
       end_date: end_date || undefined,
       destinations: destinations || [],
       cover_image: cover_image || '',
-      privacy_mode: 'private',
+      privacy_mode: 'invite',
       status: 'planning',
       owner_user_id: user.id,
       member_user_ids: [user.id],

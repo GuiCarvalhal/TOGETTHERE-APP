@@ -10,6 +10,7 @@ export function GatheringProvider({ gatheringId, children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fab, setFab] = useState(null);
+  const [joinRequests, setJoinRequests] = useState([]);
 
   const load = useCallback(async () => {
     if (!gatheringId) return;
@@ -21,6 +22,7 @@ export function GatheringProvider({ gatheringId, children }) {
       setGathering(data.gathering);
       setMembers(data.members || []);
       setCurrentMember(data.currentMember || null);
+      setJoinRequests(data.joinRequests || []);
     } catch (e) {
       setError(e);
     } finally {
@@ -45,6 +47,8 @@ export function GatheringProvider({ gatheringId, children }) {
     refresh: load,
     fab,
     setFab,
+    joinRequests,
+    setJoinRequests,
   };
 
   return <GatheringCtx.Provider value={value}>{children}</GatheringCtx.Provider>;

@@ -1,56 +1,38 @@
 {
-  "name": "Gathering",
+  "name": "JoinRequest",
   "type": "object",
   "properties": {
-    "name": {
+    "gathering_id": {
       "type": "string"
     },
-    "cover_image": {
+    "user_id": {
       "type": "string"
     },
-    "start_date": {
-      "type": "string",
-      "format": "date"
+    "full_name": {
+      "type": "string"
     },
-    "end_date": {
-      "type": "string",
-      "format": "date"
+    "email": {
+      "type": "string"
     },
-    "destinations": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "privacy_mode": {
+    "requested_role": {
       "type": "string",
       "enum": [
-        "open",
-        "invite",
-        "approval"
+        "member",
+        "viewer"
       ],
-      "default": "invite"
-    },
-    "description": {
-      "type": "string"
+      "default": "member"
     },
     "status": {
       "type": "string",
       "enum": [
-        "planning",
-        "active",
-        "completed"
+        "pending",
+        "approved",
+        "declined"
       ],
-      "default": "planning"
+      "default": "pending"
     },
     "owner_user_id": {
       "type": "string"
-    },
-    "member_user_ids": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     },
     "participant_user_ids": {
       "type": "array",
@@ -60,16 +42,17 @@
     }
   },
   "required": [
-    "name"
+    "gathering_id",
+    "user_id"
   ],
   "rls": {
     "read": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "data.user_id": "{{user.id}}"
         },
         {
-          "data.member_user_ids": "{{user.id}}"
+          "data.owner_user_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -84,9 +67,6 @@
     "update": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
-        },
-        {
           "data.owner_user_id": "{{user.id}}"
         },
         {
@@ -99,7 +79,7 @@
     "delete": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "data.user_id": "{{user.id}}"
         },
         {
           "data.owner_user_id": "{{user.id}}"

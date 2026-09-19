@@ -7,7 +7,7 @@ const CAT_ICON = { restaurant: UtensilsCrossed, activity: Compass, cafe: Coffee,
 const CAT_COLOR = { restaurant: '#E05A47', activity: '#F07865', cafe: '#C8493A', stay: '#1E2633', experience: '#E05A47' };
 
 export default function GatheringAgent() {
-  const { gatheringId, members, currentMember, setFab } = useGathering();
+  const { gatheringId, members, currentMember, role, setFab } = useGathering();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState('');
@@ -22,6 +22,16 @@ export default function GatheringAgent() {
     setFab({ label: 'Ask Agent', icon: Sparkles, onClick: generate });
     return () => setFab(null);
   }, [setFab]);
+
+  if (role === 'viewer') {
+    return (
+      <div className="tt-card p-10 text-center max-w-md mx-auto">
+        <Sparkles className="w-10 h-10 text-terra mx-auto mb-4" />
+        <p className="font-display text-2xl mb-2 text-ink-deep">Agent isn't available to viewers</p>
+        <p className="text-ink-deep/60 text-sm">The AI concierge is a participant tool. Ask the organizer to change your role to Member.</p>
+      </div>
+    );
+  }
 
   function persist(next) {
     setState(next);

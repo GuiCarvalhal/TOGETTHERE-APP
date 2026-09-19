@@ -13,7 +13,15 @@ export function canEditJourneyItem(role, item, currentMember) {
 }
 export function canAddExpense(role) { return role === 'owner' || role === 'member'; }
 export function canSeeExpenses(role) { return role === 'owner' || role === 'member'; }
+export function canSeeAgent(role) { return role === 'owner' || role === 'member'; }
+export function canManageGathering(role) { return role === 'owner'; }
 export function isParticipant(role) { return role === 'owner' || role === 'member'; }
+
+export const PRIVACY_MODES = [
+  { key: 'open', label: 'Open', blurb: 'Anyone with the link joins immediately as a member.' },
+  { key: 'invite', label: 'Invite-only', blurb: 'Only people you add directly can join.' },
+  { key: 'approval', label: 'Approval required', blurb: 'Anyone with the link can request to join — you approve each request.' },
+];
 
 // participant member ids (exclude viewers)
 export function participantIds(members) {
