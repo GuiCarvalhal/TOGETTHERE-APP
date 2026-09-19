@@ -12,6 +12,7 @@
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" },
-    { "src": "https://media.base44.com/images/public/6aaf0809fb7946eb822b16b4/7bfed74ac_generated_image.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "https://base44.app/api/apps/6aaf0809fb7946eb822b16b4/files/mp/public/6aaf0809fb7946eb822b16b4/55c4efe59_icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "https://base44.app/api/apps/6aaf0809fb7946eb822b16b4/files/mp/public/6aaf0809fb7946eb822b16b4/6cd014755_icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }

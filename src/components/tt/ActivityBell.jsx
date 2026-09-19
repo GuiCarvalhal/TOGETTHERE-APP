@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Bell, Receipt, Route, UserPlus, UserCheck, Heart, Settings as SettingsIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { timeAgo } from '@/lib/gatheringHelpers';
+import usePolling from '@/hooks/usePolling';
 
 const TYPE_ICON = {
   expense_added: Receipt,
@@ -37,6 +38,7 @@ export default function ActivityBell({ gatheringId }) {
   }, [gatheringId]);
 
   useEffect(() => { load(); }, [load]);
+  usePolling(load, 25000);
 
   useEffect(() => {
     if (open) {

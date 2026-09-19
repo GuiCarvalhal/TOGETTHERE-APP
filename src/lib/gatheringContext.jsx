@@ -12,10 +12,9 @@ export function GatheringProvider({ gatheringId, children }) {
   const [fab, setFab] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent) => {
     if (!gatheringId) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) { setLoading(true); setError(null); }
     try {
       const res = await base44.functions.invoke('getGatheringContext', { gathering_id: gatheringId });
       const data = res.data || res;
@@ -24,9 +23,9 @@ export function GatheringProvider({ gatheringId, children }) {
       setCurrentMember(data.currentMember || null);
       setJoinRequests(data.joinRequests || []);
     } catch (e) {
-      setError(e);
+      if (!silent) setError(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [gatheringId]);
 
@@ -45,6 +44,7 @@ export function GatheringProvider({ gatheringId, children }) {
     loading,
     error,
     refresh: load,
+    silentRefresh: () => load(true),
     fab,
     setFab,
     joinRequests,

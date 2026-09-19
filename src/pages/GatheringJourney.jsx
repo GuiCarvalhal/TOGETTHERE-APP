@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import usePolling from '@/hooks/usePolling';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { JOURNEY_TYPES, canEditJourneyItem, canAddJourney, formatDate } from '@/lib/gatheringHelpers';
@@ -32,18 +33,18 @@ export default function GatheringJourney() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  async function load() {
-    setLoading(true);
-    setError(null);
+  async function load(silent) {
+    if (!silent) { setLoading(true); setError(null); }
     try {
       const data = await base44.entities.JourneyItem.filter({ gathering_id: gatheringId });
       data.sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0));
       setItems(data);
     } catch (e) {
-      setError(e);
-    } finally { setLoading(false); }
+      if (!silent) setError(e);
+    } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => { load(); }, [gatheringId]);
+  usePolling(() => load(true), 25000);
 
   useEffect(() => {
     if (canAddJourney(role)) {

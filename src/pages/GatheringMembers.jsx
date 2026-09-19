@@ -12,10 +12,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { UserPlus, Loader2, Users } from 'lucide-react';
+import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 
 export default function GatheringMembers() {
-  const { gatheringId, members, currentMember, role, setFab, refresh } = useGathering();
+  const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh } = useGathering();
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ full_name: '', role: 'member', home_city: '' });
   const [adding, setAdding] = useState(false);
@@ -28,6 +29,8 @@ export default function GatheringMembers() {
     }
     return () => setFab(null);
   }, [setFab, isOwner]);
+
+  usePolling(silentRefresh, 25000);
 
   async function handleRelationshipChange(targetUserId, rel) {
     const rels = { ...(currentMember.relationships || {}) };

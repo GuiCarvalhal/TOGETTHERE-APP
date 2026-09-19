@@ -6,6 +6,8 @@ import {
 } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import MemberAvatar from '@/components/tt/MemberAvatar';
+import AttachmentChip from '@/components/tt/AttachmentChip';
+import usePolling from '@/hooks/usePolling';
 import { Plus, Pencil, Check, Loader2, ArrowRight, Receipt as ReceiptIcon } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
@@ -23,9 +25,8 @@ export default function GatheringExpenses() {
 
   const denied = !canSeeExpenses(role);
 
-  async function load() {
-    setLoading(true);
-    setError(null);
+  async function load(silent) {
+    if (!silent) { setLoading(true); setError(null); }
     try {
       const [es, sp] = await Promise.all([
         base44.entities.Expense.filter({ gathering_id: gatheringId }),
@@ -35,10 +36,11 @@ export default function GatheringExpenses() {
       setExpenses(es);
       setSplits(sp);
     } catch (e) {
-      setError(e);
-    } finally { setLoading(false); }
+      if (!silent) setError(e);
+    } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => { load(); }, [gatheringId]);
+  usePolling(() => load(true), 25000);
 
   useEffect(() => {
     if (canAddExpense(role)) {
@@ -211,6 +213,11 @@ export default function GatheringExpenses() {
                               </span>
                             ))}
                           </div>
+                          {exp.receipt && (
+                            <div className="mt-2">
+                              <AttachmentChip url={exp.receipt} />
+                            </div>
+                          )}
                           {canEdit && (
                             <div className="flex items-center gap-1 mt-3 pt-2 border-t border-ink-charcoal/10">
                               <button onClick={() => toggleSettled(exp)} title={exp.settled ? 'Mark unsettled' : 'Mark settled'} className={`p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg ${exp.settled ? 'text-terra-deep' : 'text-ink-deep/40 hover:text-terra-deep'} hover:bg-cream-pale`}><Check className="w-4 h-4" /></button>
