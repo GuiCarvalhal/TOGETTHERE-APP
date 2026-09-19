@@ -105,7 +105,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-ink text-cream">
       {/* Header */}
-      <header className="border-b border-white/5">
+      <header className="sticky top-0 z-30 bg-ink/95 backdrop-blur-xl border-b border-white/5 tt-safe-top">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <span className="font-display text-2xl font-bold tracking-tight">TOGETTHERE</span>
           <Button onClick={() => setOpen(true)} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-10 px-4">

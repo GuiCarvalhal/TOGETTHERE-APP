@@ -1,0 +1,27 @@
+{
+  "name": "TOGETTHERE",
+  "short_name": "TOGETTHERE",
+  "description": "A living itinerary for group travel and gatherings — plan the journey, split the costs, and let an AI concierge tailor every day to your group.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "en",
+  "categories": ["travel", "lifestyle", "productivity"],
+  "theme_color": "#0C131D",
+  "background_color": "#0C131D",
+  "icons": [
+    {
+      "src": "https://media.base44.com/images/public/6aaf0809fb7946eb822b16b4/7bfed74ac_generated_image.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://media.base44.com/images/public/6aaf0809fb7946eb822b16b4/7bfed74ac_generated_image.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

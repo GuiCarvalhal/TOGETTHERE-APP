@@ -15,7 +15,7 @@ function FabButton() {
   return (
     <button
       onClick={fab.onClick}
-      className="group fixed right-5 bottom-6 sm:bottom-8 z-40 flex items-center gap-2 pl-4 pr-5 py-3.5 rounded-full bg-terra text-cream font-semibold shadow-[0_12px_30px_rgba(224,90,71,0.45)] hover:bg-terra-deep transition-colors"
+      className="group fixed right-5 tt-fab-safe z-40 flex items-center gap-2 pl-4 pr-5 py-3.5 rounded-full bg-terra text-cream font-semibold shadow-[0_12px_30px_rgba(224,90,71,0.45)] hover:bg-terra-deep transition-colors"
     >
       <Icon className="w-5 h-5" />
       <span className="text-sm">{fab.label}</span>
@@ -55,7 +55,7 @@ function ShellInner() {
   return (
     <div className="min-h-screen bg-ink text-cream">
       {/* Top header */}
-      <header className="sticky top-0 z-30 bg-ink/85 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-30 bg-ink/85 backdrop-blur-xl border-b border-white/5 tt-safe-top">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3 shrink-0">
             <span className="font-display text-xl sm:text-2xl font-bold tracking-tight text-cream">TOGETTHERE</span>
@@ -81,7 +81,7 @@ function ShellInner() {
       </header>
 
       {/* Pill switcher */}
-      <div className="sticky top-16 z-20 -mt-px pt-4 pb-3 bg-gradient-to-b from-ink/95 to-ink/0">
+      <div className="sticky z-20 -mt-px pt-4 pb-3 bg-gradient-to-b from-ink/95 to-ink/0 tt-sticky-pill">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex justify-center">
           <PillSwitcher gatheringId={id} role={role} />
         </div>

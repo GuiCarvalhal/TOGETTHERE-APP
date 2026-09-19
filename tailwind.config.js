@@ -79,9 +79,9 @@ module.exports = {
   			}
   		},
   		fontFamily: {
-  			heading: ['Playfair Display', 'Georgia', 'serif'],
+  			heading: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
   			body: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-  			display: ['Playfair Display', 'Georgia', 'serif'],
+  			display: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
   			mono: ['var(--font-mono)']
   		},
   		keyframes: {

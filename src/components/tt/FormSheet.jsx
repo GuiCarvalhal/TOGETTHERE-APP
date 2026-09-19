@@ -15,7 +15,7 @@ export default function FormSheet({ open, onOpenChange, title, children, maxWidt
           <DrawerHeader className="px-6 pt-4 pb-2 text-left">
             <DrawerTitle className="font-display text-2xl font-bold text-ink-deep">{title}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-6 pb-8 overflow-y-auto">{children}</div>
+          <div className="px-6 tt-drawer-pb overflow-y-auto">{children}</div>
         </DrawerContent>
       </Drawer>
     );

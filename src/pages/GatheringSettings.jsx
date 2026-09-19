@@ -153,7 +153,7 @@ export default function GatheringSettings() {
           <div>
             <Label className="text-ink-deep flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" /> Invite link</Label>
             <div className="flex gap-2 mt-1.5">
-              <Input readOnly value={inviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm" />
+              <Input readOnly value={inviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
               <Button type="button" onClick={() => copy(inviteUrl, 'member')} className="bg-terra hover:bg-terra-deep text-cream rounded-full shrink-0">
                 {copied === 'member' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               </Button>
@@ -163,7 +163,7 @@ export default function GatheringSettings() {
           <div>
             <Label className="text-ink-deep flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> Viewer invite link</Label>
             <div className="flex gap-2 mt-1.5">
-              <Input readOnly value={viewerInviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm" />
+              <Input readOnly value={viewerInviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
               <Button type="button" variant="outline" onClick={() => copy(viewerInviteUrl, 'viewer')} className="rounded-full shrink-0 border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
                 {copied === 'viewer' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               </Button>
@@ -196,10 +196,10 @@ export default function GatheringSettings() {
                   </div>
                   <span className="tt-stamp bg-cream text-ink-deep/60 border-ink-charcoal/15 capitalize hidden sm:inline-flex">{r.requested_role}</span>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => resolveRequest(r.id, true)} disabled={busyReq === r.id} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-terra text-cream text-xs font-semibold hover:bg-terra-deep disabled:opacity-50">
+                    <button onClick={() => resolveRequest(r.id, true)} disabled={busyReq === r.id} className="inline-flex items-center gap-1 px-3.5 min-h-[44px] rounded-full bg-terra text-cream text-xs font-semibold hover:bg-terra-deep disabled:opacity-50">
                       {busyReq === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />} Approve
                     </button>
-                    <button onClick={() => resolveRequest(r.id, false)} disabled={busyReq === r.id} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-ink-deep/55 text-xs font-semibold hover:bg-ink/5 disabled:opacity-50">
+                    <button onClick={() => resolveRequest(r.id, false)} disabled={busyReq === r.id} className="inline-flex items-center gap-1 px-3.5 min-h-[44px] rounded-full text-ink-deep/55 text-xs font-semibold hover:bg-ink/5 disabled:opacity-50">
                       <UserX className="w-3.5 h-3.5" /> Decline
                     </button>
                   </div>

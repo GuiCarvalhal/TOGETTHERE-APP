@@ -31,9 +31,9 @@
     --chart-5: 140 35% 55%;
     --radius: 1rem;
 
-    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-heading: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     --font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Playfair Display', Georgia, serif;
+    --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     --sidebar-background: 215 10% 11%;
@@ -52,8 +52,16 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground font-body antialiased;
+    overflow-x: clip;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   ::selection {
@@ -107,7 +115,8 @@
 
 @layer utilities {
   .font-display {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.025em;
   }
   .tt-no-scrollbar::-webkit-scrollbar { display: none; }
   .tt-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -145,4 +154,12 @@
   @keyframes tt-shimmer {
     100% { transform: translateX(100%); }
   }
+
+  /* Safe-area + mobile PWA helpers */
+  .tt-safe-top { padding-top: env(safe-area-inset-top); }
+  .tt-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .tt-safe-x { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  .tt-sticky-pill { top: calc(4rem + env(safe-area-inset-top)); }
+  .tt-fab-safe { bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  .tt-drawer-pb { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
 }

@@ -69,7 +69,7 @@ export default function MemberCard({
           <div className="inline-flex rounded-full bg-cream-pale p-1 border border-ink-charcoal/15">
             {['casual', 'close'].map((rel) => (
               <button key={rel} onClick={() => onRelationshipChange(rel)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors ${myRelationship === rel ? 'bg-terra text-cream' : 'text-ink-deep/60 hover:text-ink-deep'}`}>
+                className={`px-4 py-2.5 min-h-[44px] rounded-full text-xs font-semibold capitalize transition-colors ${myRelationship === rel ? 'bg-terra text-cream' : 'text-ink-deep/60 hover:text-ink-deep'}`}>
                 {rel}
               </button>
             ))}
@@ -80,14 +80,14 @@ export default function MemberCard({
       {isOwner && !isSelf && (
         <div className="pt-2 border-t border-ink-charcoal/10 flex items-center gap-2">
           <Select value={member.role} onValueChange={(r) => onRoleChange(r)}>
-            <SelectTrigger className="h-8 w-32 bg-cream-pale border-ink-charcoal/20 text-ink-deep text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-11 w-32 bg-cream-pale border-ink-charcoal/20 text-ink-deep text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="owner">Owner</SelectItem>
               <SelectItem value="member">Member</SelectItem>
               <SelectItem value="viewer">Viewer</SelectItem>
             </SelectContent>
           </Select>
-          <button onClick={onRemove} className="ml-auto inline-flex items-center gap-1 text-xs text-terra-deep hover:text-terra px-2 py-1.5">
+          <button onClick={onRemove} className="ml-auto inline-flex items-center gap-1 text-xs text-terra-deep hover:text-terra px-3 py-2.5 min-h-[44px]">
             <Trash2 className="w-3.5 h-3.5" /> Remove
           </button>
         </div>

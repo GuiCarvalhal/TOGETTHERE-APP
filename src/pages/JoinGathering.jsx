@@ -78,7 +78,7 @@ export default function JoinGathering() {
 
   return (
     <div className="min-h-screen bg-ink text-cream flex flex-col">
-      <header className="border-b border-white/5">
+      <header className="sticky top-0 z-30 bg-ink/95 backdrop-blur-xl border-b border-white/5 tt-safe-top">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center">
           <Link to="/" className="font-display text-xl font-bold tracking-tight">TOGETTHERE</Link>
         </div>
