@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
+import { DialogFooter } from '@/components/ui/dialog';
+import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,12 +91,8 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   }
 
   return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="tt-card rounded-[1.5rem] p-0 max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="font-display text-2xl font-bold text-ink-deep">{expense ? 'Edit expense' : 'Add expense'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSave} className="px-6 pb-6 space-y-4">
+    <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={expense ? 'Edit expense' : 'Add expense'}>
+      <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-2">
             <Label className="text-ink-deep">Title</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Dinner at Da Adolfo" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
@@ -199,7 +194,6 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+    </FormSheet>
   );
 }

@@ -3,9 +3,8 @@ import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { canManageRoles } from '@/lib/gatheringHelpers';
 import MemberCard from '@/components/members/MemberCard';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
+import { DialogFooter } from '@/components/ui/dialog';
+import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -113,12 +112,8 @@ export default function GatheringMembers() {
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="tt-card rounded-[1.5rem] p-0 max-w-md">
-          <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="font-display text-2xl font-bold text-ink-deep">Add a member</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAdd} className="px-6 pb-6 space-y-4">
+      <FormSheet open={addOpen} onOpenChange={setAddOpen} title="Add a member" maxWidth="max-w-md">
+          <form onSubmit={handleAdd} className="space-y-4">
             <div className="space-y-2">
               <Label className="text-ink-deep">Name</Label>
               <Input value={addForm.full_name} onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })} placeholder="Jordan Lee" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
@@ -146,8 +141,7 @@ export default function GatheringMembers() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+      </FormSheet>
     </div>
   );
 }

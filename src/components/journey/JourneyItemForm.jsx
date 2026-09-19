@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
+import { DialogFooter } from '@/components/ui/dialog';
+import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -86,12 +85,8 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, onCl
   }
 
   return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="tt-card rounded-[1.5rem] p-0 max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="font-display text-2xl font-bold text-ink-deep">{item ? 'Edit segment' : 'Add segment'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSave} className="px-6 pb-6 space-y-4">
+    <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={item ? 'Edit segment' : 'Add segment'}>
+      <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-2">
             <Label className="text-ink-deep">Type</Label>
             <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
@@ -166,7 +161,6 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, onCl
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+    </FormSheet>
   );
 }

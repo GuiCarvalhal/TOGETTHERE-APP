@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { JOURNEY_TYPES, canEditJourneyItem, formatDate } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canEditJourneyItem, canAddJourney, formatDate } from '@/lib/gatheringHelpers';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { Plane, Car, Hotel, Compass, Ship, MapPin, Plus, Pencil, Trash2, Clock, Paperclip, Calendar } from 'lucide-react';
@@ -30,9 +30,11 @@ export default function GatheringJourney() {
   useEffect(() => { load(); }, [gatheringId]);
 
   useEffect(() => {
-    setFab({ label: 'Add Segment', icon: Plus, onClick: () => { setEditing(null); setOpen(true); } });
+    if (canAddJourney(role)) {
+      setFab({ label: 'Add Segment', icon: Plus, onClick: () => { setEditing(null); setOpen(true); } });
+    }
     return () => setFab(null);
-  }, [setFab]);
+  }, [setFab, role]);
 
   async function handleDelete(item) {
     if (!confirm('Delete this segment?')) return;
@@ -64,9 +66,11 @@ export default function GatheringJourney() {
           <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
           <p className="font-display text-2xl mb-2 text-ink-deep">No segments yet</p>
           <p className="text-ink-deep/60 mb-6 text-sm">Add flights, hotel stays, activities and more to build the group's timeline.</p>
-          <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">
-            <Plus className="w-4 h-4" /> Add the first segment
-          </button>
+          {canAddJourney(role) && (
+            <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">
+              <Plus className="w-4 h-4" /> Add the first segment
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-8">

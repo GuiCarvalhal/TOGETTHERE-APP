@@ -50,9 +50,12 @@ ${profiles.map((p, i) => `${i + 1}. ${p.name} — home city: ${p.home_city}; die
 JOURNEY (chronological segments):
 ${journey.length ? journey.map((j) => `- ${j.type}: ${j.title}${j.start ? ' @ ' + j.start : ''}${j.place ? ' (' + j.place + ')' : ''}${j.from && j.to ? ' ' + j.from + ' → ' + j.to : ''}`).join('\n') : 'No segments added yet — base suggestions on the destinations and dates.'}
 
-Produce personalized recommendations for restaurants and activities near where the group will actually be on each day/location. Group them by day and location following the journey. For each recommendation, include a "why" array of short human reasons it was picked — referencing specific members' dietary needs, interests, or budget, and proximity to the group's stay/activity locations. Prefer concrete, real places when you know them; otherwise suggest realistic options matching the style.
+Produce personalized recommendations for restaurants and activities near where the group will actually be on each day/location. Group them by day and location following the journey. For each recommendation:
+- "matches": list the specific group members (by name) this pick suits, each with a short, specific reason (a dietary match, an interest match, or a budget fit).
+- "why": 1-3 short, vivid reasons it was picked for THIS group — reference concrete member needs and proximity to the group's stay/activity locations.
+Prefer concrete, real places when you know them; otherwise suggest realistic options matching the style. Vary the picks across days so the group isn't repeating the same spot.
 
-Return JSON matching the schema. Keep "why" to 1-3 short strings. 6-10 recommendations total.`;
+Return JSON matching the schema. 6-10 recommendations total.`;
 
     const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt,
@@ -73,6 +76,18 @@ Return JSON matching the schema. Keep "why" to 1-3 short strings. 6-10 recommend
                 name: { type: 'string' },
                 description: { type: 'string', description: '1-2 sentence description' },
                 why: { type: 'array', items: { type: 'string' }, description: 'Short reasons it was picked for this group' },
+                matches: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      member_name: { type: 'string' },
+                      reason: { type: 'string' },
+                    },
+                    required: ['member_name', 'reason'],
+                  },
+                  description: 'Which members this recommendation suits and why',
+                },
                 price_level: { type: 'string', enum: ['budget', 'moderate', 'premium'] },
               },
               required: ['day', 'location', 'category', 'name', 'description', 'why'],

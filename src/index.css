@@ -109,6 +109,8 @@
   .font-display {
     font-family: 'Playfair Display', Georgia, serif;
   }
+  .tt-no-scrollbar::-webkit-scrollbar { display: none; }
+  .tt-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .tt-shadow-float {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   }

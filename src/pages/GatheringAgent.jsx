@@ -144,6 +144,16 @@ export default function GatheringAgent() {
                         </div>
                       </div>
                       <p className="text-sm text-ink-deep/70 mt-3">{r.description}</p>
+                      {r.matches?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {r.matches.map((mt, j) => (
+                            <span key={j} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-ink/5 text-ink-deep text-xs font-medium border border-ink-charcoal/10">
+                              <span className="w-4 h-4 rounded-full bg-terra/15 text-terra-deep text-[0.6rem] font-bold flex items-center justify-center">{(mt.member_name || '?')[0]}</span>
+                              {mt.member_name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {r.why?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-3">
                           {r.why.map((w, j) => (

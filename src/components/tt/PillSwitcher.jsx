@@ -16,7 +16,7 @@ export default function PillSwitcher({ gatheringId, canSeeExpenses = true }) {
   const activeKey = tabs.find((t) => location.pathname.endsWith(`/${t.path}`))?.key || tabs[0].key;
 
   return (
-    <div className="tt-glass rounded-full p-1.5 inline-flex items-center gap-1 shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+    <div className="tt-glass rounded-full p-1.5 inline-flex items-center gap-1 shadow-[0_8px_30px_rgba(0,0,0,0.35)] max-w-full overflow-x-auto tt-no-scrollbar">
       {tabs.map((t) => {
         const Icon = t.icon;
         const isActive = activeKey === t.key;
@@ -24,7 +24,7 @@ export default function PillSwitcher({ gatheringId, canSeeExpenses = true }) {
           <Link
             key={t.key}
             to={`/gathering/${gatheringId}/${t.path}`}
-            className={`relative px-3.5 sm:px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-semibold transition-colors duration-200 ${
+            className={`relative shrink-0 px-3.5 sm:px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-semibold transition-colors duration-200 ${
               isActive ? 'text-cream' : 'text-cream/65 hover:text-cream'
             }`}
           >

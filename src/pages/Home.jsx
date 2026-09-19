@@ -149,7 +149,7 @@ export default function Home() {
 
       {/* Create dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="tt-card rounded-[1.5rem] p-0 max-w-lg">
+        <DialogContent className="tt-card bg-card text-card-foreground rounded-[1.5rem] p-0 max-w-lg">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="font-display text-2xl font-bold text-ink-deep">New gathering</DialogTitle>
             <DialogDescription className="text-ink-deep/60">A trip or event to coordinate with your crew.</DialogDescription>
