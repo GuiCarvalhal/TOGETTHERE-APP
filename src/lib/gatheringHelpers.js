@@ -63,6 +63,26 @@ export function formatDateRange(start, end) {
   return s || e;
 }
 
+// Trip status from dates. Returns { key, label, tone }.
+// key: 'upcoming' | 'active' | 'completed' | 'planning' (undated).
+// tone: 'terra' | 'green' | 'muted' — mapped to classes in the UI.
+export function getGatheringStatus(g, now = new Date()) {
+  if (!g.start_date && !g.end_date) return { key: 'planning', label: 'Planning', tone: 'muted' };
+  const start = g.start_date ? new Date(g.start_date + 'T00:00:00') : null;
+  const end = g.end_date ? new Date(g.end_date + 'T23:59:59') : (start ? new Date(start.getTime() + 86400000 - 1) : null);
+  if (start && now < start) {
+    const days = Math.ceil((start - now) / 86400000);
+    return {
+      key: 'upcoming',
+      label: days <= 0 ? 'Starts today' : days === 1 ? 'Tomorrow' : `In ${days} days`,
+      tone: 'terra',
+    };
+  }
+  if (start && end && now >= start && now <= end) return { key: 'active', label: 'In progress', tone: 'green' };
+  if (end && now > end) return { key: 'completed', label: 'Completed', tone: 'muted' };
+  return { key: 'planning', label: 'Planning', tone: 'muted' };
+}
+
 // ---- Expense math ----
 
 // Build split amounts for a new expense given method + participants + per-member inputs.

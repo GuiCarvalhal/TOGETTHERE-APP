@@ -10,7 +10,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Plus, MapPin, CalendarDays, Compass, ArrowRight, Route, Receipt, Sparkles } from 'lucide-react';
-import { formatDateRange } from '@/lib/gatheringHelpers';
+import { formatDateRange, getGatheringStatus } from '@/lib/gatheringHelpers';
+import EmptyState from '@/components/tt/EmptyState';
+import AvatarStack from '@/components/tt/AvatarStack';
+import Skeleton from '@/components/tt/Skeleton';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -18,10 +21,25 @@ const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&q=80',
 ];
 
+const STATUS_CLASSES = {
+  terra: 'bg-terra/15 text-terra-deep border-terra/25',
+  green: 'bg-[#4a8b6f]/15 text-[#3f7a5e] border-[#4a8b6f]/30',
+  muted: 'bg-cream-pale text-ink-deep/55 border-ink-charcoal/15',
+};
+const STATUS_DOT = { terra: 'bg-terra', green: 'bg-[#4a8b6f]', muted: 'bg-ink-deep/40' };
+
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'past', label: 'Past' },
+];
+
 export default function Home() {
   const [memberships, setMemberships] = useState([]);
   const [gatherings, setGatherings] = useState([]);
+  const [previews, setPreviews] = useState({});
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', start_date: '', end_date: '', destinations: '', cover_image: SAMPLE_COVERS[0] });
@@ -29,14 +47,11 @@ export default function Home() {
   async function load() {
     setLoading(true);
     try {
-      const me = await base44.auth.me();
-      const [allGatherings, myMembers] = await Promise.all([
-        base44.entities.Gathering.list('-created_date', 100),
-        base44.entities.Member.filter({ user_id: me.id }),
-      ]);
-      const gids = new Set(myMembers.map((m) => m.gathering_id));
-      setGatherings(allGatherings.filter((g) => gids.has(g.id)));
-      setMemberships(myMembers);
+      const res = await base44.functions.invoke('getHomePreviews', {});
+      const data = res.data || res;
+      setGatherings(data.gatherings || []);
+      setMemberships(data.memberships || []);
+      setPreviews(data.previews || {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -71,6 +86,21 @@ export default function Home() {
   }
 
   const roleOf = (gid) => memberships.find((m) => m.gathering_id === gid)?.role;
+
+  const now = new Date();
+  const annotated = gatherings.map((g) => ({ g, status: getGatheringStatus(g, now) }));
+  const filtered = annotated.filter(({ status }) => {
+    if (filter === 'all') return true;
+    if (filter === 'upcoming') return status.key !== 'completed';
+    if (filter === 'past') return status.key === 'completed';
+    return true;
+  });
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.status.key === 'completed' && b.status.key === 'completed') {
+      return new Date(b.g.end_date || b.g.start_date || 0) - new Date(a.g.end_date || a.g.start_date || 0);
+    }
+    return new Date(a.g.start_date || '9999-12-31') - new Date(b.g.start_date || '9999-12-31');
+  });
 
   return (
     <div className="min-h-screen bg-ink text-cream">
@@ -116,25 +146,54 @@ export default function Home() {
 
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
           <h2 className="font-display text-2xl font-bold">Your gatherings</h2>
+          {gatherings.length > 1 && (
+            <div className="flex items-center gap-2">
+              {FILTERS.map((f) => (
+                <button key={f.key} onClick={() => setFilter(f.key)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${filter === f.key ? 'bg-terra text-cream' : 'tt-ink-panel text-cream/70 hover:text-cream'}`}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-terra" /></div>
-        ) : gatherings.length === 0 ? (
-          <div className="tt-card p-10 text-center">
-            <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
-            <p className="font-display text-2xl mb-2 text-ink-deep">No gatherings yet</p>
-            <p className="text-ink-deep/60 mb-6 text-sm">Start your first trip or event and invite your crew.</p>
-            <Button onClick={() => setOpen(true)} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-              <Plus className="w-4 h-4 mr-1.5" /> Create a gathering
-            </Button>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="tt-card overflow-hidden">
+                <Skeleton className="aspect-[16/10] w-full" />
+                <div className="p-5 space-y-3">
+                  <Skeleton className="h-5 w-2/3" tone="cream" />
+                  <Skeleton className="h-3 w-1/2" tone="cream" />
+                  <div className="flex items-center justify-between pt-2">
+                    <Skeleton className="h-6 w-20 rounded-full" tone="cream" />
+                    <Skeleton className="h-7 w-24 rounded-full" tone="cream" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        ) : gatherings.length === 0 ? (
+          <EmptyState
+            icon={Compass}
+            title="No gatherings yet"
+            body="Start your first trip or event and invite your crew. TOGETTHERE keeps everyone on one shared timeline — itinerary, expenses, and daily AI picks, all in one place."
+            action={<Button onClick={() => setOpen(true)} className="bg-terra hover:bg-terra-deep text-cream rounded-full"><Plus className="w-4 h-4 mr-1.5" /> Create a gathering</Button>}
+          />
+        ) : sorted.length === 0 ? (
+          <EmptyState
+            icon={filter === 'past' ? CalendarDays : Compass}
+            title={filter === 'past' ? 'No past gatherings' : 'No upcoming gatherings'}
+            body={filter === 'past' ? 'Completed trips will show up here once your gatherings wrap.' : 'Upcoming and in-progress gatherings will appear here. Switch to “All” to see everything.'}
+          />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {gatherings.map((g) => {
+            {sorted.map(({ g, status }) => {
               const role = roleOf(g.id);
+              const people = previews[g.id] || [];
               return (
                 <Link key={g.id} to={`/gathering/${g.id}/journey`} className="group tt-card overflow-hidden hover:-translate-y-1 transition-transform duration-300">
                   <div className="aspect-[16/10] w-full overflow-hidden bg-cream-pale">
@@ -155,8 +214,12 @@ export default function Home() {
                       {g.start_date && <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{formatDateRange(g.start_date, g.end_date)}</span>}
                       {g.destinations?.length > 0 && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{g.destinations.slice(0, 2).join(', ')}</span>}
                     </div>
-                    <div className="mt-4 inline-flex items-center gap-1 text-terra-deep text-sm font-semibold group-hover:gap-2 transition-all">
-                      Open <ArrowRight className="w-4 h-4" />
+                    <div className="flex items-center justify-between mt-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.6875rem] font-semibold border ${STATUS_CLASSES[status.tone]}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status.tone]}`} />
+                        {status.label}
+                      </span>
+                      <AvatarStack people={people} max={4} size="xs" />
                     </div>
                   </div>
                 </Link>

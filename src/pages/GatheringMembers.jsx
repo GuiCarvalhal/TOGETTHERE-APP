@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { UserPlus, Loader2, Users } from 'lucide-react';
+import EmptyState from '@/components/tt/EmptyState';
 
 export default function GatheringMembers() {
   const { gatheringId, members, currentMember, role, setFab, refresh } = useGathering();
@@ -86,29 +87,35 @@ export default function GatheringMembers() {
         <p className="text-cream/60 text-sm mt-1">Your crew. Set who you're close with to share more of your profile — contact info, precise times and private notes stay hidden from casual connections.</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {members.map((m) => {
-          const isSelf = m.id === currentMember?.id;
-          return (
-            <MemberCard
-              key={m.id}
-              member={m}
-              isOwner={isOwner}
-              isSelf={isSelf}
-              myRelationship={m.myRelationship}
-              visibility={m.visibility}
-              onRelationshipChange={(rel) => handleRelationshipChange(m.user_id, rel)}
-              onRoleChange={(r) => handleRoleChange(m, r)}
-              onRemove={() => handleRemove(m)}
-            />
-          );
-        })}
-      </div>
-
-      {members.length === 0 && (
-        <div className="tt-card p-10 text-center">
-          <Users className="w-10 h-10 text-terra mx-auto mb-4" />
-          <p className="font-display text-2xl mb-2 text-ink-deep">No members yet</p>
+      {members.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No members yet"
+          body="Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only."
+          action={isOwner ? (
+            <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
+              <UserPlus className="w-4 h-4" /> Add the first member
+            </button>
+          ) : undefined}
+        />
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {members.map((m) => {
+            const isSelf = m.id === currentMember?.id;
+            return (
+              <MemberCard
+                key={m.id}
+                member={m}
+                isOwner={isOwner}
+                isSelf={isSelf}
+                myRelationship={m.myRelationship}
+                visibility={m.visibility}
+                onRelationshipChange={(rel) => handleRelationshipChange(m.user_id, rel)}
+                onRoleChange={(r) => handleRoleChange(m, r)}
+                onRemove={() => handleRemove(m)}
+              />
+            );
+          })}
         </div>
       )}
 

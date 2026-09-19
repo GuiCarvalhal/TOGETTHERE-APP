@@ -120,4 +120,29 @@
   .tt-text-balance {
     text-wrap: balance;
   }
+
+  /* On-brand skeleton: ink block with a terracotta-tinted shimmer sweep. */
+  .tt-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: #111A26;
+    border-radius: 0.5rem;
+  }
+  .tt-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(224, 90, 71, 0.10), transparent);
+    transform: translateX(-100%);
+    animation: tt-shimmer 1.6s ease-in-out infinite;
+  }
+  .tt-skeleton-cream {
+    background: #EFE7D8;
+  }
+  .tt-skeleton-cream::after {
+    background: linear-gradient(90deg, transparent, rgba(224, 90, 71, 0.14), transparent);
+  }
+  @keyframes tt-shimmer {
+    100% { transform: translateX(100%); }
+  }
 }

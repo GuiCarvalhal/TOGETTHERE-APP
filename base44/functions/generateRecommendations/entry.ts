@@ -52,7 +52,8 @@ ${journey.length ? journey.map((j) => `- ${j.type}: ${j.title}${j.start ? ' @ ' 
 
 Produce personalized recommendations for restaurants and activities near where the group will actually be on each day/location. Group them by day and location following the journey. For each recommendation:
 - "matches": list the specific group members (by name) this pick suits, each with a short, specific reason (a dietary match, an interest match, or a budget fit).
-- "why": 1-3 short, vivid reasons it was picked for THIS group — reference concrete member needs and proximity to the group's stay/activity locations.
+- "why_sentence": ONE crisp, specific sentence tying the pick to concrete member needs — name names and their dietary/interest/budget fit (e.g. "Maya is vegetarian and loves art — this gallery café nails both.").
+- "why": 1-3 short supporting tags for why it was picked — reference concrete member needs and proximity to the group's stay/activity locations.
 Prefer concrete, real places when you know them; otherwise suggest realistic options matching the style. Vary the picks across days so the group isn't repeating the same spot.
 
 Return JSON matching the schema. 6-10 recommendations total.`;
@@ -75,6 +76,7 @@ Return JSON matching the schema. 6-10 recommendations total.`;
                 category: { type: 'string', enum: ['restaurant', 'activity', 'stay', 'cafe', 'experience'] },
                 name: { type: 'string' },
                 description: { type: 'string', description: '1-2 sentence description' },
+                why_sentence: { type: 'string', description: 'One crisp sentence tying this pick to specific member needs, naming names' },
                 why: { type: 'array', items: { type: 'string' }, description: 'Short reasons it was picked for this group' },
                 matches: {
                   type: 'array',
@@ -90,7 +92,7 @@ Return JSON matching the schema. 6-10 recommendations total.`;
                 },
                 price_level: { type: 'string', enum: ['budget', 'moderate', 'premium'] },
               },
-              required: ['day', 'location', 'category', 'name', 'description', 'why'],
+              required: ['day', 'location', 'category', 'name', 'description', 'why_sentence', 'why'],
             },
           },
         },
