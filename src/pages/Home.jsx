@@ -51,22 +51,13 @@ export default function Home() {
     if (!form.name.trim()) return;
     setCreating(true);
     try {
-      const me = await base44.auth.me();
-      const g = await base44.entities.Gathering.create({
+      await base44.functions.invoke('createGathering', {
         name: form.name.trim(),
         description: form.description,
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
         destinations: form.destinations.split(',').map((s) => s.trim()).filter(Boolean),
         cover_image: form.cover_image,
-        privacy_mode: 'private',
-        status: 'planning',
-      });
-      await base44.entities.Member.create({
-        gathering_id: g.id,
-        user_id: me.id,
-        role: 'owner',
-        full_name: me.full_name || me.email?.split('@')[0] || 'Organizer',
       });
       setOpen(false);
       setForm({ name: '', description: '', start_date: '', end_date: '', destinations: '', cover_image: SAMPLE_COVERS[0] });

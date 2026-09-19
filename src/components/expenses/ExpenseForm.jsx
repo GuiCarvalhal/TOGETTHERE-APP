@@ -61,8 +61,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
     }
     setSaving(true);
     try {
-      const payload = {
-        gathering_id: gatheringId,
+      const expensePayload = {
         payer_member_id: form.payer_member_id,
         title: form.title.trim(),
         amount: Number(form.amount),
@@ -73,22 +72,16 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
         date: form.date,
         settled: expense?.settled || false,
       };
-      let expId = expense?.id;
-      if (expense) {
-        await base44.entities.Expense.update(expense.id, payload);
-        await base44.entities.ExpenseSplit.deleteMany({ expense_id: expense.id });
-      } else {
-        const created = await base44.entities.Expense.create(payload);
-        expId = created.id;
-      }
-      const records = form.selected.map((mid) => ({
-        expense_id: expId,
-        gathering_id: gatheringId,
+      const splitInputs = form.selected.map((mid) => ({
         member_id: mid,
         amount: Math.round((splitAmounts[mid] || 0) * 100) / 100,
         share: form.split_method === 'by_share' ? Number(form.inputs[mid]) || 0 : 1,
       }));
-      if (records.length) await base44.entities.ExpenseSplit.bulkCreate(records);
+      if (expense) {
+        await base44.functions.invoke('updateExpense', { gathering_id: gatheringId, expense_id: expense.id, expense: expensePayload, splits: splitInputs });
+      } else {
+        await base44.functions.invoke('createExpense', { gathering_id: gatheringId, expense: expensePayload, splits: splitInputs });
+      }
       onSaved();
       onClose();
     } catch (err) {

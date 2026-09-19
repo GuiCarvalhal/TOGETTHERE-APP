@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { canManageRoles, visibilityFor } from '@/lib/gatheringHelpers';
+import { canManageRoles } from '@/lib/gatheringHelpers';
 import MemberCard from '@/components/members/MemberCard';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -29,26 +29,34 @@ export default function GatheringMembers() {
     return () => setFab(null);
   }, [setFab, isOwner]);
 
-  function myRelationshipTo(targetUserId) {
-    return currentMember?.relationships?.[targetUserId] || 'casual';
-  }
-
   async function handleRelationshipChange(targetUserId, rel) {
     const rels = { ...(currentMember.relationships || {}) };
     rels[targetUserId] = rel;
-    await base44.entities.Member.update(currentMember.id, { relationships: rels });
-    refresh();
+    try {
+      await base44.functions.invoke('updateMyProfile', { gathering_id: gatheringId, fields: { relationships: rels } });
+      refresh();
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Could not update relationship');
+    }
   }
 
   async function handleRoleChange(member, newRole) {
-    await base44.entities.Member.update(member.id, { role: newRole });
-    refresh();
+    try {
+      await base44.functions.invoke('updateMemberRole', { gathering_id: gatheringId, member_id: member.id, role: newRole });
+      refresh();
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Could not change role');
+    }
   }
 
   async function handleRemove(member) {
     if (!confirm(`Remove ${member.full_name} from this gathering?`)) return;
-    await base44.entities.Member.delete(member.id);
-    refresh();
+    try {
+      await base44.functions.invoke('removeMember', { gathering_id: gatheringId, member_id: member.id });
+      refresh();
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Could not remove member');
+    }
   }
 
   async function handleAdd(e) {
@@ -56,18 +64,17 @@ export default function GatheringMembers() {
     if (!addForm.full_name.trim()) return;
     setAdding(true);
     try {
-      await base44.entities.Member.create({
+      await base44.functions.invoke('addMember', {
         gathering_id: gatheringId,
-        user_id: `pending-${Date.now()}`,
-        role: addForm.role,
         full_name: addForm.full_name.trim(),
+        role: addForm.role,
         home_city: addForm.home_city,
       });
       setAddOpen(false);
       setAddForm({ full_name: '', role: 'member', home_city: '' });
       refresh();
-    } catch (err) {
-      alert(err.message || 'Could not add member');
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Could not add member');
     } finally {
       setAdding(false);
     }
@@ -77,21 +84,20 @@ export default function GatheringMembers() {
     <div className="space-y-8">
       <div>
         <h2 className="font-display text-3xl font-bold">Members</h2>
-        <p className="text-cream/60 text-sm mt-1">Your crew. Set who you're close with to share more of your profile.</p>
+        <p className="text-cream/60 text-sm mt-1">Your crew. Set who you're close with to share more of your profile — contact info, precise times and private notes stay hidden from casual connections.</p>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {members.map((m) => {
           const isSelf = m.id === currentMember?.id;
-          const vis = isSelf ? 'full' : visibilityFor(role, myRelationshipTo(m.user_id));
           return (
             <MemberCard
               key={m.id}
               member={m}
               isOwner={isOwner}
               isSelf={isSelf}
-              myRelationship={isSelf ? null : myRelationshipTo(m.user_id)}
-              visibility={vis}
+              myRelationship={m.myRelationship}
+              visibility={m.visibility}
               onRelationshipChange={(rel) => handleRelationshipChange(m.user_id, rel)}
               onRoleChange={(r) => handleRoleChange(m, r)}
               onRemove={() => handleRemove(m)}
