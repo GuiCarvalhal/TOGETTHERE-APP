@@ -8,7 +8,7 @@ import { MapPin, CalendarDays, Phone, StickyNote, Trash2, UserPlus, Eye } from '
 import { formatDate, relationshipLabel } from '@/lib/gatheringHelpers';
 
 export default function MemberCard({
-  member, isOwner, isSelf, myRelationship, visibility, onRelationshipChange, onRoleChange, onRemove,
+  member, isOwner, canManage, isSelf, myRelationship, visibility, onRelationshipChange, onRoleChange, onRemove,
 }) {
   return (
     <div className={`tt-card p-5 flex flex-col gap-4 ${member.role === 'viewer' ? 'border-dashed border-ink-charcoal/25 bg-cream-pale/40' : ''}`}>
@@ -77,12 +77,13 @@ export default function MemberCard({
         </div>
       )}
 
-      {isOwner && !isSelf && (
+      {canManage && !isSelf && !(member.role === 'owner' && !isOwner) && (
         <div className="pt-2 border-t border-ink-charcoal/10 flex items-center gap-2">
           <Select value={member.role} onValueChange={(r) => onRoleChange(r)}>
-            <SelectTrigger className="h-11 w-32 bg-cream-pale border-ink-charcoal/20 text-ink-deep text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-11 w-36 bg-cream-pale border-ink-charcoal/20 text-ink-deep text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="owner">Owner</SelectItem>
+              {isOwner && <SelectItem value="owner">Owner</SelectItem>}
+              <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="member">Member</SelectItem>
               <SelectItem value="viewer">Viewer</SelectItem>
             </SelectContent>

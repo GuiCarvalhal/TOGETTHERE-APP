@@ -11,16 +11,18 @@ export default async function(req) {
     if (!gathering_id || !full_name) return Response.json({ error: 'gathering_id and full_name required' }, { status: 400 });
 
     const me = await getMyMember(base44, gathering_id, user.id);
-    if (!me || me.role !== 'owner') {
-      return Response.json({ error: 'Only the gathering owner can add members' }, { status: 403 });
+    if (!me || (me.role !== 'owner' && me.role !== 'admin')) {
+      return Response.json({ error: 'Only the owner or an admin can add members' }, { status: 403 });
     }
+    const allowedRoles = ['admin', 'member', 'viewer'];
+    const finalRole = allowedRoles.includes(role) ? role : 'member';
     const gathering = await base44.asServiceRole.entities.Gathering.get(gathering_id);
     const ownerUid = gatheringOwnerUserId(gathering, [me]);
 
     await base44.asServiceRole.entities.Member.create({
       gathering_id,
       user_id: `pending-${Date.now()}`,
-      role: role || 'member',
+      role: finalRole,
       full_name,
       home_city: home_city || '',
       owner_user_id: ownerUid,

@@ -11,8 +11,24 @@ export default async function(req) {
     if (!gathering_id || !member_id || !role) return Response.json({ error: 'gathering_id, member_id and role required' }, { status: 400 });
 
     const me = await getMyMember(base44, gathering_id, user.id);
-    if (!me || me.role !== 'owner') {
-      return Response.json({ error: 'Only the gathering owner can change roles' }, { status: 403 });
+    if (!me || (me.role !== 'owner' && me.role !== 'admin')) {
+      return Response.json({ error: 'Only the owner or an admin can change roles' }, { status: 403 });
+    }
+    const allowedRoles = ['owner', 'admin', 'member', 'viewer'];
+    if (!allowedRoles.includes(role)) {
+      return Response.json({ error: 'Invalid role' }, { status: 400 });
+    }
+    const target = await base44.asServiceRole.entities.Member.get(member_id);
+    if (!target || target.gathering_id !== gathering_id) {
+      return Response.json({ error: 'Member not found' }, { status: 404 });
+    }
+    if (me.role === 'admin') {
+      if (target.role === 'owner') {
+        return Response.json({ error: 'Admins cannot change the Owner' }, { status: 403 });
+      }
+      if (role === 'owner') {
+        return Response.json({ error: 'Only the Owner can transfer ownership' }, { status: 403 });
+      }
     }
     await base44.asServiceRole.entities.Member.update(member_id, { role });
     await syncChildArrays(base44, gathering_id);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { canManageRoles } from '@/lib/gatheringHelpers';
+import { canManageMembers } from '@/lib/gatheringHelpers';
 import MemberCard from '@/components/members/MemberCard';
 import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
@@ -21,14 +21,15 @@ export default function GatheringMembers() {
   const [addForm, setAddForm] = useState({ full_name: '', role: 'member', home_city: '' });
   const [adding, setAdding] = useState(false);
 
-  const isOwner = canManageRoles(role);
+  const canManage = canManageMembers(role);
+  const isOwner = role === 'owner';
 
   useEffect(() => {
-    if (isOwner) {
+    if (canManage) {
       setFab({ label: 'Add Member', icon: UserPlus, onClick: () => setAddOpen(true) });
     }
     return () => setFab(null);
-  }, [setFab, isOwner]);
+  }, [setFab, canManage]);
 
   usePolling(silentRefresh, 25000);
 
@@ -95,7 +96,7 @@ export default function GatheringMembers() {
           icon={Users}
           title="No members yet"
           body="Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only."
-          action={isOwner ? (
+          action={canManage ? (
             <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
               <UserPlus className="w-4 h-4" /> Add the first member
             </button>
@@ -110,6 +111,7 @@ export default function GatheringMembers() {
                 key={m.id}
                 member={m}
                 isOwner={isOwner}
+                canManage={canManage}
                 isSelf={isSelf}
                 myRelationship={m.myRelationship}
                 visibility={m.visibility}
@@ -137,6 +139,7 @@ export default function GatheringMembers() {
               <Select value={addForm.role} onValueChange={(v) => setAddForm({ ...addForm, role: v })}>
                 <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="admin">Admin — co-organizer, manages members & journey</SelectItem>
                   <SelectItem value="member">Member — participates, in expenses</SelectItem>
                   <SelectItem value="viewer">Viewer — read only, not in expenses</SelectItem>
                 </SelectContent>

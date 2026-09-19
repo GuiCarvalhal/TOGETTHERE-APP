@@ -1,13 +1,17 @@
 // Pure helpers for TOGETTHERE: roles, relationships, expense math, formatting.
 
-export const ROLES = { owner: 'Owner', member: 'Member', viewer: 'Viewer' };
+export const ROLES = { owner: 'Owner', admin: 'Admin', member: 'Member', viewer: 'Viewer' };
 
+// Admin = co-organizer: manages members & edits shared journey items, but
+// cannot delete the gathering, change settings, or remove/change the Owner.
+// Expenses access is intentionally unchanged (owner + member only).
 export function canEditGathering(role) { return role === 'owner'; }
-export function canManageRoles(role) { return role === 'owner'; }
-export function canRemoveMembers(role) { return role === 'owner'; }
-export function canAddJourney(role) { return role === 'owner' || role === 'member'; }
+export function canManageMembers(role) { return role === 'owner' || role === 'admin'; }
+export function canManageRoles(role) { return role === 'owner' || role === 'admin'; }
+export function canRemoveMembers(role) { return role === 'owner' || role === 'admin'; }
+export function canAddJourney(role) { return role === 'owner' || role === 'admin' || role === 'member'; }
 export function canEditJourneyItem(role, item, currentMember) {
-  if (role === 'owner') return true;
+  if (role === 'owner' || role === 'admin') return true;
   if (role === 'member' && item?.owner_id === currentMember?.user_id) return true;
   return false;
 }

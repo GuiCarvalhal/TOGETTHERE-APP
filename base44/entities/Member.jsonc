@@ -12,6 +12,7 @@
       "type": "string",
       "enum": [
         "owner",
+        "admin",
         "member",
         "viewer"
       ],

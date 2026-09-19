@@ -51,7 +51,7 @@ function ShellInner() {
     return <Navigate to={`/gathering/${id}/journey`} replace />;
   }
 
-  const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
+  const participants = members.filter((m) => m.role === 'owner' || m.role === 'admin' || m.role === 'member');
 
   return (
     <div className="min-h-screen bg-ink text-cream">
