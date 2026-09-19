@@ -22,6 +22,7 @@
       "enum": [
         "flight",
         "car",
+        "train",
         "hotel",
         "activity",
         "cruise",

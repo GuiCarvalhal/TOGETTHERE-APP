@@ -165,6 +165,7 @@ export function settleUp(balances) {
 export const JOURNEY_TYPES = [
   { key: 'flight', label: 'Flight', icon: 'Plane' },
   { key: 'car', label: 'Car / Driver', icon: 'Car' },
+  { key: 'train', label: 'Train', icon: 'Train' },
   { key: 'hotel', label: 'Hotel / Stay', icon: 'Hotel' },
   { key: 'activity', label: 'Activity', icon: 'Compass' },
   { key: 'cruise', label: 'Cruise', icon: 'Ship' },

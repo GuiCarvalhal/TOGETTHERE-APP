@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { computeSplitAmounts, EXPENSE_CATEGORIES, formatCurrency } from '@/lib/gatheringHelpers';
-import { Loader2, Upload, Paperclip } from 'lucide-react';
+import AttachmentChip from '@/components/tt/AttachmentChip';
+import { Loader2, Upload } from 'lucide-react';
 
 export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, onClose, onSaved }) {
   const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
@@ -173,13 +174,11 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           </div>
           <div className="space-y-2">
             <Label className="text-ink-deep">Receipt</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {form.receipt && (
-                <a href={form.receipt} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cream-pale border border-ink-charcoal/15 text-xs text-ink-deep">
-                  <Paperclip className="w-3.5 h-3.5" /> View receipt
-                </a>
+                <AttachmentChip url={form.receipt} onRemove={() => setForm((f) => ({ ...f, receipt: '' }))} />
               )}
-              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
+              <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
                 {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {form.receipt ? 'Replace' : 'Upload'}
                 <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadReceipt(e.target.files[0])} />

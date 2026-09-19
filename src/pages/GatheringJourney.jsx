@@ -4,13 +4,23 @@ import { base44 } from '@/api/base44Client';
 import { JOURNEY_TYPES, canEditJourneyItem, canAddJourney, formatDate } from '@/lib/gatheringHelpers';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import MemberAvatar from '@/components/tt/MemberAvatar';
-import { Plane, Car, Hotel, Compass, Ship, MapPin, Plus, Pencil, Trash2, Clock, Paperclip, Calendar } from 'lucide-react';
+import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus, Pencil, Trash2, Clock, Calendar } from 'lucide-react';
+import AttachmentChip from '@/components/tt/AttachmentChip';
 import { Loader2 } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 
-const ICONS = { flight: Plane, car: Car, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
+const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
+const TYPE_STYLE = {
+  flight: 'bg-sky-100 text-sky-700',
+  car: 'bg-terra/15 text-terra-deep',
+  train: 'bg-violet-100 text-violet-700',
+  hotel: 'bg-amber-100 text-amber-700',
+  activity: 'bg-emerald-100 text-emerald-700',
+  cruise: 'bg-teal-100 text-teal-700',
+  other: 'bg-cream-pale text-ink-deep/50',
+};
 
 function dayKey(d) { return d ? new Date(d).toISOString().slice(0, 10) : 'unscheduled'; }
 
@@ -132,8 +142,8 @@ export default function GatheringJourney() {
                   return (
                     <div key={item.id} className="tt-card p-4 sm:p-5 relative">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-cream-pale border border-ink-charcoal/15 flex items-center justify-center shrink-0">
-                          <Icon className="w-5 h-5 text-terra-deep" />
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${TYPE_STYLE[item.type] || TYPE_STYLE.other}`}>
+                          <Icon className="w-5 h-5" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -152,9 +162,7 @@ export default function GatheringJourney() {
                           {item.attachments?.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
                               {item.attachments.map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cream-pale border border-ink-charcoal/15 text-xs text-ink-deep hover:bg-cream-warm">
-                                  <Paperclip className="w-3 h-3" /> File {i + 1}
-                                </a>
+                                <AttachmentChip key={url + i} url={url} />
                               ))}
                             </div>
                           )}

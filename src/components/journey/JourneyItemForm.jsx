@@ -10,11 +10,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
-import { Loader2, Upload, X, Paperclip } from 'lucide-react';
+import AttachmentChip from '@/components/tt/AttachmentChip';
+import { Loader2, Upload } from 'lucide-react';
 
 const TYPE_META = {
   flight: { fromTo: true, place: false },
   car: { fromTo: true, place: false },
+  train: { fromTo: true, place: false },
   cruise: { fromTo: true, place: true },
   hotel: { fromTo: false, place: true },
   activity: { fromTo: false, place: true },
@@ -142,11 +144,9 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, onCl
             <Label className="text-ink-deep">Attachments</Label>
             <div className="flex flex-wrap gap-2">
               {form.attachments.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cream-pale border border-ink-charcoal/15 text-xs text-ink-deep hover:bg-cream-warm">
-                  <Paperclip className="w-3.5 h-3.5" /> File {i + 1}
-                </a>
+                <AttachmentChip key={url + i} url={url} onRemove={() => setForm((f) => ({ ...f, attachments: f.attachments.filter((_, idx) => idx !== i) }))} />
               ))}
-              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
+              <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
                 {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 Upload
                 <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])} />
