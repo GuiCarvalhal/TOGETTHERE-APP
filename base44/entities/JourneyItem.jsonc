@@ -60,6 +60,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "reminder_sent_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

@@ -97,7 +97,7 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, onCl
         attachments: form.attachments,
       };
       if (item) {
-        await base44.entities.JourneyItem.update(item.id, payload);
+        await base44.functions.invoke('updateJourneyItem', { gathering_id: gatheringId, item_id: item.id, payload });
       } else {
         await base44.functions.invoke('createJourneyItem', { gathering_id: gatheringId, payload });
       }

@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, participantUserIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
+import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
 export default async function(req) {
   try {
@@ -48,6 +49,19 @@ export default async function(req) {
       summary: `${me.full_name || 'Someone'} added "${expense.title}" to expenses`,
       ownerUserId: ownerUid, participantUserIds: parts,
     });
+
+    if (isOneSignalConfigured()) {
+      const origin = req.headers.get('origin') || '';
+      const route = `/gathering/${gathering_id}/expenses`;
+      await notifyGatheringMembers(base44, {
+        gatheringId: gathering_id, category: 'expenses', excludeUserIds: [user.id],
+        heading: 'New expense',
+        message: `${me.full_name || 'Someone'} added "${expense.title}" — ${Number(expense.amount)} ${expense.currency || 'USD'}.`,
+        data: { gathering_id, route, kind: 'expense_added' },
+        url: origin ? origin + route : undefined,
+        dedupKey: `expense_added:${created.id}`,
+      });
+    }
 
     return Response.json({ expense: created });
   } catch (error) {

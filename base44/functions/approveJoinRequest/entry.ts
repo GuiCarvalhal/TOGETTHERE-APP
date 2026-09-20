@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, gatheringOwnerUserId, syncChildArrays } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
+import { notifyUsers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
 export default async function(req) {
   try {
@@ -38,6 +39,18 @@ export default async function(req) {
       summary: `${me.full_name || 'The host'} approved ${jr.full_name || 'a traveler'}'s request to join`,
       ownerUserId: ownerUid, participantUserIds: parts,
     });
+    if (isOneSignalConfigured() && jr.user_id) {
+      const origin = req.headers.get('origin') || '';
+      const route = `/gathering/${gathering_id}/journey`;
+      await notifyUsers(base44, {
+        gatheringId: gathering_id, userIds: [jr.user_id], category: 'members',
+        heading: "You're in!",
+        message: `${me.full_name || 'The host'} approved your request to join ${gathering.name}.`,
+        data: { gathering_id, route, kind: 'join_approved' },
+        url: origin ? origin + route : undefined,
+        dedupKey: `join_approved:${jr.user_id}`,
+      });
+    }
     return Response.json({ status: 'approved', role });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

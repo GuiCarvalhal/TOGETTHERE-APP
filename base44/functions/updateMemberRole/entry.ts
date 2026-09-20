@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, syncChildArrays } from '../../shared/gatheringAcl.ts';
+import { notifyUsers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
 export default async function(req) {
   try {
@@ -32,6 +33,19 @@ export default async function(req) {
     }
     await base44.asServiceRole.entities.Member.update(member_id, { role });
     await syncChildArrays(base44, gathering_id);
+    if (isOneSignalConfigured() && target.user_id && !target.user_id.startsWith('pending-')) {
+      const origin = req.headers.get('origin') || '';
+      const route = `/gathering/${gathering_id}/members`;
+      const roleLabel = { owner: 'Owner', admin: 'Admin (co-organizer)', member: 'Member', viewer: 'Viewer' }[role] || role;
+      await notifyUsers(base44, {
+        gatheringId: gathering_id, userIds: [target.user_id], category: 'members',
+        heading: 'Your role changed',
+        message: `You're now ${roleLabel} in this gathering.`,
+        data: { gathering_id, route, kind: 'role_changed' },
+        url: origin ? origin + route : undefined,
+        dedupKey: `role_changed:${target.user_id}:${role}`,
+      });
+    }
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

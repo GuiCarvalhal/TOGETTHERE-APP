@@ -67,6 +67,30 @@
     },
     "owner_user_id": {
       "type": "string"
+    },
+    "notify_master": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_journey": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_expenses": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_members": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_reminders": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_ai": {
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [

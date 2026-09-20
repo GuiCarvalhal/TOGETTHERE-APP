@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, gatheringOwnerUserId, syncChildArrays } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
+import { notifyUsers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
 export default async function(req) {
   try {
@@ -60,6 +61,20 @@ export default async function(req) {
       summary: `${displayName} requested to join as ${requestedRole === 'viewer' ? 'Viewer' : 'Member'}`,
       ownerUserId: ownerUid, participantUserIds: gathering.participant_user_ids || [],
     });
+    if (isOneSignalConfigured()) {
+      const members = await base44.asServiceRole.entities.Member.filter({ gathering_id: gatheringId });
+      const owners = (members || []).filter((m) => m.role === 'owner' || m.role === 'admin').map((m) => m.user_id).filter(Boolean);
+      const origin = req.headers.get('origin') || '';
+      const route = `/gathering/${gatheringId}/settings`;
+      await notifyUsers(base44, {
+        gatheringId: gatheringId, userIds: owners, category: 'members',
+        heading: 'New join request',
+        message: `${displayName} requested to join as ${requestedRole === 'viewer' ? 'Viewer' : 'Member'}.`,
+        data: { gathering_id: gatheringId, route, kind: 'join_requested' },
+        url: origin ? origin + route : undefined,
+        dedupKey: `join_requested:${gatheringId}:${user.id}`,
+      });
+    }
     return Response.json({ status: 'requested' });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

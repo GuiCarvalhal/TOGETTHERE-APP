@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, gatheringOwnerUserId, syncChildArrays } from '../../shared/gatheringAcl.ts';
+import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
 export default async function(req) {
   try {
@@ -28,6 +29,18 @@ export default async function(req) {
       owner_user_id: ownerUid,
     });
     await syncChildArrays(base44, gathering_id);
+    if (isOneSignalConfigured()) {
+      const origin = req.headers.get('origin') || '';
+      const route = `/gathering/${gathering_id}/members`;
+      await notifyGatheringMembers(base44, {
+        gatheringId: gathering_id, category: 'members', excludeUserIds: [user.id],
+        heading: 'New member added',
+        message: `${me.full_name || 'Someone'} added ${full_name} to the gathering.`,
+        data: { gathering_id, route, kind: 'member_added' },
+        url: origin ? origin + route : undefined,
+        dedupKey: `member_added:${gathering_id}:${full_name}`,
+      });
+    }
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

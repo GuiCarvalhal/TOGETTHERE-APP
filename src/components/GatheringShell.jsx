@@ -7,6 +7,10 @@ import MemberAvatar from '@/components/tt/MemberAvatar';
 import RoleStamp from '@/components/tt/RoleStamp';
 import ActivityBell from '@/components/tt/ActivityBell';
 import ThemeToggle from '@/components/tt/ThemeToggle';
+import NotificationSettings from '@/components/tt/NotificationSettings';
+import NotificationOptInBanner from '@/components/tt/NotificationOptInBanner';
+import { useAuth } from '@/lib/AuthContext';
+import { useOneSignal } from '@/lib/useOneSignal';
 import { Image } from '@/components/ui/image';
 import { Loader2, MapPin, CalendarDays, Plus, Sparkles, Receipt, UserPlus } from 'lucide-react';
 
@@ -28,6 +32,8 @@ function FabButton() {
 function ShellInner() {
   const { id } = useParams();
   const { gathering, members, currentMember, role, loading, error, fab } = useGathering();
+  const { user } = useAuth();
+  const onesignal = useOneSignal(user?.id);
   const location = useLocation();
 
   if (loading) {
@@ -68,6 +74,7 @@ function ShellInner() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
+            <NotificationSettings onesignal={onesignal} />
             <ActivityBell gatheringId={id} />
             <div className="flex -space-x-2.5">
               {participants.slice(0, 4).map((m) => (
@@ -118,6 +125,8 @@ function ShellInner() {
           </div>
         </div>
       </section>
+
+      <NotificationOptInBanner onesignal={onesignal} gatheringId={id} />
 
       {/* Active area content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-28">

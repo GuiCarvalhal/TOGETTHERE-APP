@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, participantUserIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
+import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
 export default async function(req) {
   try {
@@ -44,6 +45,19 @@ export default async function(req) {
     await base44.asServiceRole.entities.ExpenseSplit.deleteMany({ expense_id: expense_id });
     const splitRecords = buildSplitRecords({ expenseId: expense_id, gatheringId: gathering_id, splits, ownerUid, payerUid, parts });
     if (splitRecords.length) await base44.asServiceRole.entities.ExpenseSplit.bulkCreate(splitRecords);
+
+    if (isOneSignalConfigured()) {
+      const origin = req.headers.get('origin') || '';
+      const route = `/gathering/${gathering_id}/expenses`;
+      await notifyGatheringMembers(base44, {
+        gatheringId: gathering_id, category: 'expenses', excludeUserIds: [user.id],
+        heading: 'Expense updated',
+        message: `${me.full_name || 'Someone'} updated "${expense.title}".`,
+        data: { gathering_id, route, kind: 'expense_updated' },
+        url: origin ? origin + route : undefined,
+        dedupKey: `expense_updated:${expense_id}`,
+      });
+    }
 
     return Response.json({ ok: true });
   } catch (error) {

@@ -110,8 +110,12 @@ export default function GatheringExpenses() {
   splits.forEach((s) => { (splitsByExpense[s.expense_id] = splitsByExpense[s.expense_id] || []).push(s); });
 
   async function toggleSettled(exp) {
-    await base44.entities.Expense.update(exp.id, { settled: !exp.settled });
-    load();
+    try {
+      await base44.functions.invoke('settleExpense', { gathering_id: gatheringId, expense_id: exp.id, settled: !exp.settled });
+      load();
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Could not update expense');
+    }
   }
   async function deleteExpense(exp) {
     if (!confirm('Delete this expense?')) return;
