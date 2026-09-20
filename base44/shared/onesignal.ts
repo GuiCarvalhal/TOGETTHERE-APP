@@ -15,8 +15,8 @@ const DEDUP_WINDOW_MS = 60_000;
 const _dedup = new Map();
 
 function getConfig() {
-  const restKey = process.env.OneSignal_Rest_API || '';
-  const appId = process.env.OneSignal_AppID || '';
+  const restKey = (process.env.OneSignal_Rest_API || '').trim();
+  const appId = (process.env.OneSignal_AppID || '').trim();
   return { restKey, appId, configured: Boolean(restKey && appId) };
 }
 
@@ -48,8 +48,7 @@ export async function sendToUsers({ externalUserIds, heading, message, data, ded
 
   const body = {
     app_id: appId,
-    target_channel: 'push',
-    include_aliases: { external_id: ids },
+    include_external_user_ids: ids,
     headings: { en: heading || 'TOGETTHERE' },
     contents: { en: message || '' },
     data: data || {},
@@ -57,9 +56,9 @@ export async function sendToUsers({ externalUserIds, heading, message, data, ded
   if (url) body.url = url;
 
   try {
-    const res = await fetch('https://api.onesignal.com/notifications', {
+    const res = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Key ${restKey}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${restKey}` },
       body: JSON.stringify(body),
     });
     const json = await res.json().catch(() => ({}));
@@ -67,10 +66,12 @@ export async function sendToUsers({ externalUserIds, heading, message, data, ded
       const errMsg =
         (json && Array.isArray(json.errors) && json.errors[0]) ||
         (json && json.detail) ||
+        (json && json.error) ||
         `OneSignal error (${res.status})`;
       return { ok: false, error: errMsg, sent: 0, status: res.status };
     }
-    return { ok: true, sent: ids.length, id: json.id };
+    const sent = typeof json.recipients === 'number' ? json.recipients : ids.length;
+    return { ok: true, sent, id: json.id };
   } catch (e) {
     return { ok: false, error: e.message || 'OneSignal request failed', sent: 0 };
   }
