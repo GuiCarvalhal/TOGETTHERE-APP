@@ -3,6 +3,8 @@ import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { canManageMembers } from '@/lib/gatheringHelpers';
 import MemberCard from '@/components/members/MemberCard';
+import PageToolbar from '@/components/tt/PageToolbar';
+import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,7 @@ import EmptyState from '@/components/tt/EmptyState';
 
 export default function GatheringMembers() {
   const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh } = useGathering();
+  const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ full_name: '', role: 'member', home_city: '' });
   const [adding, setAdding] = useState(false);
@@ -84,27 +87,26 @@ export default function GatheringMembers() {
     }
   }
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="font-display text-3xl font-bold">Members</h2>
-        <p className="text-cream/60 text-sm mt-1">Your crew. Set who you're close with to share more of your profile — contact info, precise times and private notes stay hidden from casual connections.</p>
-      </div>
+  const visibleMembers = scope === 'mine' ? members.filter((m) => m.id === currentMember?.id) : members;
 
-      {members.length === 0 ? (
+  return (
+    <div className="space-y-6">
+      <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
+
+      {visibleMembers.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No members yet"
-          body="Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only."
-          action={canManage ? (
+          title={scope === 'mine' ? 'Nothing to show' : 'No members yet'}
+          body={scope === 'mine' ? 'Switch to Group to see everyone in this gathering.' : 'Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only.'}
+          action={canManage && scope !== 'mine' ? (
             <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
               <UserPlus className="w-4 h-4" /> Add the first member
             </button>
           ) : undefined}
         />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {members.map((m) => {
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visibleMembers.map((m) => {
             const isSelf = m.id === currentMember?.id;
             return (
               <MemberCard
@@ -115,6 +117,7 @@ export default function GatheringMembers() {
                 isSelf={isSelf}
                 myRelationship={m.myRelationship}
                 visibility={m.visibility}
+                showImages={images}
                 onRelationshipChange={(rel) => handleRelationshipChange(m.user_id, rel)}
                 onRoleChange={(r) => handleRoleChange(m, r)}
                 onRemove={() => handleRemove(m)}
@@ -125,35 +128,35 @@ export default function GatheringMembers() {
       )}
 
       <FormSheet open={addOpen} onOpenChange={setAddOpen} title="Add a member" maxWidth="max-w-md">
-          <form onSubmit={handleAdd} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Name</Label>
-              <Input value={addForm.full_name} onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })} placeholder="Jordan Lee" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Home city</Label>
-              <Input value={addForm.home_city} onChange={(e) => setAddForm({ ...addForm, home_city: e.target.value })} placeholder="Brooklyn, NY" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Role</Label>
-              <Select value={addForm.role} onValueChange={(v) => setAddForm({ ...addForm, role: v })}>
-                <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin — co-organizer, manages members & journey</SelectItem>
-                  <SelectItem value="member">Member — participates, in expenses</SelectItem>
-                  <SelectItem value="viewer">Viewer — read only, not in expenses</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-ink-deep/50">They'll be invited to claim their account from the Members page later.</p>
-            </div>
-            <DialogFooter className="pt-2 gap-2">
-              <Button type="button" variant="ghost" onClick={() => setAddOpen(false)} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
-              <Button type="submit" disabled={adding} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-                {adding && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Add member
-              </Button>
-            </DialogFooter>
-          </form>
+        <form onSubmit={handleAdd} className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-ink-deep">Name</Label>
+            <Input value={addForm.full_name} onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })} placeholder="Jordan Lee" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-ink-deep">Home city</Label>
+            <Input value={addForm.home_city} onChange={(e) => setAddForm({ ...addForm, home_city: e.target.value })} placeholder="Brooklyn, NY" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-ink-deep">Role</Label>
+            <Select value={addForm.role} onValueChange={(v) => setAddForm({ ...addForm, role: v })}>
+              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin — co-organizer, manages members & journey</SelectItem>
+                <SelectItem value="member">Member — participates, in expenses</SelectItem>
+                <SelectItem value="viewer">Viewer — read only, not in expenses</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-ink-deep/50">They'll be invited to claim their account from the Members page later.</p>
+          </div>
+          <DialogFooter className="pt-2 gap-2">
+            <Button type="button" variant="ghost" onClick={() => setAddOpen(false)} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
+            <Button type="submit" disabled={adding} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
+              {adding && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add member
+            </Button>
+          </DialogFooter>
+        </form>
       </FormSheet>
     </div>
   );

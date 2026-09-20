@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Loader2, Bookmark, BookmarkCheck, X, UtensilsCrossed, Compass, Coffee, BedDouble, MapPin } from 'lucide-react';
+import { Sparkles, Loader2, MapPin } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
-import MemberAvatar from '@/components/tt/MemberAvatar';
-
-const CAT_ICON = { restaurant: UtensilsCrossed, activity: Compass, cafe: Coffee, stay: BedDouble, experience: Sparkles };
-const CAT_COLOR = { restaurant: '#E05A47', activity: '#F07865', cafe: '#C8493A', stay: '#1E2633', experience: '#E05A47' };
+import AgentCard from '@/components/tt/cards/AgentCard';
+import PageToolbar from '@/components/tt/PageToolbar';
+import { useViewPrefs } from '@/hooks/useViewPrefs';
 
 export default function GatheringAgent() {
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
+  const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState('');
@@ -67,10 +67,13 @@ export default function GatheringAgent() {
     }
   }
 
-  // group by day
+  const visibleRecs = recs.filter((r) => {
+    if (isDismissed(r.name)) return false;
+    if (scope === 'mine') return (r.matches || []).some((mt) => mt.member_name === currentMember?.full_name);
+    return true;
+  });
   const byDay = {};
-  recs.forEach((r) => {
-    if (isDismissed(r.name)) return;
+  visibleRecs.forEach((r) => {
     const k = r.day || 'Your trip';
     (byDay[k] = byDay[k] || []).push(r);
   });
@@ -79,27 +82,22 @@ export default function GatheringAgent() {
   (daySummaries || []).forEach((d) => { daySummaryMap[d.day] = d.summary; });
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="font-display text-3xl font-bold flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-terra-coral" /> Agent
-        </h2>
-        <p className="text-cream/60 text-sm mt-1">Your AI concierge reads the group's profiles and journey, then tailors each day to where you'll actually be.</p>
-      </div>
+    <div className="space-y-6">
+      <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
 
       {/* Stage / intro card */}
-      <div className="tt-card p-6 sm:p-8">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-terra/15 border border-terra/30 flex items-center justify-center shrink-0">
-            <Sparkles className="w-6 h-6 text-terra-deep" />
+      <div className="tt-card p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-terra/15 border border-terra/30 flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5 text-terra-deep" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-display text-xl font-bold text-ink-deep">Personalized for your crew</h3>
-            <p className="text-sm text-ink-deep/60 mt-1">
+            <h3 className="font-display text-lg font-bold text-ink-deep">Personalized for your crew</h3>
+            <p className="text-sm text-ink-deep/60 mt-0.5">
               {members.filter((m) => m.role !== 'viewer').length} participants · matching dietary needs, interests, budgets and stay locations.
             </p>
           </div>
-          <button onClick={generate} disabled={loading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep disabled:opacity-60 shrink-0">
+          <button onClick={generate} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep disabled:opacity-60 shrink-0">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {recs.length ? 'Regenerate' : 'Generate'}
           </button>
@@ -120,17 +118,17 @@ export default function GatheringAgent() {
       )}
 
       {loading && recs.length === 0 && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="tt-card p-8 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-terra mx-auto mb-4" />
             <p className="font-display text-xl text-ink-deep">Curating your trip…</p>
             <p className="text-ink-deep/60 text-sm mt-1">Reading profiles and the journey timeline.</p>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-3">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="tt-card p-5 space-y-3">
+              <div key={i} className="tt-card p-4 space-y-3">
                 <div className="flex items-start gap-3">
-                  <Skeleton className="w-10 h-10 rounded-xl" tone="cream" />
+                  <Skeleton className="w-9 h-9 rounded-lg" tone="cream" />
                   <div className="flex-1 space-y-2"><Skeleton className="h-5 w-2/3" tone="cream" /><Skeleton className="h-3 w-1/3" tone="cream" /></div>
                 </div>
                 <Skeleton className="h-3 w-full" tone="cream" />
@@ -149,79 +147,47 @@ export default function GatheringAgent() {
         />
       )}
 
-      {summary && (
-        <p className="font-display italic text-lg text-cream/80 max-w-2xl">{summary}</p>
+      {!loading && recs.length > 0 && visibleRecs.length === 0 && (
+        <EmptyState
+          icon={Sparkles}
+          title="None matched to you"
+          body="No recommendations in this view are tailored to you. Switch to Group to see the full list."
+        />
       )}
 
-      {recs.length > 0 && (
-        <div className="space-y-8">
+      {summary && (
+        <p className="font-display italic text-base text-foreground/80 max-w-2xl">{summary}</p>
+      )}
+
+      {visibleRecs.length > 0 && (
+        <div className="space-y-7">
           {days.map((day) => (
             <div key={day}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-terra/15 border border-terra/30 flex items-center justify-center">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-terra/15 border border-terra/30 flex items-center justify-center">
                   <MapPin className="w-4 h-4 text-terra-coral" />
                 </div>
                 <div>
                   <p className="tt-label text-terra-coral">Recommendations</p>
-                  <p className="font-display text-lg text-cream">{day}</p>
+                  <p className="font-display text-base text-foreground">{day}</p>
                 </div>
-                <div className="flex-1 h-px bg-white/10 ml-2" />
+                <div className="flex-1 h-px bg-foreground/10 ml-2" />
               </div>
               {daySummaryMap[day] && (
-                <p className="text-sm text-cream/70 italic font-display leading-relaxed mb-4 pl-1">{daySummaryMap[day]}</p>
+                <p className="text-sm text-foreground/70 italic font-display leading-relaxed mb-3 pl-1">{daySummaryMap[day]}</p>
               )}
-              <div className="grid sm:grid-cols-2 gap-4">
-                {byDay[day].map((r, i) => {
-                  const Icon = CAT_ICON[r.category] || Compass;
-                  return (
-                    <div key={i} className="tt-card p-5 flex flex-col">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${CAT_COLOR[r.category]}15`, border: `1px solid ${CAT_COLOR[r.category]}40` }}>
-                          <Icon className="w-5 h-5" style={{ color: CAT_COLOR[r.category] }} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-display text-lg font-bold text-ink-deep leading-tight">{r.name}</h3>
-                          <p className="text-xs text-ink-deep/50 capitalize mt-0.5">{r.location} · {r.category}{r.price_level ? ` · ${r.price_level}` : ''}</p>
-                        </div>
-                      </div>
-                      {r.why_sentence && (
-                        <p className="text-sm text-ink-deep/80 mt-3 italic font-display leading-relaxed border-l-2 border-terra/40 pl-3">{r.why_sentence}</p>
-                      )}
-                      <p className="text-sm text-ink-deep/70 mt-3">{r.description}</p>
-                      {r.matches?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {r.matches.map((mt, j) => {
-                            const member = members.find((m) => m.full_name === mt.member_name);
-                            return (
-                              <span key={j} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-full bg-cream-pale border border-ink-charcoal/15" title={mt.reason}>
-                                {member ? <MemberAvatar member={member} size="xs" /> : <span className="w-7 h-7 rounded-full bg-terra/15 text-terra-deep text-[0.625rem] font-bold flex items-center justify-center">{(mt.member_name || '?')[0]}</span>}
-                                <span className="text-xs font-medium text-ink-deep">{mt.member_name}</span>
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {r.why?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {r.why.map((w, j) => (
-                            <span key={j} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-terra/10 text-terra-deep text-xs font-medium border border-terra/20">
-                              <Sparkles className="w-3 h-3" /> {w}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-ink-charcoal/10">
-                        <button onClick={() => (isSaved(r.name) ? null : save(r.name))} className={`inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-full text-xs font-semibold ${isSaved(r.name) ? 'bg-terra text-cream' : 'bg-cream-pale text-ink-deep hover:bg-cream-warm'}`}>
-                          {isSaved(r.name) ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-                          {isSaved(r.name) ? 'Saved' : 'Save'}
-                        </button>
-                        <button onClick={() => dismiss(r.name)} className="ml-auto inline-flex items-center gap-1 px-4 py-2.5 min-h-[44px] rounded-full text-xs text-ink-deep/50 hover:text-terra-deep hover:bg-cream-pale">
-                          <X className="w-3.5 h-3.5" /> Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="grid sm:grid-cols-2 gap-3">
+                {byDay[day].map((r, i) => (
+                  <AgentCard
+                    key={i}
+                    rec={r}
+                    members={members}
+                    isSaved={isSaved(r.name)}
+                    onSave={() => save(r.name)}
+                    onDismiss={() => dismiss(r.name)}
+                    showImages={images}
+                  />
+                ))}
               </div>
             </div>
           ))}
@@ -230,11 +196,11 @@ export default function GatheringAgent() {
 
       {state.saved.length > 0 && (
         <section>
-          <h3 className="tt-label text-cream/50 mb-3">Saved by you</h3>
+          <h3 className="tt-label text-foreground/50 mb-3">Saved by you</h3>
           <div className="flex flex-wrap gap-2">
             {state.saved.map((name) => (
-              <span key={name} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-terra/15 text-cream text-sm border border-terra/30">
-                <BookmarkCheck className="w-3.5 h-3.5 text-terra-coral" /> {name}
+              <span key={name} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-terra/15 text-foreground text-sm border border-terra/30">
+                <Sparkles className="w-3.5 h-3.5 text-terra-coral" /> {name}
               </span>
             ))}
           </div>
