@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { resolveMyMembers } from '../../shared/gatheringAcl.ts';
 
 // Returns the current user's gatherings plus a display-safe member preview
 // (full_name, photo, role only) per gathering, for avatar stacks on Home.
@@ -11,7 +12,7 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const myMembers = await base44.entities.Member.filter({ user_id: user.id });
+    const { members: myMembers } = await resolveMyMembers(base44, user);
     const gids = (myMembers || []).map((m) => m.gathering_id).filter(Boolean);
     if (!gids.length) return Response.json({ gatherings: [], memberships: [], previews: {} });
 

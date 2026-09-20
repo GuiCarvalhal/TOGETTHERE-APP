@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { getMyMember } from '../../shared/gatheringAcl.ts';
+import { matchMyMember, healMember, syncChildArrays } from '../../shared/gatheringAcl.ts';
 
 export default async function(req) {
   try {
@@ -14,13 +14,22 @@ export default async function(req) {
       base44.asServiceRole.entities.Gathering.get(gatheringId),
       base44.asServiceRole.entities.Member.filter({ gathering_id: gatheringId }),
     ]);
-    const me = (members || []).find((m) => m.user_id === user.id) || null;
+    let me = matchMyMember(members, user);
     if (!me) return Response.json({ error: 'Not a member of this gathering' }, { status: 403 });
+    // Self-heal beta-imported member records to the real app user id.
+    if (me.user_id !== user.id) {
+      me = await healMember(base44, me, user);
+    }
+    // Sync denormalized ACL arrays if the current user's app id isn't reflected yet
+    // (handles both just-healed and previously-healed-but-unsynced gatherings).
+    if (!(gathering.member_user_ids || []).includes(user.id)) {
+      await syncChildArrays(base44, gatheringId);
+    }
 
     const relationships = me.relationships || {};
     const masked = (members || []).map((m) => {
-      if (m.user_id === user.id) {
-        return { ...m, visibility: 'full', myRelationship: null };
+      if (m.id === me.id) {
+        return { ...me, visibility: 'full', myRelationship: null };
       }
       const rel = relationships[m.user_id] || 'casual';
       if (me.role === 'owner' || rel === 'close') {

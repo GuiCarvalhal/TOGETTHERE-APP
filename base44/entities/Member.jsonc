@@ -8,6 +8,9 @@
     "user_id": {
       "type": "string"
     },
+    "email": {
+      "type": "string"
+    },
     "role": {
       "type": "string",
       "enum": [
@@ -103,6 +106,9 @@
       "$or": [
         {
           "data.user_id": "{{user.id}}"
+        },
+        {
+          "data.email": "{{user.email}}"
         },
         {
           "user_condition": {
