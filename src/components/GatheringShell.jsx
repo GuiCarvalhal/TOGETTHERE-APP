@@ -4,11 +4,12 @@ import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
 import { formatDateRange } from '@/lib/gatheringHelpers';
 import BottomTabBar from '@/components/tt/BottomTabBar';
 import MoreMenu from '@/components/tt/MoreMenu';
+import TopBar from '@/components/tt/TopBar';
 import NotificationOptInBanner from '@/components/tt/NotificationOptInBanner';
 import { useAuth } from '@/lib/AuthContext';
 import { useOneSignal } from '@/lib/useOneSignal';
 import { Image } from '@/components/ui/image';
-import { Loader2, ChevronLeft, CalendarDays, MapPin, Plus } from 'lucide-react';
+import { Loader2, CalendarDays, MapPin, Plus } from 'lucide-react';
 
 function FabButton() {
   const { fab } = useGathering();
@@ -58,6 +59,7 @@ function ShellInner() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <TopBar />
       {/* Cover-photo header */}
       <header className="relative">
         <div className="relative h-[124px] sm:h-[168px] w-full overflow-hidden">
@@ -70,10 +72,7 @@ function ShellInner() {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/25" />
         </div>
-        <div className="absolute inset-0 flex flex-col justify-between p-4 sm:p-6 tt-safe-top">
-          <Link to="/" className="inline-flex items-center gap-0.5 text-white/90 hover:text-white text-sm font-medium self-start -ml-1">
-            <ChevronLeft className="w-4 h-4" /> Gatherings
-          </Link>
+        <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6">
           <div>
             <span className="tt-label text-white/80 block mb-1">{statusLabel}</span>
             <h1 className="font-display text-2xl sm:text-4xl font-bold text-white tt-text-balance leading-tight">{gathering.name}</h1>
