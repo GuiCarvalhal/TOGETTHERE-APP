@@ -6,9 +6,11 @@ import {
 } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import MemberAvatar from '@/components/tt/MemberAvatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import usePolling from '@/hooks/usePolling';
-import { Plus, Pencil, Check, Loader2, ArrowRight, Receipt as ReceiptIcon } from 'lucide-react';
+import { Plus, Pencil, Check, Loader2, ArrowRight, Receipt as ReceiptIcon, Calculator } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 
@@ -22,6 +24,9 @@ export default function GatheringExpenses() {
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [convertTo, setConvertTo] = useState('EUR');
+  const [convertResult, setConvertResult] = useState(null);
+  const [convertLoading, setConvertLoading] = useState(false);
 
   const denied = !canSeeExpenses(role);
 
@@ -115,6 +120,20 @@ export default function GatheringExpenses() {
     load();
   }
 
+  async function runConvert() {
+    if (!expenses.filter((e) => !e.settled).length) return;
+    setConvertLoading(true);
+    try {
+      const items = expenses.filter((e) => !e.settled).map((e) => ({ amount: e.amount, currency: e.currency || 'USD' }));
+      const res = await base44.functions.invoke('convertCurrency', { items, to: (convertTo || 'USD').toUpperCase() });
+      setConvertResult(res.data || res);
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Conversion failed');
+    } finally {
+      setConvertLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -126,6 +145,20 @@ export default function GatheringExpenses() {
         <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-terra" /></div>
       ) : (
         <>
+          {/* Currency converter — read-only display, does not alter expenses */}
+          <section className="tt-card p-4 flex items-center gap-2 flex-wrap">
+            <Calculator className="w-5 h-5 text-terra-deep shrink-0" />
+            <span className="text-sm text-ink-deep/70">Unsettled total in</span>
+            <Input value={convertTo} onChange={(e) => setConvertTo(e.target.value.toUpperCase().slice(0, 3))} placeholder="EUR" className="w-20 h-9 bg-cream-pale border-ink-charcoal/20 text-ink-deep uppercase" />
+            <Button type="button" onClick={runConvert} disabled={convertLoading} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-9">
+              {convertLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
+              Convert
+            </Button>
+            {convertResult && (
+              <span className="text-sm font-semibold text-ink-deep">≈ {formatCurrency(convertResult.total, convertResult.to)}</span>
+            )}
+          </section>
+
           {/* Balances */}
           <section>
             <h3 className="tt-label text-cream/50 mb-3">Running balances</h3>

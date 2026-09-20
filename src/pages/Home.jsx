@@ -13,6 +13,7 @@ import { Loader2, Plus, MapPin, CalendarDays, Compass, ArrowRight, Route, Receip
 import { formatDateRange, getGatheringStatus } from '@/lib/gatheringHelpers';
 import EmptyState from '@/components/tt/EmptyState';
 import AvatarStack from '@/components/tt/AvatarStack';
+import ThemeToggle from '@/components/tt/ThemeToggle';
 import Skeleton from '@/components/tt/Skeleton';
 
 const SAMPLE_COVERS = [
@@ -108,9 +109,12 @@ export default function Home() {
       <header className="sticky top-0 z-30 bg-ink/95 backdrop-blur-xl border-b border-white/5 tt-safe-top">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <span className="font-display text-2xl font-bold tracking-tight">TOGETTHERE</span>
-          <Button onClick={() => setOpen(true)} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-10 px-4">
-            <Plus className="w-4 h-4 mr-1.5" /> New Gathering
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button onClick={() => setOpen(true)} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-10 px-4">
+              <Plus className="w-4 h-4 mr-1.5" /> New Gathering
+            </Button>
+          </div>
         </div>
       </header>
 

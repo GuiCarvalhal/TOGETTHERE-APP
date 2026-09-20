@@ -4,24 +4,79 @@
 
 @layer base {
   :root {
-    /* TOGETTHERE — editorial ink-navy + warm cream */
-    --background: 215 8% 8%;        /* Ink Navy #0C131D canvas */
-    --foreground: 40 60% 98%;       /* Soft Cream text on ink */
-    --card: 38 60% 98%;             /* Soft Cream #FDFBF7 cards */
-    --card-foreground: 210 28% 10%; /* Deep Charcoal #121820 on cream */
+    /* TOGETTHERE — LIGHT mode (default for first-time users) */
+    --background: 40 33% 96%;        /* warm pale canvas */
+    --foreground: 215 40% 12%;       /* ink navy text on canvas */
+    --card: 0 0% 100%;               /* white cards */
+    --card-foreground: 210 28% 10%;   /* deep charcoal on cards */
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 28% 10%;
+    --primary: 8 71% 58%;            /* warm terracotta */
+    --primary-foreground: 40 60% 98%;
+    --secondary: 40 36% 93%;          /* pale cream muted surface */
+    --secondary-foreground: 210 28% 10%;
+    --muted: 40 26% 90%;
+    --muted-foreground: 215 12% 38%;
+    --accent: 8 82% 67%;             /* coral */
+    --accent-foreground: 215 8% 10%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 40 60% 98%;
+    --border: 40 18% 82%;
+    --input: 40 18% 85%;
+    --ring: 8 71% 58%;
+    --chart-1: 8 71% 58%;
+    --chart-2: 40 36% 55%;
+    --chart-3: 200 40% 45%;
+    --chart-4: 280 40% 60%;
+    --chart-5: 140 35% 45%;
+    --radius: 1rem;
+
+    --font-heading: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Custom brand colors — theme-aware (swap per mode) */
+    --ink: 40 33% 96%;            /* canvas surface (bg-ink) */
+    --ink-soft: 40 28% 92%;        /* subtle panel */
+    --ink-charcoal: 40 18% 80%;   /* hairline border */
+    --ink-deep: 210 28% 10%;      /* text on cards (dark in both modes) */
+    --cream: 215 40% 12%;         /* canvas text (text-cream) — dark in light */
+    --cream-pale: 40 30% 93%;     /* muted surface on cards */
+    --cream-warm: 40 26% 88%;
+    --terra: 8 71% 58%;
+    --terra-coral: 8 82% 67%;
+    --terra-deep: 8 58% 48%;
+
+    --sidebar-background: 40 33% 96%;
+    --sidebar-foreground: 215 15% 30%;
+    --sidebar-primary: 8 71% 58%;
+    --sidebar-primary-foreground: 40 60% 98%;
+    --sidebar-accent: 40 26% 90%;
+    --sidebar-accent-foreground: 215 40% 12%;
+    --sidebar-border: 40 18% 82%;
+    --sidebar-ring: 8 71% 58%;
+  }
+
+  .dark {
+    /* TOGETTHERE — DARK mode (ink-navy canvas, cream cards) */
+    --background: 215 45% 8%;        /* Ink Navy #0C131D */
+    --foreground: 40 60% 98%;        /* Soft Cream text on ink */
+    --card: 38 60% 98%;              /* Soft Cream #FDFBF7 cards */
+    --card-foreground: 210 28% 10%;
     --popover: 38 60% 98%;
     --popover-foreground: 210 28% 10%;
-    --primary: 8 71% 58%;          /* Warm Terracotta #E05A47 */
+    --primary: 8 71% 58%;
     --primary-foreground: 40 60% 98%;
-    --secondary: 40 36% 93%;        /* Pale Cream #F4EFE6 muted surface */
+    --secondary: 40 36% 93%;
     --secondary-foreground: 210 28% 10%;
-    --muted: 215 12% 14%;           /* dark muted ink on canvas */
-    --muted-foreground: 40 22% 76%; /* muted cream text on ink */
-    --accent: 8 82% 67%;            /* Coral Highlight #F07865 */
+    --muted: 215 12% 14%;
+    --muted-foreground: 40 22% 76%;
+    --accent: 8 82% 67%;
     --accent-foreground: 215 8% 8%;
     --destructive: 0 70% 55%;
     --destructive-foreground: 40 60% 98%;
-    --border: 215 26% 16%;          /* Charcoal #1E2633 hairline */
+    --border: 215 26% 16%;
     --input: 215 20% 18%;
     --ring: 8 71% 58%;
     --chart-1: 8 71% 58%;
@@ -29,12 +84,17 @@
     --chart-3: 200 40% 55%;
     --chart-4: 280 40% 65%;
     --chart-5: 140 35% 55%;
-    --radius: 1rem;
 
-    --font-heading: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --ink: 215 45% 8%;
+    --ink-soft: 215 28% 12%;
+    --ink-charcoal: 215 26% 16%;
+    --ink-deep: 210 28% 10%;
+    --cream: 40 60% 98%;          /* canvas text — light in dark */
+    --cream-pale: 40 36% 93%;
+    --cream-warm: 40 30% 90%;
+    --terra: 8 71% 58%;
+    --terra-coral: 8 82% 67%;
+    --terra-deep: 8 58% 48%;
 
     --sidebar-background: 215 10% 11%;
     --sidebar-foreground: 40 22% 80%;
@@ -71,45 +131,44 @@
 }
 
 @layer components {
-  /* Editorial cream bento card floating on ink canvas */
+  /* Editorial bento card — works in both themes via tokens */
   .tt-card {
-    @apply bg-card text-card-foreground rounded-[1.25rem] border border-[#1E2633]/15;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    @apply bg-card text-card-foreground rounded-[1.25rem] border border-ink-charcoal/15;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   }
 
   .tt-card-flat {
-    @apply bg-card text-card-foreground rounded-[1rem] border border-[#1E2633]/10;
+    @apply bg-card text-card-foreground rounded-[1rem] border border-ink-charcoal/10;
   }
 
-  /* Stamp-style role tag */
   .tt-stamp {
     @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.6875rem] font-semibold uppercase tracking-[0.1em] border;
   }
 
-  /* Micro uppercase label */
   .tt-label {
     @apply text-[0.6875rem] uppercase tracking-[0.1em] font-semibold;
   }
 
-  /* Pill switcher surface (glassmorphism dark ink) */
+  /* Pill switcher surface — theme-aware glass */
   .tt-glass {
-    background: rgba(12, 19, 29, 0.72);
+    background: hsl(var(--ink) / 0.72);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
-    border: 1px solid rgba(224, 90, 71, 0.18);
+    border: 1px solid hsl(var(--terra) / 0.22);
   }
 
   .tt-divider {
-    @apply border-t border-white/10;
+    @apply border-t border-foreground/10;
   }
 
   .tt-cream-divider {
-    @apply border-t border-[#1E2633]/10;
+    @apply border-t border-ink-charcoal/10;
   }
 
-  /* Subtle ink panel (on canvas, not cream) */
+  /* Subtle panel on the canvas (not a cream card) — theme-aware */
   .tt-ink-panel {
-    @apply bg-[#111A26] rounded-[1rem] border border-white/5;
+    background: hsl(var(--ink-soft));
+    @apply rounded-[1rem] border border-foreground/8;
   }
 }
 
@@ -121,35 +180,32 @@
   .tt-no-scrollbar::-webkit-scrollbar { display: none; }
   .tt-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .tt-shadow-float {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   }
   .tt-shadow-soft {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
   }
   .tt-text-balance {
     text-wrap: balance;
   }
 
-  /* On-brand skeleton: ink block with a terracotta-tinted shimmer sweep. */
+  /* On-brand skeleton — theme-aware with a terracotta-tinted shimmer sweep. */
   .tt-skeleton {
     position: relative;
     overflow: hidden;
-    background: #111A26;
+    background: hsl(var(--ink-soft));
     border-radius: 0.5rem;
   }
   .tt-skeleton::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(224, 90, 71, 0.10), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--terra) / 0.14), transparent);
     transform: translateX(-100%);
     animation: tt-shimmer 1.6s ease-in-out infinite;
   }
   .tt-skeleton-cream {
-    background: #EFE7D8;
-  }
-  .tt-skeleton-cream::after {
-    background: linear-gradient(90deg, transparent, rgba(224, 90, 71, 0.14), transparent);
+    background: hsl(var(--cream-pale));
   }
   @keyframes tt-shimmer {
     100% { transform: translateX(100%); }

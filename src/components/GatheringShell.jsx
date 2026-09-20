@@ -6,6 +6,7 @@ import PillSwitcher from '@/components/tt/PillSwitcher';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import RoleStamp from '@/components/tt/RoleStamp';
 import ActivityBell from '@/components/tt/ActivityBell';
+import ThemeToggle from '@/components/tt/ThemeToggle';
 import { Image } from '@/components/ui/image';
 import { Loader2, MapPin, CalendarDays, Plus, Sparkles, Receipt, UserPlus } from 'lucide-react';
 
@@ -66,6 +67,7 @@ function ShellInner() {
             <span className="tt-stamp bg-terra/15 text-terra-coral border-terra/30 capitalize">{gathering.status}</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <ThemeToggle />
             <ActivityBell gatheringId={id} />
             <div className="flex -space-x-2.5">
               {participants.slice(0, 4).map((m) => (

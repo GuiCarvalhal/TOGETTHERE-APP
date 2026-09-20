@@ -14,20 +14,20 @@ module.exports = {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			ink: {
-  				DEFAULT: '#0C131D',
-  				soft: '#111A26',
-  				charcoal: '#1E2633',
-  				deep: '#121820'
+  				DEFAULT: 'hsl(var(--ink))',
+  				soft: 'hsl(var(--ink-soft))',
+  				charcoal: 'hsl(var(--ink-charcoal))',
+  				deep: 'hsl(var(--ink-deep))'
   			},
   			terra: {
-  				DEFAULT: '#E05A47',
-  				coral: '#F07865',
-  				deep: '#C8493A'
+  				DEFAULT: 'hsl(var(--terra))',
+  				coral: 'hsl(var(--terra-coral))',
+  				deep: 'hsl(var(--terra-deep))'
   			},
   			cream: {
-  				DEFAULT: '#FDFBF7',
-  				pale: '#F4EFE6',
-  				warm: '#EFE7D8'
+  				DEFAULT: 'hsl(var(--cream))',
+  				pale: 'hsl(var(--cream-pale))',
+  				warm: 'hsl(var(--cream-warm))'
   			},
   			card: {
   				DEFAULT: 'hsl(var(--card))',

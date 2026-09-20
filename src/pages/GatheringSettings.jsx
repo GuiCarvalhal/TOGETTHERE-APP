@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Image } from '@/components/ui/image';
-import { Loader2, Save, Link2, Copy, Check, UserCheck, UserX, Lock, Globe, ShieldCheck, Eye } from 'lucide-react';
+import { Loader2, Save, Link2, Copy, Check, UserCheck, UserX, Lock, Globe, ShieldCheck, Eye, Search } from 'lucide-react';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -27,6 +27,9 @@ export default function GatheringSettings() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState('');
   const [busyReq, setBusyReq] = useState(null);
+  const [photoQuery, setPhotoQuery] = useState('');
+  const [photoResults, setPhotoResults] = useState([]);
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   useEffect(() => {
     if (gathering) {
@@ -115,6 +118,21 @@ export default function GatheringSettings() {
     }
   }
 
+  async function searchPhotos() {
+    const q = photoQuery.trim() || (gathering?.destinations || [])[0] || gathering?.name || '';
+    if (!q) return;
+    setPhotoLoading(true);
+    try {
+      const res = await base44.functions.invoke('searchCoverPhotos', { query: q });
+      const data = res.data || res;
+      setPhotoResults(data.photos || []);
+    } catch (err) {
+      alert(err.response?.data?.error || err.message || 'Photo search failed');
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
+
   const PrivacyIcon = PRIVACY_ICON[form.privacy_mode] || Lock;
 
   return (
@@ -194,7 +212,7 @@ export default function GatheringSettings() {
                     <p className="font-semibold text-ink-deep text-sm truncate">{r.full_name}</p>
                     <p className="text-xs text-ink-deep/50 truncate">{r.email || ''}</p>
                   </div>
-                  <span className="tt-stamp bg-cream text-ink-deep/60 border-ink-charcoal/15 capitalize hidden sm:inline-flex">{r.requested_role}</span>
+                  <span className="tt-stamp bg-secondary text-card-foreground/60 border-ink-charcoal/15 capitalize hidden sm:inline-flex">{r.requested_role}</span>
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => resolveRequest(r.id, true)} disabled={busyReq === r.id} className="inline-flex items-center gap-1 px-3.5 min-h-[44px] rounded-full bg-terra text-cream text-xs font-semibold hover:bg-terra-deep disabled:opacity-50">
                       {busyReq === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />} Approve
@@ -259,6 +277,22 @@ export default function GatheringSettings() {
               </button>
             ))}
           </div>
+          <div className="flex gap-2 mt-2">
+            <Input value={photoQuery} onChange={(e) => setPhotoQuery(e.target.value)} placeholder={`Search Pexels (e.g. ${(gathering?.destinations || [])[0] || 'Amalfi'})`} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPhotos(); } }} />
+            <Button type="button" variant="outline" onClick={searchPhotos} className="shrink-0 border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
+              {photoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            </Button>
+          </div>
+          {photoResults.length > 0 && (
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              {photoResults.map((p) => (
+                <button type="button" key={p.id} onClick={() => setForm({ ...form, cover_image: p.url })}
+                  className={`h-16 rounded-lg overflow-hidden border-2 ${form.cover_image === p.url ? 'border-terra' : 'border-transparent'}`}>
+                  <img src={p.thumb} alt={p.alt} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
           <Input value={form.cover_image} onChange={(e) => setForm({ ...form, cover_image: e.target.value })} placeholder="Or paste an image URL" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep mt-2" />
         </div>
         <div className="flex items-center gap-3 pt-2">

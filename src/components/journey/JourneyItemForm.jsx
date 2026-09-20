@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import AttachmentChip from '@/components/tt/AttachmentChip';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Plane } from 'lucide-react';
 
 const TYPE_META = {
   flight: { fromTo: true, place: false },
@@ -38,6 +38,7 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, onCl
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [flightLoading, setFlightLoading] = useState(false);
 
   const meta = TYPE_META[form.type] || TYPE_META.other;
 
@@ -50,6 +51,29 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, onCl
       alert(e.message || 'Upload failed');
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function lookupFlight() {
+    const fn = (form.confirmation_number || '').trim();
+    if (!fn) { alert('Enter a flight number (e.g. AA123) in the Confirmation # field first'); return; }
+    setFlightLoading(true);
+    try {
+      const date = form.start_datetime ? form.start_datetime.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      const res = await base44.functions.invoke('searchFlights', { flight_number: fn, date });
+      const data = res.data || res;
+      const f = data.flight;
+      if (!f) { alert(data.error || 'Flight not found'); return; }
+      setForm((s) => ({
+        ...s,
+        title: s.title || `Flight ${f.number}${f.airline ? ' — ' + f.airline : ''}`,
+        location_from: s.location_from || f.from,
+        location_to: s.location_to || f.to,
+      }));
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Flight lookup failed');
+    } finally {
+      setFlightLoading(false);
     }
   }
 
@@ -134,7 +158,16 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, onCl
           )}
           <div className="space-y-2">
             <Label className="text-ink-deep">Confirmation #</Label>
-            <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            <div className="flex gap-2">
+              <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              {form.type === 'flight' && (
+                <Button type="button" variant="outline" onClick={lookupFlight} className="shrink-0 border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
+                  {flightLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plane className="w-4 h-4" />}
+                  <span className="hidden sm:inline">Lookup</span>
+                </Button>
+              )}
+            </div>
+            {form.type === 'flight' && <p className="text-xs text-ink-deep/50">Enter the flight number (e.g. AA123) and tap Lookup to auto-fill the route.</p>}
           </div>
           <div className="space-y-2">
             <Label className="text-ink-deep">Notes</Label>
