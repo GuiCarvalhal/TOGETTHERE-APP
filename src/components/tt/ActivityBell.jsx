@@ -54,9 +54,9 @@ export default function ActivityBell({ gatheringId }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="relative w-11 h-11 rounded-full flex items-center justify-center text-cream/80 hover:text-cream hover:bg-white/5 transition-colors" aria-label="Recent activity">
+        <button className="relative w-11 h-11 rounded-full flex items-center justify-center text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors" aria-label="Recent activity">
           <Bell className="w-5 h-5" />
-          {unseen > 0 && <span className="absolute top-2 right-2.5 w-2.5 h-2.5 rounded-full bg-terra ring-2 ring-ink" />}
+          {unseen > 0 && <span className="absolute top-2 right-2.5 w-2.5 h-2.5 rounded-full bg-terra ring-2 ring-background" />}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0 rounded-[1.25rem] border border-ink-charcoal/15 bg-popover text-popover-foreground tt-shadow-float">
