@@ -147,6 +147,7 @@ export default function GatheringJourney() {
                     onEdit={() => { setEditing(item); setOpen(true); }}
                     onDelete={() => handleDelete(item)}
                     showImages={images}
+                    to={`/gathering/${gatheringId}/journey/${item.id}`}
                   />
                 ))}
               </div>

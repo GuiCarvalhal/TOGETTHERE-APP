@@ -1,19 +1,32 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Clock, MapPin, Pencil, Trash2 } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { formatDate } from '@/lib/gatheringHelpers';
 
-const isImg = (u) => /\.(jpe?g|png|webp|gif)(\?|$)/i.test(u || '');
+const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
-// Compact journey segment card. Shows the first image attachment as a cover
-// banner only when the page's "images" toggle is on.
-export default function JourneyCard({ item, typeLabel, typeStyle, icon: Icon, owner, canEdit, onEdit, onDelete, showImages }) {
+// Compact journey segment card. Tapping the card opens the detail route.
+// Shows the first image attachment as a cover banner only when the page's
+// "images" toggle is on.
+export default function JourneyCard({ item, typeLabel, typeStyle, icon: Icon, owner, canEdit, onEdit, onDelete, showImages, to }) {
+  const navigate = useNavigate();
   const imageAtt = showImages ? (item.attachments || []).find(isImg) : null;
   const otherAtts = (item.attachments || []).filter((u) => u !== imageAtt);
+  const open = () => { if (to) navigate(to); };
+  const stop = (e) => e.stopPropagation();
+
   return (
-    <div className="tt-card overflow-hidden">
+    <div
+      className="tt-card overflow-hidden"
+      role={to ? 'link' : undefined}
+      tabIndex={to ? 0 : undefined}
+      onClick={to ? open : undefined}
+      onKeyDown={to ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}
+      style={{ cursor: to ? 'pointer' : 'default' }}
+    >
       {imageAtt && (
         <div className="aspect-[16/6] w-full bg-cream-pale">
           <Image src={imageAtt} alt="" className="w-full h-full object-cover" fittingType="fill" />
@@ -58,8 +71,8 @@ export default function JourneyCard({ item, typeLabel, typeStyle, icon: Icon, ow
           )}
           {canEdit && (
             <div className="ml-auto flex items-center gap-0.5">
-              <button onClick={onEdit} className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Pencil className="w-3.5 h-3.5" /></button>
-              <button onClick={onDelete} className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={(e) => { stop(e); onEdit(); }} className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Pencil className="w-3.5 h-3.5" /></button>
+              <button onClick={(e) => { stop(e); onDelete(); }} className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/50 hover:bg-cream-pale hover:text-terra-deep"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
           )}
         </div>

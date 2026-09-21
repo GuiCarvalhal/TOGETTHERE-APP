@@ -14,6 +14,7 @@ import Home from '@/pages/Home';
 import GatheringShell from '@/components/GatheringShell';
 import GatheringAgent from '@/pages/GatheringAgent';
 import GatheringJourney from '@/pages/GatheringJourney';
+import JourneyDetail from '@/pages/JourneyDetail';
 import GatheringExpenses from '@/pages/GatheringExpenses';
 import GatheringMembers from '@/pages/GatheringMembers';
 import GatheringSettings from '@/pages/GatheringSettings';
@@ -37,6 +38,7 @@ function App() {
                 <Route index element={<Navigate to="journey" replace />} />
                 <Route path="agent" element={<GatheringAgent />} />
                 <Route path="journey" element={<GatheringJourney />} />
+                <Route path="journey/:itemId" element={<JourneyDetail />} />
                 <Route path="expenses" element={<GatheringExpenses />} />
                 <Route path="members" element={<GatheringMembers />} />
                 <Route path="settings" element={<GatheringSettings />} />
