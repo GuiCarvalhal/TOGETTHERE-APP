@@ -33,6 +33,7 @@ export default async function (req) {
     const origin = req.headers.get('origin') || '';
     const route = `/gathering/${gathering_id}/journey`;
     let sent = 0;
+    const errors = [];
     for (const it of upcoming) {
       const when = new Date(it.start_datetime);
       const time = when.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
@@ -46,11 +47,20 @@ export default async function (req) {
         url: origin ? origin + route : undefined,
         dedupKey: `reminder:${it.id}`,
       });
-      if (result.ok && result.sent > 0) sent += result.sent;
-      await base44.asServiceRole.entities.JourneyItem.update(it.id, { reminder_sent_at: new Date().toISOString() });
+      if (result.ok) {
+        if (result.sent > 0) sent += result.sent;
+        // Only stamp once the send succeeded (or had no recipients/deduped) so
+        // an invalid REST key never looks like a delivered reminder.
+        await base44.asServiceRole.entities.JourneyItem.update(it.id, { reminder_sent_at: new Date().toISOString() });
+      } else {
+        errors.push({ id: it.id, title: it.title, error: result.error || 'send failed' });
+      }
     }
 
-    return Response.json({ ok: true, reminded: upcoming.length, sent });
+    if (errors.length && sent === 0) {
+      return Response.json({ error: `Push delivery failed: ${errors[0].error}`, details: errors }, { status: 502 });
+    }
+    return Response.json({ ok: true, reminded: upcoming.length, sent, errors: errors.length ? errors : undefined });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
