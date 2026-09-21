@@ -2,35 +2,43 @@ import React from 'react';
 import { Receipt as ReceiptIcon, Check, Pencil } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import AttachmentChip from '@/components/tt/AttachmentChip';
-import { formatCurrency, formatDate } from '@/lib/gatheringHelpers';
+import { formatCurrency, formatDate, EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif)(\?|$)/i.test(u || '');
 const CAT_LABEL = { food: 'Food', lodging: 'Lodging', transport: 'Transport', activities: 'Activities', other: 'Other' };
+const CAT_COLOR = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.key, c.color]));
 
-// Compact expense card. Shows the receipt as a cover banner only when the page's
-// "images" toggle is on; otherwise the receipt is a small chip.
+// Compact expense card. Hierarchy: category chip, title, payer · date, amount
+// (with optional converted base amount), split participants, settled toggle.
+// Cover: receipt image when the page "images" toggle is on; otherwise a
+// category-tinted placeholder banner (never blank space).
 export default function ExpenseCard({ exp, payer, splits, members, canEdit, onToggleSettled, onEdit, onDelete, showImages, baseCurrency, baseAmount, rate }) {
   const memberById = Object.fromEntries((members || []).map((m) => [m.id, m]));
   const catLabel = CAT_LABEL[exp.category] || 'Other';
+  const catColor = CAT_COLOR[exp.category] || '#7a8290';
   const receiptImg = showImages && exp.receipt && isImg(exp.receipt);
   const chipMax = showImages ? 4 : 3;
   return (
     <div className={`tt-card overflow-hidden ${exp.settled ? 'opacity-60' : ''}`}>
-      {receiptImg && (
+      {receiptImg ? (
         <div className="aspect-[16/5] w-full bg-cream-pale">
           <Image src={exp.receipt} alt="Receipt" className="w-full h-full object-cover" fittingType="fill" />
         </div>
-      )}
+      ) : showImages ? (
+        <div className="aspect-[16/5] w-full flex items-center justify-center" style={{ background: `${catColor}12` }}>
+          <ReceiptIcon className="w-8 h-8" style={{ color: catColor, opacity: 0.5 }} strokeWidth={1.5} />
+        </div>
+      ) : null}
       <div className="p-3.5 sm:p-4">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-cream-pale border border-ink-charcoal/15 flex items-center justify-center shrink-0">
-            <ReceiptIcon className="w-4 h-4 text-terra-deep" />
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${catColor}1A`, color: catColor, border: `1px solid ${catColor}33` }}>
+            <ReceiptIcon className="w-4 h-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <h3 className="font-display text-base font-bold text-ink-deep leading-tight truncate">{exp.title}</h3>
-                <p className="text-xs text-ink-deep/55 mt-0.5">{payer?.full_name} · {formatDate(exp.date)}</p>
+                <p className="text-xs text-ink-deep/55 mt-0.5 truncate">{payer?.full_name} · {formatDate(exp.date)}</p>
               </div>
               <div className="text-right shrink-0">
                 <span className="font-display text-lg font-bold text-ink-deep whitespace-nowrap">{formatCurrency(exp.amount, exp.currency)}</span>
@@ -40,7 +48,7 @@ export default function ExpenseCard({ exp, payer, splits, members, canEdit, onTo
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              <span className="px-1.5 py-0.5 rounded-full bg-cream-pale text-[0.625rem] font-semibold uppercase tracking-wide text-ink-deep/55 border border-ink-charcoal/10">{catLabel}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold uppercase tracking-wide" style={{ color: catColor, background: `${catColor}14`, border: `1px solid ${catColor}26` }}>{catLabel}</span>
               {exp.settled && <span className="px-1.5 py-0.5 rounded-full bg-terra/15 text-[0.625rem] font-semibold uppercase text-terra-deep">Settled</span>}
               {splits.slice(0, chipMax).map((s) => (
                 <span key={s.member_id} className="text-[0.625rem] text-ink-deep/55 px-1.5 py-0.5 rounded-full bg-cream-pale border border-ink-charcoal/10">

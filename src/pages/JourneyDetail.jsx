@@ -12,6 +12,7 @@ import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, Cale
 
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
+const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 const TYPE_STYLE = {
   flight: 'bg-sky-100 text-sky-700',
   car: 'bg-terra/15 text-terra-deep',
@@ -102,6 +103,7 @@ export default function JourneyDetail() {
   const Icon = ICONS[item.type] || MapPin;
   const typeLabel = TYPE_LABEL[item.type] || 'Segment';
   const typeStyle = TYPE_STYLE[item.type] || TYPE_STYLE.other;
+  const typeColor = TYPE_COLOR[item.type] || TYPE_COLOR.other;
   const q = mapsQuery(item);
   const embedSrc = q ? `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed` : '';
   const openMapsUrl = q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : '';
@@ -126,11 +128,11 @@ export default function JourneyDetail() {
       {/* Hero */}
       <div className="tt-card p-5">
         <div className="flex items-start gap-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${typeStyle}`}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${typeColor}1A`, color: typeColor, border: `1px solid ${typeColor}33` }}>
             <Icon className="w-7 h-7" strokeWidth={2} />
           </div>
           <div className="min-w-0">
-            <span className="tt-label text-terra-deep">{typeLabel}</span>
+            <span className="tt-label" style={{ color: typeColor }}>{typeLabel}</span>
             <h1 className="font-display text-2xl font-bold text-ink-deep leading-tight tt-text-balance">{item.title}</h1>
             {item.confirmation_number && (
               <p className="text-xs text-ink-deep/45 mt-1">Confirmation #{item.confirmation_number}</p>

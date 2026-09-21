@@ -15,7 +15,7 @@ export default function MemberCard({
 }) {
   const avatarSize = showImages ? 'lg' : 'md';
   return (
-    <div className={`tt-card p-4 flex flex-col gap-3 ${member.role === 'viewer' ? 'border-dashed border-ink-charcoal/25 bg-cream-pale/40' : ''}`}>
+    <div className={`tt-card p-3.5 flex flex-col gap-2.5 ${member.role === 'viewer' ? 'border-dashed border-ink-charcoal/25 bg-cream-pale/40' : ''}`}>
       <div className="flex items-center gap-3">
         <MemberAvatar member={member} size={avatarSize} />
         <div className="min-w-0 flex-1">

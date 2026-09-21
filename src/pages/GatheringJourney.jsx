@@ -13,6 +13,7 @@ import EmptyState from '@/components/tt/EmptyState';
 
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
+const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 const TYPE_STYLE = {
   flight: 'bg-sky-100 text-sky-700',
   car: 'bg-terra/15 text-terra-deep',
@@ -141,8 +142,10 @@ export default function GatheringJourney() {
                     item={item}
                     typeLabel={TYPE_LABEL[item.type]}
                     typeStyle={TYPE_STYLE[item.type] || TYPE_STYLE.other}
+                    typeColor={TYPE_COLOR[item.type] || TYPE_COLOR.other}
                     icon={ICONS[item.type] || MapPin}
                     owner={memberById[item.owner_id]}
+                    participants={(item.member_user_ids || []).map((uid) => memberById[uid]).filter(Boolean)}
                     canEdit={canEditJourneyItem(role, item, currentMember)}
                     onEdit={() => { setEditing(item); setOpen(true); }}
                     onDelete={() => handleDelete(item)}

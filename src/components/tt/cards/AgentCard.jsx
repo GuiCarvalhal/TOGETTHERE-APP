@@ -5,22 +5,32 @@ import MemberAvatar from '@/components/tt/MemberAvatar';
 const CAT_ICON = { restaurant: UtensilsCrossed, activity: Compass, cafe: Coffee, stay: BedDouble, experience: Sparkles };
 const CAT_COLOR = { restaurant: '#E05A47', activity: '#F07865', cafe: '#C8493A', stay: '#1E2633', experience: '#E05A47' };
 
-// Compact agent recommendation card. The colored top band is a lightweight
-// "cover" element shown only when the page's "images" toggle is on.
+// Compact agent recommendation card. Hierarchy: category header, name,
+// location · category · price, why-sentence, description, matched members,
+// save / dismiss actions. The header is a category-tinted placeholder "cover"
+// shown when the page "images" toggle is on; when off, a tinted icon medallion
+// leads the body instead.
 export default function AgentCard({ rec, members, isSaved, onSave, onDismiss, showImages }) {
   const Icon = CAT_ICON[rec.category] || Compass;
   const color = CAT_COLOR[rec.category] || '#E05A47';
   return (
     <div className="tt-card overflow-hidden flex flex-col">
-      {showImages && <div className="h-1.5 w-full" style={{ background: color }} />}
+      {showImages ? (
+        <div className="h-12 w-full flex items-center gap-2.5 px-4" style={{ background: `${color}12` }}>
+          <Icon className="w-5 h-5" style={{ color }} strokeWidth={1.5} />
+          <span className="tt-label capitalize" style={{ color }}>{rec.category}</span>
+        </div>
+      ) : null}
       <div className="p-4 flex flex-col gap-2.5">
         <div className="flex items-start gap-2.5">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}15`, border: `1px solid ${color}40` }}>
-            <Icon className="w-4 h-4" style={{ color }} />
-          </div>
+          {!showImages && (
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}15`, border: `1px solid ${color}40` }}>
+              <Icon className="w-4 h-4" style={{ color }} />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <h3 className="font-display text-base font-bold text-ink-deep leading-tight">{rec.name}</h3>
-            <p className="text-[0.625rem] text-ink-deep/50 capitalize mt-0.5">{rec.location} · {rec.category}{rec.price_level ? ` · ${rec.price_level}` : ''}</p>
+            <p className="text-[0.625rem] text-ink-deep/50 capitalize mt-0.5 truncate">{rec.location} · {rec.category}{rec.price_level ? ` · ${rec.price_level}` : ''}</p>
           </div>
         </div>
         {rec.why_sentence && <p className="text-xs text-ink-deep/75 italic font-display leading-relaxed border-l-2 border-terra/40 pl-2.5">{rec.why_sentence}</p>}
