@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { computeSplitAmounts, EXPENSE_CATEGORIES, formatCurrency } from '@/lib/gatheringHelpers';
+import { computeSplitAmounts, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency } from '@/lib/gatheringHelpers';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import { Loader2, Upload } from 'lucide-react';
 
@@ -105,7 +105,14 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
             </div>
             <div className="space-y-2">
               <Label className="text-ink-deep">Currency</Label>
-              <Input value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              <Select value={(form.currency || 'USD').toUpperCase()} onValueChange={(v) => setForm({ ...form, currency: v })}>
+                <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[...new Set([(form.currency || 'USD').toUpperCase(), ...COMMON_CURRENCIES])].map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

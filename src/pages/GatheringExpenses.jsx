@@ -3,16 +3,18 @@ import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import {
   canSeeExpenses, canAddExpense, computeBalances, settleUp, formatCurrency,
+  COMMON_CURRENCIES,
 } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseCard from '@/components/tt/cards/ExpenseCard';
 import PageToolbar from '@/components/tt/PageToolbar';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import MemberAvatar from '@/components/tt/MemberAvatar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import usePolling from '@/hooks/usePolling';
-import { Plus, Loader2, ArrowRight, Receipt as ReceiptIcon, Calculator } from 'lucide-react';
+import { Plus, ArrowRight, Receipt as ReceiptIcon, Wallet, AlertTriangle } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 
@@ -25,9 +27,13 @@ export default function GatheringExpenses() {
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [convertTo, setConvertTo] = useState('EUR');
-  const [convertResult, setConvertResult] = useState(null);
-  const [convertLoading, setConvertLoading] = useState(false);
+
+  const [baseCurrency, setBaseCurrency] = useState('USD');
+  const [baseTouched, setBaseTouched] = useState(false);
+  const [rates, setRates] = useState(null);
+  const [ratesAsOf, setRatesAsOf] = useState(null);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState(null);
 
   const denied = !canSeeExpenses(role);
 
@@ -47,6 +53,31 @@ export default function GatheringExpenses() {
   }
   useEffect(() => { load(); }, [gatheringId]);
   usePolling(() => load(true), 25000);
+
+  async function loadRates() {
+    setRatesLoading(true); setRatesError(null);
+    try {
+      const res = await base44.functions.invoke('getExchangeRates', {});
+      const data = res.data || res;
+      setRates(data.rates || null);
+      setRatesAsOf(data.as_of || null);
+    } catch (e) {
+      setRatesError(e);
+    } finally {
+      setRatesLoading(false);
+    }
+  }
+  useEffect(() => { loadRates(); }, []);
+
+  // Default the base currency to the gathering's most common currency.
+  useEffect(() => {
+    if (!baseTouched && expenses.length) {
+      const counts = {};
+      expenses.forEach((e) => { const c = (e.currency || 'USD').toUpperCase(); counts[c] = (counts[c] || 0) + 1; });
+      const mode = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (mode && mode !== baseCurrency) setBaseCurrency(mode);
+    }
+  }, [expenses, baseTouched, baseCurrency]);
 
   useEffect(() => {
     if (canAddExpense(role)) {
@@ -91,14 +122,44 @@ export default function GatheringExpenses() {
 
   const participantMembers = members.filter((m) => m.role === 'owner' || m.role === 'member');
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
-  const balances = computeBalances(expenses, splits, participantMembers.map((m) => m.id));
+  const expCurrency = Object.fromEntries(expenses.map((e) => [e.id, (e.currency || 'USD').toUpperCase()]));
+
+  const rateOf = (c) => (c === 'USD' ? 1 : rates?.[String(c).toUpperCase()]);
+  const toBase = (amount, currency) => {
+    const cur = (currency || 'USD').toUpperCase();
+    const base = baseCurrency.toUpperCase();
+    if (!rates) return null;
+    const rCur = rateOf(cur);
+    const rBase = rateOf(base);
+    if (rCur == null || rBase == null) return null;
+    return (Number(amount || 0) / rCur) * rBase;
+  };
+  const conv = (amount, currency) => {
+    const b = toBase(amount, currency);
+    return b == null ? Number(amount || 0) : b;
+  };
+  const ratesAvailable = !!rates && !ratesError;
+
+  // Convert all amounts to the base currency before computing balances, so
+  // mixed-currency expenses (AUD, EUR, AED, USD…) are comparable.
+  const baseExpensesForBalances = expenses.map((e) => ({ payer_member_id: e.payer_member_id, amount: conv(e.amount, e.currency), settled: e.settled }));
+  const baseSplitsForBalances = splits.map((s) => ({ expense_id: s.expense_id, member_id: s.member_id, amount: conv(s.amount, expCurrency[s.expense_id]) }));
+  const balances = computeBalances(baseExpensesForBalances, baseSplitsForBalances, participantMembers.map((m) => m.id));
   const settle = settleUp(balances);
+
   const splitsByExpense = {};
   splits.forEach((s) => { (splitsByExpense[s.expense_id] = splitsByExpense[s.expense_id] || []).push(s); });
 
   const visibleExpenses = scope === 'mine'
     ? expenses.filter((e) => e.payer_member_id === currentMember?.id || (splitsByExpense[e.id] || []).some((s) => s.member_id === currentMember?.id))
     : expenses;
+
+  // Personal dashboard (unsettled, in base currency).
+  const me = currentMember;
+  const unsettledIds = new Set(expenses.filter((e) => !e.settled).map((e) => e.id));
+  const myPaid = expenses.filter((e) => !e.settled && e.payer_member_id === me?.id).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+  const myShare = splits.filter((s) => unsettledIds.has(s.expense_id) && s.member_id === me?.id).reduce((s, sp) => s + conv(sp.amount, expCurrency[sp.expense_id]), 0);
+  const myBalance = balances[me?.id] || 0;
 
   async function toggleSettled(exp) {
     try {
@@ -114,39 +175,60 @@ export default function GatheringExpenses() {
     await base44.entities.Expense.delete(exp.id);
     load();
   }
-  async function runConvert() {
-    if (!expenses.filter((e) => !e.settled).length) return;
-    setConvertLoading(true);
-    try {
-      const items = expenses.filter((e) => !e.settled).map((e) => ({ amount: e.amount, currency: e.currency || 'USD' }));
-      const res = await base44.functions.invoke('convertCurrency', { items, to: (convertTo || 'USD').toUpperCase() });
-      setConvertResult(res.data || res);
-    } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Conversion failed');
-    } finally {
-      setConvertLoading(false);
-    }
-  }
+
+  const presentCurrencies = [...new Set(expenses.map((e) => (e.currency || 'USD').toUpperCase()))];
+  const currencyOptions = [...new Set([...COMMON_CURRENCIES, ...presentCurrencies])];
 
   return (
     <div className="space-y-6">
       <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
 
-      {/* Currency converter */}
-      <section className="tt-card p-3.5 flex items-center gap-2 flex-wrap">
-        <Calculator className="w-4 h-4 text-terra-deep shrink-0" />
-        <span className="text-sm text-ink-deep/70">Unsettled total in</span>
-        <Input value={convertTo} onChange={(e) => setConvertTo(e.target.value.toUpperCase().slice(0, 3))} placeholder="EUR" className="w-20 h-9 bg-cream-pale border-ink-charcoal/20 text-ink-deep uppercase" />
-        <Button type="button" onClick={runConvert} disabled={convertLoading} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-9">
-          {convertLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
-          Convert
-        </Button>
-        {convertResult && (
-          <span className="text-sm font-semibold text-ink-deep">≈ {formatCurrency(convertResult.total, convertResult.to)}</span>
-        )}
+      {/* Personal dashboard + base currency */}
+      <section className="tt-card p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-terra-deep" />
+            <span className="text-sm font-semibold text-ink-deep">Your balance</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink-deep/50">in</span>
+            <Select value={baseCurrency} onValueChange={(v) => { setBaseCurrency(v); setBaseTouched(true); }}>
+              <SelectTrigger className="w-24 h-9 bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {currencyOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <p className="text-[0.6875rem] text-ink-deep/45 mt-2 flex items-center gap-1">
+          {ratesLoading ? 'Loading live rates…' :
+            ratesAvailable ? `Live rates as of ${ratesAsOf ? new Date(ratesAsOf).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'now'}` :
+            (<><AlertTriangle className="w-3 h-3" /> Exchange rates unavailable — showing original amounts.</>)}
+        </p>
+
+        <div className="grid grid-cols-3 gap-2.5 mt-3">
+          <div>
+            <p className="tt-label text-ink-deep/40">You paid</p>
+            <p className="font-display text-lg font-bold text-ink-deep truncate">{formatCurrency(myPaid, baseCurrency)}</p>
+          </div>
+          <div>
+            <p className="tt-label text-ink-deep/40">Your share</p>
+            <p className="font-display text-lg font-bold text-ink-deep truncate">{formatCurrency(myShare, baseCurrency)}</p>
+          </div>
+          <div>
+            <p className="tt-label text-ink-deep/40">Net</p>
+            <p className={`font-display text-lg font-bold truncate ${myBalance > 0.01 ? 'text-terra-deep' : myBalance < -0.01 ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
+              {myBalance > 0.01 ? '+' : ''}{formatCurrency(myBalance, baseCurrency)}
+            </p>
+          </div>
+        </div>
+        <p className="text-xs text-ink-deep/55 mt-2">
+          {myBalance > 0.01 ? `You are owed ${formatCurrency(myBalance, baseCurrency)}` : myBalance < -0.01 ? `You owe ${formatCurrency(Math.abs(myBalance), baseCurrency)}` : 'You are settled up.'}
+        </p>
       </section>
 
-      {/* Balances */}
+      {/* Running balances (all members) */}
       <section>
         <h3 className="tt-label text-foreground/50 mb-3">Running balances</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -160,7 +242,7 @@ export default function GatheringExpenses() {
                 <div className="min-w-0">
                   <p className="font-semibold text-ink-deep text-sm truncate">{m.full_name}</p>
                   <p className={`text-sm font-semibold ${positive ? 'text-terra-deep' : negative ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
-                    {positive ? 'is owed ' : negative ? 'owes ' : 'settled '}{formatCurrency(Math.abs(bal), expenses[0]?.currency || 'USD')}
+                    {positive ? 'is owed ' : negative ? 'owes ' : 'settled '}{formatCurrency(Math.abs(bal), baseCurrency)}
                   </p>
                 </div>
               </div>
@@ -169,7 +251,7 @@ export default function GatheringExpenses() {
         </div>
       </section>
 
-      {/* Settle up */}
+      {/* Settle up suggestions */}
       {settle.length > 0 && (
         <section>
           <h3 className="tt-label text-foreground/50 mb-3">Settle up suggestions</h3>
@@ -181,7 +263,7 @@ export default function GatheringExpenses() {
                 <ArrowRight className="w-4 h-4 text-terra-deep mx-1 shrink-0" />
                 <MemberAvatar member={memberById[t.to]} size="sm" />
                 <span className="text-sm text-ink-deep font-medium min-w-0 truncate">{memberById[t.to]?.full_name}</span>
-                <span className="ml-auto font-display text-base font-bold text-terra-deep shrink-0">{formatCurrency(t.amount, expenses[0]?.currency || 'USD')}</span>
+                <span className="ml-auto font-display text-base font-bold text-terra-deep shrink-0">{formatCurrency(t.amount, baseCurrency)}</span>
               </div>
             ))}
           </div>
@@ -216,6 +298,9 @@ export default function GatheringExpenses() {
                 onEdit={() => { setEditing(exp); setOpen(true); }}
                 onDelete={() => deleteExpense(exp)}
                 showImages={images}
+                baseCurrency={baseCurrency}
+                baseAmount={toBase(exp.amount, exp.currency)}
+                rate={toBase(1, exp.currency)}
               />
             ))}
           </div>

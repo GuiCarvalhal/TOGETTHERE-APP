@@ -198,3 +198,12 @@ export const EXPENSE_CATEGORIES = [
   { key: 'activities', label: 'Activities', icon: 'Compass', color: '#C8493A' },
   { key: 'other', label: 'Other', icon: 'Receipt', color: '#7a8290' },
 ];
+
+// Common currencies for selectors. Includes all currencies seen in imported
+// beta data (AUD, EUR, AED, USD, ...). Used by the expense form and the base
+// currency dashboard selector.
+export const COMMON_CURRENCIES = [
+  'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'AED', 'JPY', 'CHF', 'BRL', 'MXN',
+  'CNY', 'INR', 'NZD', 'SGD', 'HKD', 'SEK', 'NOK', 'DKK', 'PLN', 'ZAR',
+  'TRY', 'ILS', 'KRW', 'THB', 'IDR', 'PHP', 'MYR', 'CZK', 'HUF', 'RON',
+];

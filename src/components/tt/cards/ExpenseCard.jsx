@@ -9,7 +9,7 @@ const CAT_LABEL = { food: 'Food', lodging: 'Lodging', transport: 'Transport', ac
 
 // Compact expense card. Shows the receipt as a cover banner only when the page's
 // "images" toggle is on; otherwise the receipt is a small chip.
-export default function ExpenseCard({ exp, payer, splits, members, canEdit, onToggleSettled, onEdit, onDelete, showImages }) {
+export default function ExpenseCard({ exp, payer, splits, members, canEdit, onToggleSettled, onEdit, onDelete, showImages, baseCurrency, baseAmount, rate }) {
   const memberById = Object.fromEntries((members || []).map((m) => [m.id, m]));
   const catLabel = CAT_LABEL[exp.category] || 'Other';
   const receiptImg = showImages && exp.receipt && isImg(exp.receipt);
@@ -32,7 +32,12 @@ export default function ExpenseCard({ exp, payer, splits, members, canEdit, onTo
                 <h3 className="font-display text-base font-bold text-ink-deep leading-tight truncate">{exp.title}</h3>
                 <p className="text-xs text-ink-deep/55 mt-0.5">{payer?.full_name} · {formatDate(exp.date)}</p>
               </div>
-              <span className="font-display text-lg font-bold text-ink-deep shrink-0 whitespace-nowrap">{formatCurrency(exp.amount, exp.currency)}</span>
+              <div className="text-right shrink-0">
+                <span className="font-display text-lg font-bold text-ink-deep whitespace-nowrap">{formatCurrency(exp.amount, exp.currency)}</span>
+                {baseCurrency && exp.currency && baseAmount != null && exp.currency.toUpperCase() !== baseCurrency.toUpperCase() && (
+                  <p className="text-[0.6875rem] text-ink-deep/45 mt-0.5">≈ {formatCurrency(baseAmount, baseCurrency)}{rate != null ? ` · 1 ${exp.currency} = ${rate.toFixed(4)} ${baseCurrency}` : ''}</p>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className="px-1.5 py-0.5 rounded-full bg-cream-pale text-[0.625rem] font-semibold uppercase tracking-wide text-ink-deep/55 border border-ink-charcoal/10">{catLabel}</span>
