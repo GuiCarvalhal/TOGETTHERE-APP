@@ -34,6 +34,12 @@
     "description": {
       "type": "string"
     },
+    "whatsapp_url": {
+      "type": "string"
+    },
+    "music_url": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
       "enum": [
