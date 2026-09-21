@@ -16,7 +16,11 @@ const TABS = [
 export default function BottomTabBar({ gatheringId, role, onMore }) {
   const location = useLocation();
   const tabs = TABS.filter((t) => t.show(role));
-  const isActive = (path) => location.pathname.endsWith(`/${path}`);
+  // Active section = the 3rd path segment of /gathering/:id/:section (and
+  // /gathering/:id/journey/:itemId), so the Journey tab stays highlighted on
+  // a segment's detail route without false-matching ids that contain the word.
+  const section = location.pathname.split('/').filter(Boolean)[2];
+  const isActive = (path) => section === path;
 
   return (
     <nav
