@@ -3,7 +3,7 @@ import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { JOURNEY_TYPES, canEditJourneyItem, canAddJourney } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
 import { tzDateKey, formatDayHeader, startLocation } from '@/lib/formatPlaceTime';
 import { useTimezonesForPlaces } from '@/lib/usePlaceTimezone';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
@@ -16,15 +16,6 @@ import EmptyState from '@/components/tt/EmptyState';
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
 const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
-const TYPE_STYLE = {
-  flight: 'bg-sky-100 text-sky-700',
-  car: 'bg-terra/15 text-terra-deep',
-  train: 'bg-violet-100 text-violet-700',
-  hotel: 'bg-amber-100 text-amber-700',
-  activity: 'bg-emerald-100 text-emerald-700',
-  cruise: 'bg-teal-100 text-teal-700',
-  other: 'bg-cream-pale text-ink-deep/50',
-};
 
 function dayKey(d, tz) { return d ? tzDateKey(d, tz) : 'unscheduled'; }
 
@@ -50,18 +41,8 @@ export default function GatheringJourney() {
   useEffect(() => { load(); }, [gatheringId]);
   usePolling(() => load(true), 25000);
 
-  useEffect(() => {
-    if (canAddJourney(role)) {
-      setFab({ label: 'Add Segment', icon: Plus, onClick: () => { setEditing(null); setOpen(true); } });
-    }
-    return () => setFab(null);
-  }, [setFab, role]);
-
-  async function handleDelete(item) {
-    if (!confirm('Delete this segment?')) return;
-    await base44.entities.JourneyItem.delete(item.id);
-    load();
-  }
+  // No floating Add button on the timeline — it's a terminal rail node below.
+  useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
   const visibleItems = scope === 'mine'
@@ -74,6 +55,7 @@ export default function GatheringJourney() {
     (byDay[k] = byDay[k] || []).push(it);
   });
   const days = Object.keys(byDay).sort();
+  const canAdd = canAddJourney(role);
 
   if (loading) return (
     <div className="space-y-5">
@@ -81,23 +63,36 @@ export default function GatheringJourney() {
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-4 w-72" />
       </div>
-      {[0, 1].map((i) => (
-        <div key={i} className="space-y-3">
-          <div className="flex items-center gap-3 mb-2.5">
-            <Skeleton className="w-9 h-9 rounded-full" />
-            <div className="space-y-2"><Skeleton className="h-3 w-14" /><Skeleton className="h-5 w-36" /></div>
-          </div>
-          <div className="pl-5 border-l border-foreground/10 ml-5 space-y-2.5">
-            {[0, 1].map((j) => (
-              <div key={j} className="tt-card p-4 space-y-3">
-                <Skeleton className="h-4 w-1/4" tone="cream" />
-                <Skeleton className="h-3 w-2/3" tone="cream" />
-                <Skeleton className="h-3 w-1/2" tone="cream" />
+      <div className="relative">
+        <div className="absolute left-6 top-0 bottom-0 w-px bg-foreground/12" aria-hidden />
+        <div className="space-y-6">
+          {[0, 1].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 flex justify-center shrink-0">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                </div>
+                <div className="space-y-2"><Skeleton className="h-3 w-14" /><Skeleton className="h-5 w-36" /></div>
               </div>
-            ))}
-          </div>
+              <div className="space-y-3">
+                {[0, 1].map((j) => (
+                  <div key={j} className="flex gap-2">
+                    <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
+                      <Skeleton className="w-10 h-10 rounded-xl" />
+                      <Skeleton className="h-3 w-10 mt-1.5" />
+                    </div>
+                    <div className="flex-1 tt-card p-3 space-y-2">
+                      <Skeleton className="h-3 w-1/4" tone="cream" />
+                      <Skeleton className="h-4 w-2/3" tone="cream" />
+                      <Skeleton className="h-3 w-1/2" tone="cream" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   );
   if (error) return (
@@ -118,47 +113,64 @@ export default function GatheringJourney() {
           icon={Compass}
           title={scope === 'mine' ? 'No segments from you yet' : 'No segments yet'}
           body={scope === 'mine' ? 'Add your own flights, stays and activities to see them here.' : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together."}
-          action={canAddJourney(role) ? (
+          action={canAdd ? (
             <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
               <Plus className="w-4 h-4" /> Add the first segment
             </button>
           ) : undefined}
         />
       ) : (
-        <div className="space-y-5">
-          {days.map((day) => (
-            <div key={day}>
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className="w-9 h-9 rounded-full bg-terra/15 border border-terra/30 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-terra-coral" />
+        <div className="relative">
+          {/* Continuous left timeline rail */}
+          <div className="absolute left-6 top-0 bottom-0 w-px bg-foreground/12" aria-hidden />
+          <div className="space-y-6">
+            {days.map((day) => (
+              <div key={day} className="space-y-3">
+                {/* Day marker on the rail */}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 flex justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-terra/15 border-2 border-background flex items-center justify-center relative z-10">
+                      <Calendar className="w-4 h-4 text-terra-coral" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="tt-label text-terra-coral">{day === 'unscheduled' ? 'Unscheduled' : 'Day'}</p>
+                    <p className="font-display text-base text-foreground">{formatDayHeader(day)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="tt-label text-terra-coral">{day === 'unscheduled' ? 'Unscheduled' : 'Day'}</p>
-                  <p className="font-display text-base text-foreground">{day !== 'unscheduled' ? formatDayHeader(day) : 'No time set'}</p>
+                {/* Segment rows */}
+                <div className="space-y-3">
+                  {byDay[day].map((item) => (
+                    <JourneyCard
+                      key={item.id}
+                      item={item}
+                      typeLabel={TYPE_LABEL[item.type]}
+                      typeColor={TYPE_COLOR[item.type] || TYPE_COLOR.other}
+                      icon={ICONS[item.type] || MapPin}
+                      participants={(item.member_user_ids || []).map((uid) => memberById[uid]).filter(Boolean)}
+                      showImages={images}
+                      to={`/gathering/${gatheringId}/journey/${item.id}`}
+                    />
+                  ))}
                 </div>
-                <div className="flex-1 h-px bg-foreground/10 ml-2" />
               </div>
-              <div className="pl-5 border-l border-foreground/10 ml-5 space-y-2.5">
-                {byDay[day].map((item) => (
-                  <JourneyCard
-                    key={item.id}
-                    item={item}
-                    typeLabel={TYPE_LABEL[item.type]}
-                    typeStyle={TYPE_STYLE[item.type] || TYPE_STYLE.other}
-                    typeColor={TYPE_COLOR[item.type] || TYPE_COLOR.other}
-                    icon={ICONS[item.type] || MapPin}
-                    owner={memberById[item.owner_id]}
-                    participants={(item.member_user_ids || []).map((uid) => memberById[uid]).filter(Boolean)}
-                    canEdit={canEditJourneyItem(role, item, currentMember)}
-                    onEdit={() => { setEditing(item); setOpen(true); }}
-                    onDelete={() => handleDelete(item)}
-                    showImages={images}
-                    to={`/gathering/${gatheringId}/journey/${item.id}`}
-                  />
-                ))}
+            ))}
+          </div>
+
+          {/* Terminal add-segment node on the rail */}
+          {canAdd && (
+            <button
+              onClick={() => { setEditing(null); setOpen(true); }}
+              className="flex items-center gap-3 mt-4 min-h-[44px] group"
+            >
+              <div className="w-12 flex justify-center shrink-0">
+                <div className="w-10 h-10 rounded-full border-2 border-dashed border-terra/40 flex items-center justify-center group-hover:bg-terra/10 transition-colors relative z-10">
+                  <Plus className="w-4 h-4 text-terra" />
+                </div>
               </div>
-            </div>
-          ))}
+              <span className="text-sm font-semibold text-terra-deep group-hover:text-terra transition-colors">Add segment</span>
+            </button>
+          )}
         </div>
       )}
 
