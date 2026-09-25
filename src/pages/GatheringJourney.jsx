@@ -30,7 +30,7 @@ function itemParticipants(item, memberById) {
 }
 
 export default function GatheringJourney() {
-  const { gatheringId, members, currentMember, role, setFab } = useGathering();
+  const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
   const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -190,6 +190,7 @@ export default function GatheringJourney() {
       {open && (
         <JourneyItemForm
           gatheringId={gatheringId}
+          gatheringStartDate={gathering?.start_date}
           currentMember={currentMember}
           members={members}
           item={editing}

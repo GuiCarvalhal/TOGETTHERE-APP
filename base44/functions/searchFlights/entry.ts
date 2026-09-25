@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
 import { secrets } from 'base44:runtime';
 
 // Flight search via AeroDataBox on RapidAPI (RAPIDAPI_KEY). Two lookup modes,
@@ -24,7 +24,9 @@ import { secrets } from 'base44:runtime';
 
 const RAPID_HOST = 'aerodatabox.p.rapidapi.com';
 const CACHE_TTL_MS = 60_000; // 1 minute — protects against double-clicks / re-edits
+const AIRPORT_CACHE_TTL_MS = 300_000; // 5 minutes — airports rarely change
 const cache = new Map<string, { t: number; val: any }>();
+const airportCache = new Map<string, { t: number; val: any }>();
 
 function cached(key: string) {
   const e = cache.get(key);
@@ -34,6 +36,15 @@ function cached(key: string) {
 function setCache(key: string, val: any) {
   cache.set(key, { t: Date.now(), val });
   if (cache.size > 64) cache.clear(); // bound growth
+}
+function airportCached(key: string) {
+  const e = airportCache.get(key);
+  if (e && Date.now() - e.t < AIRPORT_CACHE_TTL_MS) return e.val;
+  return undefined;
+}
+function setAirportCache(key: string, val: any) {
+  airportCache.set(key, { t: Date.now(), val });
+  if (airportCache.size > 64) airportCache.clear();
 }
 
 function sleep(ms: number) {
@@ -150,24 +161,67 @@ async function fetchJson(key: string, url: string, label: string): Promise<any> 
   return { __error: 500 };
 }
 
+// Resolve an IATA code to AeroDataBox airport metadata (name, country, Olson
+// tz, coordinates) via the airport-by-IATA endpoint. Cached by IATA. Returns
+// null on any failure (caller falls back to nearest-airport).
+async function airportByIata(key: string, iata: string): Promise<any | null> {
+  const ck = `iata:${iata}`;
+  const cached = airportCached(ck);
+  if (cached !== undefined) return cached;
+  const url = `https://${RAPID_HOST}/airports/iata/${encodeURIComponent(iata)}`;
+  const r = await fetchJson(key, url, 'iata');
+  let val: any = null;
+  if (r.__ok && r.data?.iata) {
+    val = {
+      iata: r.data.iata,
+      name: r.data.shortName || r.data.name || '',
+      country: (r.data.countryCode || '').toUpperCase(),
+      tz: r.data.timeZone || '',
+      lat: r.data.location?.lat ?? null,
+      lon: r.data.location?.lon ?? null,
+    };
+  }
+  setAirportCache(ck, val);
+  return val;
+}
+
 // Resolve a Google Place lat/lng to the nearest airport's IATA + AeroDataBox
-// metadata (name, country, Olson tz, coordinates). Returns null on any failure
-// so the caller can surface a friendly error.
+// metadata (name, country, Olson tz, coordinates). Cached by rounded lat/lng.
+// Returns null on any failure so the caller can surface a friendly error.
 async function nearestAirport(key: string, lat: number, lng: number): Promise<any | null> {
+  const ck = `near:${lat.toFixed(3)},${lng.toFixed(3)}`;
+  const cached = airportCached(ck);
+  if (cached !== undefined) return cached;
   const url = `https://${RAPID_HOST}/airports/search/location?lat=${lat}&lon=${lng}&radiusKm=100&limit=5`;
   const r = await fetchJson(key, url, 'nearest');
-  if (!r.__ok) return null;
-  const items = r.data?.items || [];
-  if (!items.length) return null;
-  const a = items[0];
-  return {
-    iata: a.iata || '',
-    name: a.shortName || a.name || '',
-    country: (a.countryCode || '').toUpperCase(),
-    tz: a.timeZone || '',
-    lat: a.location?.lat ?? null,
-    lon: a.location?.lon ?? null,
-  };
+  let val: any = null;
+  if (r.__ok) {
+    const items = r.data?.items || [];
+    if (items.length) {
+      const a = items[0];
+      val = {
+        iata: a.iata || '',
+        name: a.shortName || a.name || '',
+        country: (a.countryCode || '').toUpperCase(),
+        tz: a.timeZone || '',
+        lat: a.location?.lat ?? null,
+        lon: a.location?.lon ?? null,
+      };
+    }
+  }
+  setAirportCache(ck, val);
+  return val;
+}
+
+// Resolve an airport: prefer an explicit IATA (when the frontend extracted one
+// from the Google Place name), validated via airportByIata; otherwise fall
+// back to nearest-airport by coordinates. Cached either way.
+async function resolveAirport(key: string, iata: string | undefined, lat: number, lng: number): Promise<any | null> {
+  if (iata && /^[A-Z]{3}$/.test(iata)) {
+    const byIata = await airportByIata(key, iata);
+    if (byIata) return byIata;
+  }
+  return nearestAirport(key, lat, lng);
 }
 
 // Query one 12h window of departures from an origin IATA, return mapped results.
@@ -235,14 +289,18 @@ export default async function (req) {
     const cachedVal = cached(cacheKey);
     if (cachedVal) return Response.json(cachedVal);
 
-    // All provider calls are sequential with ~1.3s spacing — the PRO plan
-    // enforces a per-second rate limit, so parallel calls 429.
-    const origin = await nearestAirport(key, ol, og);
+    // Optional IATA codes extracted from the Google Place name by the frontend;
+    // when present and valid they skip the nearest-airport call (still validated
+    // via airportByIata). All provider calls are sequential with ~1.3s spacing
+    // — the PRO plan enforces a per-second rate limit, so parallel calls 429.
+    const originIata = body.origin_iata ? String(body.origin_iata).trim().toUpperCase() : '';
+    const destIata = body.dest_iata ? String(body.dest_iata).trim().toUpperCase() : '';
+    const origin = await resolveAirport(key, originIata, ol, og);
     if (!origin?.iata) {
       return Response.json({ error: "Couldn't find a nearby airport for the origin. Pick a recognized airport." }, { status: 404 });
     }
     await sleep(1300);
-    const dest = await nearestAirport(key, dl, dg);
+    const dest = await resolveAirport(key, destIata, dl, dg);
     if (!dest?.iata) {
       return Response.json({ error: "Couldn't find a nearby airport for the destination. Pick a recognized airport." }, { status: 404 });
     }
@@ -254,6 +312,16 @@ export default async function (req) {
     await sleep(1300);
     const w2 = await departuresWindow(key, origin.iata, `${date}T12:00`, `${date}T23:59`);
     const all = dedupe([...w1, ...w2]);
+    // The departures endpoint omits the departure airport (it's implied by the
+    // queried origin), so fill origin fields from the resolved nearest airport.
+    for (const r of all) {
+      if (!r.dep_iata) {
+        r.dep_iata = origin.iata;
+        r.dep_name = origin.name;
+        r.dep_country = origin.country;
+        r.dep_tz = origin.tz;
+      }
+    }
     // Filter by destination IATA; sort by scheduled departure UTC.
     const results = all
       .filter((r) => r.arr_iata === dest.iata)

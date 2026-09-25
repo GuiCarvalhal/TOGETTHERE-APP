@@ -15,7 +15,8 @@ import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import ParticipantPicker from '@/components/journey/ParticipantPicker';
-import { Loader2, Upload, Plane } from 'lucide-react';
+import FlightEditor from '@/components/journey/FlightEditor';
+import { Loader2, Upload } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 const TYPE_META = {
@@ -28,7 +29,7 @@ const TYPE_META = {
   other: { fromTo: false, place: true },
 };
 
-export default function JourneyItemForm({ gatheringId, currentMember, members, item, initial, onClose, onSaved }) {
+export default function JourneyItemForm({ gatheringId, gatheringStartDate, currentMember, members, item, initial, onClose, onSaved }) {
   // Participant selection (attendee_user_ids). For a new item the creator is
   // included by default; for an edit we preselect the existing list, or the
   // creator for legacy items with an empty attendee list.
@@ -50,12 +51,12 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
     from_place: item?.from_place || null,
     to_place: item?.to_place || null,
     confirmation_number: item?.confirmation_number || initial?.confirmation_number || '',
+    booking_reference: item?.booking_reference || '',
     notes: item?.notes || initial?.notes || '',
     attachments: item?.attachments || initial?.attachments || [],
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [flightLoading, setFlightLoading] = useState(false);
 
   // Place-timezone awareness: the datetime inputs show the destination-local
   // clock time and save back to UTC interpreted in that timezone — so a 4:45 PM
@@ -118,43 +119,6 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
     }
   }
 
-  async function lookupFlight() {
-    const fn = (form.confirmation_number || '').trim();
-    if (!fn) {
-      toast({ title: 'Enter a flight number', description: 'Add a flight number like AA123 in the Confirmation # field, then tap Lookup.', variant: 'destructive' });
-      return;
-    }
-    setFlightLoading(true);
-    try {
-      const date = form.start_datetime ? form.start_datetime.slice(0, 10) : new Date().toISOString().slice(0, 10);
-      const res = await base44.functions.invoke('searchFlights', { flight_number: fn, date });
-      const data = res.data || res;
-      const f = data.flight;
-      if (!f) {
-        toast({ title: 'Flight not found', description: data.error || `Couldn't find ${fn} on that date. Check the number and date, then try again.`, variant: 'destructive' });
-        return;
-      }
-      // Mark times touched so the tz re-derive effect doesn't overwrite the
-      // flight's scheduled times once the airport tz resolves from from_place.
-      setStartTouched(true);
-      setEndTouched(true);
-      setForm((s) => ({
-        ...s,
-        title: s.title || `Flight ${f.number}${f.airline ? ' — ' + f.airline : ''}`,
-        location_from: s.location_from || f.from || '',
-        from_place: s.from_place || f.from_place || null,
-        location_to: s.location_to || f.to || '',
-        to_place: s.to_place || f.to_place || null,
-        start_datetime: s.start_datetime || f.departure || '',
-        end_datetime: s.end_datetime || f.arrival || '',
-      }));
-    } catch (e) {
-      toast({ title: 'Flight lookup failed', description: e.response?.data?.error || e.message || 'Something went wrong looking up the flight. You can still fill in the details manually.', variant: 'destructive' });
-    } finally {
-      setFlightLoading(false);
-    }
-  }
-
   async function handleSave(e) {
     e.preventDefault();
     if (!form.title.trim()) return;
@@ -173,6 +137,7 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
         ...(meta.fromTo ? { from_place: form.from_place || null, to_place: form.to_place || null } : {}),
         ...(meta.place ? { place: form.place || null } : {}),
         confirmation_number: form.confirmation_number,
+        booking_reference: form.booking_reference,
         notes: form.notes,
         attachments: form.attachments,
         attendee_user_ids: attendeeIds,
@@ -219,57 +184,58 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
               <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => { setEndTouched(true); setForm({ ...form, end_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
           </div>
-          {meta.fromTo && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-ink-deep">From</Label>
-                <PlaceAutocomplete
-                  value={form.location_from}
-                  onText={(v) => setForm((f) => ({ ...f, location_from: v, from_place: null }))}
-                  onSelect={(p) => setForm((f) => ({ ...f, from_place: p }))}
-                  placeholder={form.type === 'flight' ? 'Origin airport' : 'Pickup point'}
-                  types={form.type === 'flight' ? 'airport' : undefined}
-                  className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-ink-deep">To</Label>
-                <PlaceAutocomplete
-                  value={form.location_to}
-                  onText={(v) => setForm((f) => ({ ...f, location_to: v, to_place: null }))}
-                  onSelect={(p) => setForm((f) => ({ ...f, to_place: p }))}
-                  placeholder={form.type === 'flight' ? 'Destination airport' : 'Destination'}
-                  types={form.type === 'flight' ? 'airport' : undefined}
-                  className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
-                />
-              </div>
-            </div>
-          )}
-          {meta.place && (
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Location</Label>
-              <PlaceAutocomplete
-                value={form.location_name}
-                onText={(v) => setForm((f) => ({ ...f, location_name: v, place: null }))}
-                onSelect={(p) => setForm((f) => ({ ...f, place: p }))}
-                placeholder="Hotel Santa Caterina, Amalfi"
-                className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Confirmation #</Label>
-            <div className="flex gap-2">
-              <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-              {form.type === 'flight' && (
-                <Button type="button" variant="outline" onClick={lookupFlight} className="shrink-0 border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
-                  {flightLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plane className="w-4 h-4" />}
-                  <span className="hidden sm:inline">Lookup</span>
-                </Button>
+          {form.type === 'flight' ? (
+            <FlightEditor
+              form={form}
+              setForm={setForm}
+              setStartTouched={setStartTouched}
+              setEndTouched={setEndTouched}
+              gatheringStartDate={gatheringStartDate}
+            />
+          ) : (
+            <>
+              {meta.fromTo && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-ink-deep">From</Label>
+                    <PlaceAutocomplete
+                      value={form.location_from}
+                      onText={(v) => setForm((f) => ({ ...f, location_from: v, from_place: null }))}
+                      onSelect={(p) => setForm((f) => ({ ...f, from_place: p }))}
+                      placeholder="Pickup point"
+                      className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-ink-deep">To</Label>
+                    <PlaceAutocomplete
+                      value={form.location_to}
+                      onText={(v) => setForm((f) => ({ ...f, location_to: v, to_place: null }))}
+                      onSelect={(p) => setForm((f) => ({ ...f, to_place: p }))}
+                      placeholder="Destination"
+                      className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+                    />
+                  </div>
+                </div>
               )}
-            </div>
-            {form.type === 'flight' && <p className="text-xs text-ink-deep/50">Enter the flight number (e.g. AA123) and tap Lookup to auto-fill the route.</p>}
-          </div>
+              {meta.place && (
+                <div className="space-y-2">
+                  <Label className="text-ink-deep">Location</Label>
+                  <PlaceAutocomplete
+                    value={form.location_name}
+                    onText={(v) => setForm((f) => ({ ...f, location_name: v, place: null }))}
+                    onSelect={(p) => setForm((f) => ({ ...f, place: p }))}
+                    placeholder="Hotel Santa Caterina, Amalfi"
+                    className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label className="text-ink-deep">Confirmation #</Label>
+                <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              </div>
+            </>
+          )}
           <div className="space-y-2">
             <Label className="text-ink-deep">Notes</Label>
             <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
