@@ -6,11 +6,12 @@ import { useViewPrefs } from '@/hooks/useViewPrefs';
 import PageToolbar from '@/components/tt/PageToolbar';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
-import PlaceCard from '@/components/agent/PlaceCard';
+import AgentPlaceCard from '@/components/agent/AgentPlaceCard';
 import VibeCard from '@/components/agent/VibeCard';
 import GoodToKnowCard from '@/components/agent/GoodToKnowCard';
 import TaskChecklist from '@/components/agent/TaskChecklist';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
+import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays } from 'lucide-react';
 
 const CATS = [
@@ -32,9 +33,29 @@ function SectionHeader({ icon: Icon, title, count }) {
   );
 }
 
+// Loading skeleton matching the rendered layout: a brief-header card + a stack
+// of place-card skeletons on the same card surface/rhythm as Journey/Expenses.
+function AgentSkeleton() {
+  return (
+    <div className="space-y-5">
+      <Skeleton className="h-20 w-full" />
+      <div className="space-y-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="rounded-2xl border border-ink-charcoal/15 bg-card p-3 space-y-2 tt-shadow-float">
+            <div className="flex gap-2"><Skeleton className="h-4 w-16" tone="cream" /><Skeleton className="h-4 w-10" tone="cream" /></div>
+            <Skeleton className="h-4 w-2/3" tone="cream" />
+            <Skeleton className="h-3 w-full" tone="cream" />
+            <Skeleton className="h-8 w-32 mt-1" tone="cream" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function GatheringAgent() {
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
-  const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
+  const { scope, setScope } = useViewPrefs(gatheringId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -61,7 +82,8 @@ export default function GatheringAgent() {
     }
   }, [gatheringId, storeKey]);
 
-  // Load the last cached brief on mount (no API call); the user regenerates manually.
+  // Load the last cached brief on mount (no API call); the user regenerates
+  // manually from the sticky bar.
   useEffect(() => {
     if (isViewer) return;
     try {
@@ -70,10 +92,8 @@ export default function GatheringAgent() {
     } catch { /* ignore */ }
   }, [storeKey, isViewer]);
 
-  useEffect(() => {
-    if (!isViewer) setFab({ label: 'Regenerate', icon: Sparkles, onClick: generate });
-    return () => setFab(null);
-  }, [setFab, generate, isViewer]);
+  // Regenerate lives in the sticky PageToolbar (canonical button), not a FAB.
+  useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   const loadTasks = useCallback(async () => {
     setLoadingTasks(true);
@@ -126,150 +146,143 @@ export default function GatheringAgent() {
 
   const show = (key) => activeCat === 'all' || activeCat === key;
   const addPlace = (p) => setJourneyInitial({ type: 'activity', title: p.name, location_name: p.address });
+  const placePath = `/gathering/${gatheringId}/agent/place`;
+
+  const regenerateAction = (
+    <Button onClick={generate} disabled={loading} size="sm" className="shrink-0">
+      {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
+      <span className="hidden sm:inline">{data ? 'Regenerate' : 'Generate'}</span>
+      <span className="sm:hidden">{data ? 'Redo' : 'Go'}</span>
+    </Button>
+  );
+  const filterRow = data && phase !== 'ended' ? (
+    cats.map((c) => (
+      <button key={c.key} onClick={() => setCat(c.key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeCat === c.key ? 'bg-terra text-cream' : 'bg-foreground/5 text-foreground/70 hover:text-foreground border border-foreground/10'}`}>
+        {c.label}
+      </button>
+    ))
+  ) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages}>
-      <div className="space-y-4">
-      {/* Stage */}
-      <div className="tt-card p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-terra/15 border border-terra/30 flex items-center justify-center shrink-0">
-            <Sparkles className="w-5 h-5 text-terra-deep" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-display text-lg font-bold text-ink-deep">Personalized for your crew</h3>
-            <p className="text-sm text-ink-deep/60 mt-0.5 truncate">
-              {members.filter((m) => m.role !== 'viewer').length} participants · {gathering?.destinations?.join(', ') || 'your destination'}
-            </p>
-            {data && !loading && <p className="text-[0.625rem] text-ink-deep/40 mt-1">Updated {timeAgo(data.generatedAt)} ago</p>}
-          </div>
-          <button onClick={generate} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep disabled:opacity-60 shrink-0 text-sm">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {data ? 'Regenerate' : 'Generate'}
-          </button>
-        </div>
-      </div>
-
-      {/* Category filter */}
-      {data && phase !== 'ended' && (
-        <div className="flex gap-2 overflow-x-auto tt-no-scrollbar -mx-1 px-1 pb-1">
-          {cats.map((c) => (
-            <button key={c.key} onClick={() => setCat(c.key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeCat === c.key ? 'bg-terra text-cream' : 'tt-ink-panel text-ink-deep/70 hover:text-ink-deep'}`}>
-              {c.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {loading && !data && (
-        <div className="space-y-4">
-          <div className="tt-card p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-terra mx-auto mb-4" />
-            <p className="font-display text-xl text-ink-deep">Curating your trip…</p>
-            <p className="text-ink-deep/60 text-sm mt-1">Reading profiles, the journey timeline, and nearby places.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="tt-card p-6 text-center max-w-md mx-auto border-terra/30">
-          <Sparkles className="w-7 h-7 text-terra mx-auto mb-3" />
-          <p className="font-display text-xl mb-1 text-ink-deep">The concierge hit a snag</p>
-          <p className="text-ink-deep/60 text-sm mb-5">{error}</p>
-          <button onClick={generate} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
-            <Sparkles className="w-4 h-4" /> Try again
-          </button>
-        </div>
-      )}
-
-      {!loading && !data && !error && (
-        <EmptyState icon={Sparkles} title="Your AI concierge" body="Generate a personalized brief: group vibe, real nearby places to eat and explore, prep tasks, and the practical info you need — all tuned to your route and dates." />
-      )}
-
-      {data && phase === 'ended' && (
-        <div className="tt-card p-8 text-center max-w-md mx-auto">
-          <CalendarDays className="w-10 h-10 text-terra mx-auto mb-4" />
-          <p className="font-display text-2xl mb-2 text-ink-deep">This trip has ended</p>
-          <p className="text-ink-deep/60 text-sm">The concierge no longer generates new suggestions for past trips. Look back at your journey and expenses instead.</p>
-        </div>
-      )}
-
-      {data && phase !== 'ended' && (
-        <div className="space-y-5">
-          {showToday && show('today') && (
-            <section>
-              <SectionHeader icon={CalendarDays} title="Today's picks" />
-              <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
-                Fits the gaps in today's plan{data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : ''}.
+    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} action={regenerateAction} filterRow={filterRow}>
+      <div className="space-y-5">
+        {/* Brief header */}
+        <div className="tt-card p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-terra/15 border border-terra/30 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-terra-deep" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-display text-lg font-bold text-ink-deep">Personalized for your crew</h3>
+              <p className="text-sm text-ink-deep/60 mt-0.5 truncate">
+                {members.filter((m) => m.role !== 'viewer').length} participants · {gathering?.destinations?.join(', ') || 'your destination'}
               </p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {data.todaysPicks.map((p, i) => <PlaceCard key={i} place={p} onAdd={() => addPlace(p)} />)}
-              </div>
-            </section>
-          )}
-
-          {show('info') && data.vibe && <VibeCard vibe={data.vibe} />}
-
-          {show('eat') && data.whereToEat?.length > 0 && (
-            <section>
-              <SectionHeader icon={UtensilsCrossed} title="Where to eat" count={data.whereToEat.length} />
-              <div className="grid sm:grid-cols-2 gap-3">
-                {data.whereToEat.map((p, i) => <PlaceCard key={i} place={p} onAdd={() => addPlace(p)} />)}
-              </div>
-            </section>
-          )}
-
-          {show('do') && data.whatToDo?.length > 0 && (
-            <section>
-              <SectionHeader icon={Compass} title="What to do" count={data.whatToDo.length} />
-              <div className="grid sm:grid-cols-2 gap-3">
-                {data.whatToDo.map((p, i) => <PlaceCard key={i} place={p} onAdd={() => addPlace(p)} />)}
-              </div>
-            </section>
-          )}
-
-          {show('tasks') && (
-            <section className="space-y-3">
-              <div>
-                <SectionHeader icon={ClipboardList} title="Trip tasks" />
-                <TaskChecklist tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} loading={loadingTasks} />
-              </div>
-              {suggestedTasks.length > 0 && (
-                <div>
-                  <p className="tt-label text-ink-deep/45 mb-2">Suggested tasks</p>
-                  <div className="space-y-2">
-                    {suggestedTasks.map((t, i) => {
-                      const added = savedTaskTitles.has(t.text);
-                      return (
-                        <div key={i} className="tt-card p-3 flex items-center gap-2.5">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-ink-deep leading-snug">{t.text}</p>
-                            <span className="text-[0.625rem] text-ink-deep/45 capitalize">{t.category}</span>
-                          </div>
-                          {added ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] text-xs font-semibold shrink-0">
-                              <Check className="w-3.5 h-3.5" /> Added
-                            </span>
-                          ) : (
-                            <button onClick={() => createTask(t.text)} className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[36px] rounded-full bg-terra text-cream text-xs font-semibold hover:bg-terra-deep shrink-0">
-                              <Plus className="w-3.5 h-3.5" /> Add
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {show('info') && data.goodToKnow && <GoodToKnowCard goodToKnow={data.goodToKnow} rate={data.rate} />}
+              {data && !loading && <p className="text-[0.625rem] text-ink-deep/40 mt-1">Updated {timeAgo(data.generatedAt)} ago</p>}
+            </div>
+          </div>
         </div>
-      )}
+
+        {loading && !data && <AgentSkeleton />}
+
+        {error && (
+          <div className="tt-card p-6 text-center max-w-md mx-auto border-terra/30">
+            <Sparkles className="w-7 h-7 text-terra mx-auto mb-3" />
+            <p className="font-display text-xl mb-1 text-ink-deep">The concierge hit a snag</p>
+            <p className="text-ink-deep/60 text-sm mb-5">{error}</p>
+            <Button onClick={generate}><Sparkles /> Try again</Button>
+          </div>
+        )}
+
+        {!loading && !data && !error && (
+          <EmptyState
+            icon={Sparkles}
+            title="Your AI concierge"
+            body="Generate a personalized brief: group vibe, real nearby places to eat and explore, prep tasks, and the practical info you need — all tuned to your route and dates."
+            action={<Button onClick={generate}><Sparkles /> Generate brief</Button>}
+          />
+        )}
+
+        {data && phase === 'ended' && (
+          <div className="tt-card p-8 text-center max-w-md mx-auto">
+            <CalendarDays className="w-10 h-10 text-terra mx-auto mb-4" />
+            <p className="font-display text-2xl mb-2 text-ink-deep">This trip has ended</p>
+            <p className="text-ink-deep/60 text-sm">The concierge no longer generates new suggestions for past trips. Look back at your journey and expenses instead.</p>
+          </div>
+        )}
+
+        {data && phase !== 'ended' && (
+          <div className="space-y-5">
+            {showToday && show('today') && (
+              <section>
+                <SectionHeader icon={CalendarDays} title="Today's picks" />
+                <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
+                  Fits the gaps in today's plan{data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : ''}.
+                </p>
+                <div className="space-y-3">
+                  {data.todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Today" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} />)}
+                </div>
+              </section>
+            )}
+
+            {show('info') && data.vibe && <VibeCard vibe={data.vibe} />}
+
+            {show('eat') && data.whereToEat?.length > 0 && (
+              <section>
+                <SectionHeader icon={UtensilsCrossed} title="Where to eat" count={data.whereToEat.length} />
+                <div className="space-y-3">
+                  {data.whereToEat.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Eat" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} />)}
+                </div>
+              </section>
+            )}
+
+            {show('do') && data.whatToDo?.length > 0 && (
+              <section>
+                <SectionHeader icon={Compass} title="What to do" count={data.whatToDo.length} />
+                <div className="space-y-3">
+                  {data.whatToDo.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Do" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} />)}
+                </div>
+              </section>
+            )}
+
+            {show('tasks') && (
+              <section className="space-y-3">
+                <div>
+                  <SectionHeader icon={ClipboardList} title="Trip tasks" />
+                  <TaskChecklist tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} loading={loadingTasks} />
+                </div>
+                {suggestedTasks.length > 0 && (
+                  <div>
+                    <p className="tt-label text-ink-deep/45 mb-2">Suggested tasks</p>
+                    <div className="space-y-2">
+                      {suggestedTasks.map((t, i) => {
+                        const added = savedTaskTitles.has(t.text);
+                        return (
+                          <div key={i} className="tt-card p-3 flex items-center gap-2.5">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-ink-deep leading-snug">{t.text}</p>
+                              <span className="text-[0.625rem] text-ink-deep/45 capitalize">{t.category}</span>
+                            </div>
+                            {added ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] text-xs font-semibold shrink-0">
+                                <Check className="w-3.5 h-3.5" /> Added
+                              </span>
+                            ) : (
+                              <Button size="sm" onClick={() => createTask(t.text)} className="shrink-0">
+                                <Plus /> Add
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {show('info') && data.goodToKnow && <GoodToKnowCard goodToKnow={data.goodToKnow} rate={data.rate} />}
+          </div>
+        )}
       </div>
 
       {journeyInitial && (
