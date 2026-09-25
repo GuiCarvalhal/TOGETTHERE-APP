@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import MemberAvatar from '@/components/tt/MemberAvatar';
-import InterestsEditor from '@/components/profile/InterestsEditor';
+import ChipPicker from '@/components/profile/ChipPicker';
+import { INTERESTS, CUISINE } from '@/lib/profileOptions';
 import FamilyManager from '@/components/profile/FamilyManager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,14 +129,12 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
           <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="A few lines about you — your travel style, what you love…" rows={3} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep resize-none" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Interests &amp; preferences</Label>
-          <InterestsEditor value={form.interests} onChange={(v) => setForm({ ...form, interests: v })} />
-          <p className="text-[0.625rem] text-ink-deep/45">Cuisine, activities, accessibility, vibe — anything that helps the Agent tailor picks for you.</p>
+          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Interests</Label>
+          <ChipPicker catalog={INTERESTS} value={form.interests} onChange={(v) => setForm({ ...form, interests: v })} max={8} emptyHint="Tap a few — hiking, beaches, museums… these shape your Agent picks." />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><UtensilsCrossed className="w-3 h-3" /> Dietary &amp; restrictions</Label>
-          <InterestsEditor value={form.dietary_preferences} onChange={(v) => setForm({ ...form, dietary_preferences: v })} />
-          <p className="text-[0.625rem] text-ink-deep/45">Vegetarian, gluten-free, nut allergy, halal…</p>
+          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><UtensilsCrossed className="w-3 h-3" /> Cuisine preferences</Label>
+          <ChipPicker catalog={CUISINE} value={form.dietary_preferences} onChange={(v) => setForm({ ...form, dietary_preferences: v })} max={10} emptyHint="Tap the cuisines you love — italian, sushi, thai… plus vegan or vegetarian." />
         </div>
       </div>
 

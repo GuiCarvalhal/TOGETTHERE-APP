@@ -1,6 +1,8 @@
 import React from 'react';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import GroupsInCommon from '@/components/profile/GroupsInCommon';
+import ProfileChips from '@/components/profile/ProfileChips';
+import { INTERESTS, CUISINE } from '@/lib/profileOptions';
 import { MapPin, Globe, Lock, Users, UtensilsCrossed, Sparkles, Mail } from 'lucide-react';
 
 // Read-only view of another user's UNIVERSAL profile. The page looks the same
@@ -41,27 +43,19 @@ export default function OtherProfileView({ data, gatheringId, userId, onChanged 
             </div>
           )}
 
-          {/* Interests & preferences */}
+          {/* Interests */}
           {user.interests?.length > 0 && (
             <div className="tt-card p-5">
-              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Interests &amp; preferences</p>
-              <div className="flex flex-wrap gap-1.5">
-                {user.interests.map((t) => (
-                  <span key={t} className="px-2.5 py-1 rounded-full bg-cream-pale text-xs text-ink-deep/75 border border-ink-charcoal/10">{t}</span>
-                ))}
-              </div>
+              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Interests</p>
+              <ProfileChips values={user.interests} catalog={INTERESTS} />
             </div>
           )}
 
-          {/* Dietary & restrictions */}
+          {/* Cuisine preferences */}
           {user.dietary_preferences?.length > 0 && (
             <div className="tt-card p-5">
-              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><UtensilsCrossed className="w-3.5 h-3.5" /> Dietary &amp; restrictions</p>
-              <div className="flex flex-wrap gap-1.5">
-                {user.dietary_preferences.map((t) => (
-                  <span key={t} className="px-2.5 py-1 rounded-full bg-cream-pale text-xs text-ink-deep/75 border border-ink-charcoal/10">{t}</span>
-                ))}
-              </div>
+              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><UtensilsCrossed className="w-3.5 h-3.5" /> Cuisine preferences</p>
+              <ProfileChips values={user.dietary_preferences} catalog={CUISINE} />
             </div>
           )}
 
