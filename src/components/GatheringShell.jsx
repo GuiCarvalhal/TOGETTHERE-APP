@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
-import { formatDateRange } from '@/lib/gatheringHelpers';
+import { gatheringDateStatus, formatGatheringRange, gatheringDestinations, destinationMapsUrl } from '@/lib/gatheringDates';
 import BottomTabBar from '@/components/tt/BottomTabBar';
 import MoreMenu from '@/components/tt/MoreMenu';
 import TopBar from '@/components/tt/TopBar';
@@ -9,7 +9,7 @@ import NotificationOptInBanner from '@/components/tt/NotificationOptInBanner';
 import { useAuth } from '@/lib/AuthContext';
 import { useOneSignal } from '@/lib/useOneSignal';
 import { Image } from '@/components/ui/image';
-import { Loader2, CalendarDays, MapPin, Plus, MessageCircle, Music } from 'lucide-react';
+import { Loader2, CalendarDays, MapPin, Plus, MessageCircle, Music, ExternalLink } from 'lucide-react';
 
 function FabButton() {
   const { fab } = useGathering();
@@ -28,7 +28,7 @@ function FabButton() {
 
 function ShellInner() {
   const { id } = useParams();
-  const { gathering, role, loading, error } = useGathering();
+  const { gathering, role, loading, error, currentMember, journeyItems } = useGathering();
   const { user } = useAuth();
   const onesignal = useOneSignal(user?.id);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -55,7 +55,12 @@ function ShellInner() {
     return <Navigate to={`/gathering/${id}/journey`} replace />;
   }
 
-  const statusLabel = gathering.status === 'active' ? 'Active Trip' : gathering.status === 'completed' ? 'Completed' : 'In Planning';
+  // Date label + range are derived from the gathering's journey items (the
+  // current user's items first, falling back to all), never from a typed date.
+  const uid = currentMember?.user_id;
+  const dateStatus = gatheringDateStatus(gathering, journeyItems, uid);
+  const dateRange = formatGatheringRange(gathering, journeyItems, uid);
+  const dests = gatheringDestinations(gathering);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -88,14 +93,30 @@ function ShellInner() {
         )}
         <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6">
           <div>
-            <span className="tt-label text-white/80 block mb-1">{statusLabel}</span>
+            <span className="tt-label text-white/80 block mb-1">{dateStatus.label}</span>
             <h1 className="font-display text-2xl sm:text-4xl font-bold text-white tt-text-balance leading-tight">{gathering.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-white/85 text-xs sm:text-sm">
-              {gathering.start_date && (
-                <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{formatDateRange(gathering.start_date, gathering.end_date)}</span>
+              {dateRange && (
+                <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{dateRange}</span>
               )}
-              {gathering.destinations?.length > 0 && (
-                <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{gathering.destinations.join(' · ')}</span>
+              {dests.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 flex-wrap">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  {dests.map((d, i) => {
+                    const url = destinationMapsUrl(d);
+                    const sep = i < dests.length - 1 ? ' · ' : '';
+                    return (
+                      <span key={i} className="inline-flex items-center gap-0.5">
+                        {url ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="underline decoration-white/40 hover:decoration-white inline-flex items-center gap-0.5">
+                            {d.name}<ExternalLink className="w-3 h-3 opacity-70" />
+                          </a>
+                        ) : d.name}
+                        {sep}
+                      </span>
+                    );
+                  })}
+                </span>
               )}
             </div>
           </div>

@@ -10,11 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Plus, CalendarDays, Compass, ArrowRight, Route, Receipt, Sparkles } from 'lucide-react';
-import { getGatheringStatus } from '@/lib/gatheringHelpers';
+import { gatheringDateStatus, gatheringSortKey, formatGatheringRange } from '@/lib/gatheringDates';
 import EmptyState from '@/components/tt/EmptyState';
 import ThemeToggle from '@/components/tt/ThemeToggle';
 import Skeleton from '@/components/tt/Skeleton';
 import GatheringCard from '@/components/tt/cards/GatheringCard';
+import DestinationPicker from '@/components/tt/DestinationPicker';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -28,15 +29,19 @@ const FILTERS = [
   { key: 'past', label: 'Past' },
 ];
 
+const EMPTY_FORM = { name: '', description: '', destination_places: [], cover_image: SAMPLE_COVERS[0] };
+
 export default function Home() {
   const [memberships, setMemberships] = useState([]);
   const [gatherings, setGatherings] = useState([]);
   const [previews, setPreviews] = useState({});
+  const [itemsByGathering, setItemsByGathering] = useState({});
+  const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', start_date: '', end_date: '', destinations: '', cover_image: SAMPLE_COVERS[0] });
+  const [form, setForm] = useState(EMPTY_FORM);
 
   async function load() {
     setLoading(true);
@@ -46,6 +51,8 @@ export default function Home() {
       setGatherings(data.gatherings || []);
       setMemberships(data.memberships || []);
       setPreviews(data.previews || {});
+      setItemsByGathering(data.itemsByGathering || {});
+      setUserId(data.userId || null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -63,13 +70,11 @@ export default function Home() {
       await base44.functions.invoke('createGathering', {
         name: form.name.trim(),
         description: form.description,
-        start_date: form.start_date || undefined,
-        end_date: form.end_date || undefined,
-        destinations: form.destinations.split(',').map((s) => s.trim()).filter(Boolean),
+        destination_places: form.destination_places,
         cover_image: form.cover_image,
       });
       setOpen(false);
-      setForm({ name: '', description: '', start_date: '', end_date: '', destinations: '', cover_image: SAMPLE_COVERS[0] });
+      setForm(EMPTY_FORM);
       await load();
     } catch (err) {
       console.error(err);
@@ -81,20 +86,26 @@ export default function Home() {
 
   const roleOf = (gid) => memberships.find((m) => m.gathering_id === gid)?.role;
 
+  // Derive each gathering's date status + sort key + range from its journey
+  // items (current user's items first, falling back to all). Ordering: ongoing
+  // first, then future (nearest first), then past (most recent first), TBD last.
   const now = new Date();
-  const annotated = gatherings.map((g) => ({ g, status: getGatheringStatus(g, now) }));
+  const annotated = gatherings.map((g) => {
+    const items = itemsByGathering[g.id] || [];
+    const status = gatheringDateStatus(g, items, userId, now);
+    const sortKey = gatheringSortKey(g, items, userId, now);
+    const dateRange = formatGatheringRange(g, items, userId);
+    return { g, status, sortKey, dateRange };
+  });
   const filtered = annotated.filter(({ status }) => {
     if (filter === 'all') return true;
-    if (filter === 'upcoming') return status.key !== 'completed';
-    if (filter === 'past') return status.key === 'completed';
+    if (filter === 'upcoming') return status.key === 'ongoing' || status.key === 'upcoming';
+    if (filter === 'past') return status.key === 'past';
     return true;
   });
-  const sorted = [...filtered].sort((a, b) => {
-    if (a.status.key === 'completed' && b.status.key === 'completed') {
-      return new Date(b.g.end_date || b.g.start_date || 0) - new Date(a.g.end_date || a.g.start_date || 0);
-    }
-    return new Date(a.g.start_date || '9999-12-31') - new Date(b.g.start_date || '9999-12-31');
-  });
+  const sorted = [...filtered].sort((a, b) =>
+    a.sortKey.bucket - b.sortKey.bucket || a.sortKey.ts - b.sortKey.ts
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -169,11 +180,12 @@ export default function Home() {
           />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sorted.map(({ g, status }) => (
+            {sorted.map(({ g, status, dateRange }) => (
               <GatheringCard
                 key={g.id}
                 gathering={g}
-                status={status}
+                dateLabel={status.label}
+                dateRange={dateRange}
                 role={roleOf(g.id)}
                 people={previews[g.id] || []}
                 to={`/gathering/${g.id}/journey`}
@@ -214,26 +226,21 @@ export default function Home() {
         <DialogContent className="tt-card bg-card text-card-foreground rounded-[1.5rem] p-0 max-w-lg">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="font-display text-2xl font-bold text-ink-deep">New gathering</DialogTitle>
-            <DialogDescription className="text-ink-deep/60">A trip or event to coordinate with your crew.</DialogDescription>
+            <DialogDescription className="text-ink-deep/60">A trip or event to coordinate with your crew. Dates come from your itinerary — add segments after creating.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate} className="px-6 pb-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="g-name" className="text-ink-deep">Name</Label>
               <Input id="g-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Amalfi Coast Reunion '25" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="g-start" className="text-ink-deep">Start</Label>
-                <Input id="g-start" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="g-end" className="text-ink-deep">End</Label>
-                <Input id="g-end" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-              </div>
-            </div>
             <div className="space-y-2">
-              <Label htmlFor="g-dest" className="text-ink-deep">Destinations <span className="text-ink-deep/40 font-normal">(comma separated)</span></Label>
-              <Input id="g-dest" value={form.destinations} onChange={(e) => setForm({ ...form, destinations: e.target.value })} placeholder="Amalfi, Positano, Ravello" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              <Label className="text-ink-deep">Destinations</Label>
+              <DestinationPicker
+                places={form.destination_places}
+                onChange={(places) => setForm({ ...form, destination_places: places })}
+                placeholder="Search a destination on Google Maps"
+              />
+              <p className="text-xs text-ink-deep/50">Pick real places so we can link them to Google Maps. You can add more later.</p>
             </div>
             <div className="space-y-2">
               <Label className="text-ink-deep">Cover image</Label>

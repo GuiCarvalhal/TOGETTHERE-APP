@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { PRIVACY_MODES, formatDateRange } from '@/lib/gatheringHelpers';
+import { PRIVACY_MODES } from '@/lib/gatheringHelpers';
+import { gatheringDestinations } from '@/lib/gatheringDates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { Image } from '@/components/ui/image';
 import { Loader2, Save, Link2, Copy, Check, UserCheck, UserX, Lock, Globe, ShieldCheck, Eye, Search } from 'lucide-react';
+import DestinationPicker from '@/components/tt/DestinationPicker';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -33,14 +32,16 @@ export default function GatheringSettings() {
 
   useEffect(() => {
     if (gathering) {
+      // Prefer structured destination_places; fall back to legacy free-text
+      // strings as { name } entries so the owner still sees & can manage them.
+      const places = Array.isArray(gathering.destination_places) && gathering.destination_places.length
+        ? gathering.destination_places
+        : (gathering.destinations || []).map((s) => ({ name: s }));
       setForm({
         name: gathering.name || '',
         cover_image: gathering.cover_image || '',
-        start_date: gathering.start_date || '',
-        end_date: gathering.end_date || '',
-        destinations: (gathering.destinations || []).join(', '),
+        destination_places: places,
         description: gathering.description || '',
-        status: gathering.status || 'planning',
         privacy_mode: gathering.privacy_mode || 'invite',
       });
     }
@@ -86,11 +87,8 @@ export default function GatheringSettings() {
         fields: {
           name: form.name.trim(),
           cover_image: form.cover_image,
-          start_date: form.start_date || undefined,
-          end_date: form.end_date || undefined,
-          destinations: form.destinations.split(',').map((s) => s.trim()).filter(Boolean),
+          destination_places: form.destination_places,
           description: form.description,
-          status: form.status,
           privacy_mode: form.privacy_mode,
         },
       });
@@ -119,7 +117,7 @@ export default function GatheringSettings() {
   }
 
   async function searchPhotos() {
-    const q = photoQuery.trim() || (gathering?.destinations || [])[0] || gathering?.name || '';
+    const q = photoQuery.trim() || gatheringDestinations(gathering)[0]?.name || gathering?.name || '';
     if (!q) return;
     setPhotoLoading(true);
     try {
@@ -139,7 +137,7 @@ export default function GatheringSettings() {
     <div className="space-y-8 max-w-3xl">
       <div>
         <h2 className="font-display text-3xl font-bold">Settings</h2>
-        <p className="text-cream/60 text-sm mt-1">Tune the details, who can join, and how people get in.</p>
+        <p className="text-muted-foreground text-sm mt-1">Tune the details, who can join, and how people get in.</p>
       </div>
 
       {/* Join & sharing */}
@@ -238,30 +236,14 @@ export default function GatheringSettings() {
           <Label className="text-ink-deep">Name</Label>
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Start date</Label>
-            <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-ink-deep">End date</Label>
-            <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-          </div>
-        </div>
         <div className="space-y-2">
-          <Label className="text-ink-deep">Destinations <span className="text-ink-deep/40 font-normal">(comma separated)</span></Label>
-          <Input value={form.destinations} onChange={(e) => setForm({ ...form, destinations: e.target.value })} placeholder="Amalfi, Positano, Ravello" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-ink-deep">Status</Label>
-          <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-            <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label className="text-ink-deep">Destinations</Label>
+          <DestinationPicker
+            places={form.destination_places}
+            onChange={(places) => setForm({ ...form, destination_places: places })}
+            placeholder="Search a destination on Google Maps"
+          />
+          <p className="text-xs text-ink-deep/50">Pick real places so we can link them to Google Maps. Trip dates are derived from your itinerary segments.</p>
         </div>
         <div className="space-y-2">
           <Label className="text-ink-deep">Description</Label>
@@ -278,7 +260,7 @@ export default function GatheringSettings() {
             ))}
           </div>
           <div className="flex gap-2 mt-2">
-            <Input value={photoQuery} onChange={(e) => setPhotoQuery(e.target.value)} placeholder={`Search Pexels (e.g. ${(gathering?.destinations || [])[0] || 'Amalfi'})`} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPhotos(); } }} />
+            <Input value={photoQuery} onChange={(e) => setPhotoQuery(e.target.value)} placeholder={`Search Pexels (e.g. ${gatheringDestinations(gathering)[0]?.name || 'Amalfi'})`} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPhotos(); } }} />
             <Button type="button" variant="outline" onClick={searchPhotos} className="shrink-0 border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
               {photoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             </Button>

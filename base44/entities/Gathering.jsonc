@@ -10,17 +10,44 @@
     },
     "start_date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "Legacy stored date. No longer collected in the UI \u2014 a gathering's range is derived from its journey items. Kept for backwards compatibility with existing records."
     },
     "end_date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "Legacy stored date. No longer collected in the UI \u2014 a gathering's range is derived from its journey items. Kept for backwards compatibility with existing records."
     },
     "destinations": {
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "Legacy free-text destination strings. Kept for backwards compatibility; new gatherings use destination_places."
+    },
+    "destination_places": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Structured Google Places destinations picked via autocomplete. Each entry carries place_id / name / address / lat / lng so the UI can render an external Open-in-Google-Maps link."
     },
     "privacy_mode": {
       "type": "string",
@@ -47,7 +74,8 @@
         "active",
         "completed"
       ],
-      "default": "planning"
+      "default": "planning",
+      "description": "Deprecated: the status concept is dead. The column is kept so existing records don't break, but nothing in the UI reads or writes it \u2014 ordering/labels are derived from journey-item dates."
     },
     "owner_user_id": {
       "type": "string"

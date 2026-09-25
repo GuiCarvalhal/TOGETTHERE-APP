@@ -6,15 +6,16 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
-    const { name, description, start_date, end_date, destinations, cover_image } = body;
+    const { name, description, destination_places, cover_image } = body;
     if (!name) return Response.json({ error: 'name required' }, { status: 400 });
 
+    // Dates are no longer collected at create time — a gathering's range is
+    // derived from its journey items. destination_places holds structured
+    // Google Places picks (place_id / name / address / lat / lng).
     const gathering = await base44.asServiceRole.entities.Gathering.create({
       name,
       description: description || '',
-      start_date: start_date || undefined,
-      end_date: end_date || undefined,
-      destinations: destinations || [],
+      destination_places: Array.isArray(destination_places) ? destination_places : [],
       cover_image: cover_image || '',
       privacy_mode: 'invite',
       status: 'planning',

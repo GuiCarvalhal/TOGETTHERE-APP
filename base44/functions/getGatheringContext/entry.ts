@@ -10,9 +10,10 @@ export default async function(req) {
     const gatheringId = body.gathering_id;
     if (!gatheringId) return Response.json({ error: 'gathering_id required' }, { status: 400 });
 
-    const [gathering, members] = await Promise.all([
+    const [gathering, members, journeyItemsRaw] = await Promise.all([
       base44.asServiceRole.entities.Gathering.get(gatheringId),
       base44.asServiceRole.entities.Member.filter({ gathering_id: gatheringId }),
+      base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gatheringId }),
     ]);
     let me = matchMyMember(members, user);
     if (!me) return Response.json({ error: 'Not a member of this gathering' }, { status: 403 });
@@ -73,11 +74,20 @@ export default async function(req) {
       };
     });
 
+    // Minimal journey items so the gathering header can derive the date range
+    // (earliest..latest across the current user's items, falling back to all).
+    const journeyItems = (journeyItemsRaw || []).map((it) => ({
+      start_datetime: it.start_datetime || null,
+      end_datetime: it.end_datetime || null,
+      owner_id: it.owner_id || null,
+      attendee_user_ids: it.attendee_user_ids || [],
+    }));
+
     let joinRequests = [];
     if (me.role === 'owner') {
       joinRequests = await base44.asServiceRole.entities.JoinRequest.filter({ gathering_id: gatheringId, status: 'pending' }) || [];
     }
-    return Response.json({ gathering, currentMember: me, members: masked, joinRequests });
+    return Response.json({ gathering, currentMember: me, members: masked, joinRequests, journeyItems });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

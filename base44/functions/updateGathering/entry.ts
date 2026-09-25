@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember } from '../../shared/gatheringAcl.ts';
 
-const WHITELIST = ['name', 'cover_image', 'start_date', 'end_date', 'destinations', 'description', 'privacy_mode', 'status'];
+const WHITELIST = ['name', 'cover_image', 'start_date', 'end_date', 'destinations', 'destination_places', 'description', 'privacy_mode', 'status'];
 const PRIVACY_MODES = ['open', 'invite', 'approval'];
 const STATUSES = ['planning', 'active', 'completed'];
 
@@ -31,6 +31,9 @@ export default async function(req) {
     }
     if (allowed.destinations && !Array.isArray(allowed.destinations)) {
       return Response.json({ error: 'destinations must be an array' }, { status: 400 });
+    }
+    if (allowed.destination_places && !Array.isArray(allowed.destination_places)) {
+      return Response.json({ error: 'destination_places must be an array' }, { status: 400 });
     }
     const updated = await base44.asServiceRole.entities.Gathering.update(gathering_id, allowed);
     return Response.json({ gathering: updated });

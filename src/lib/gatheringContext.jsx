@@ -11,6 +11,10 @@ export function GatheringProvider({ gatheringId, children }) {
   const [error, setError] = useState(null);
   const [fab, setFab] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
+  // Minimal journey items for the gathering, used to derive the gathering's
+  // date range in the header. The Journey page fetches its own full items
+  // (with polling); this is just the header's derivation source.
+  const [journeyItems, setJourneyItems] = useState([]);
 
   const load = useCallback(async (silent) => {
     if (!gatheringId) return;
@@ -22,6 +26,7 @@ export function GatheringProvider({ gatheringId, children }) {
       setMembers(data.members || []);
       setCurrentMember(data.currentMember || null);
       setJoinRequests(data.joinRequests || []);
+      setJourneyItems(data.journeyItems || []);
     } catch (e) {
       if (!silent) setError(e);
     } finally {
@@ -49,6 +54,7 @@ export function GatheringProvider({ gatheringId, children }) {
     setFab,
     joinRequests,
     setJoinRequests,
+    journeyItems,
   };
 
   return <GatheringCtx.Provider value={value}>{children}</GatheringCtx.Provider>;
