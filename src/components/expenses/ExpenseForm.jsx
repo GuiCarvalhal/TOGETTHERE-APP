@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
@@ -39,6 +39,25 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [familyMap, setFamilyMap] = useState({});
+  const participantUids = participants.map((m) => m.user_id).filter(Boolean).join('|');
+  useEffect(() => {
+    const uids = participantUids.split('|').filter(Boolean);
+    if (!uids.length) return;
+    let active = true;
+    base44.functions.invoke('getFamiliesForUsers', { user_ids: uids })
+      .then((res) => {
+        if (!active) return;
+        const data = res.data || res;
+        const map = {};
+        (data.families || []).forEach((f) => {
+          (f.member_user_ids || []).forEach((uid) => { map[uid] = f.name; });
+          if (f.owner_user_id) map[f.owner_user_id] = f.name;
+        });
+        setFamilyMap(map);
+      }).catch(() => {});
+    return () => { active = false; };
+  }, [participantUids]);
 
   const total = Number(form.amount) || 0;
   const splitAmounts = computeSplitAmounts(form.split_method, total, form.selected, form.inputs);
@@ -169,6 +188,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
             currency={form.currency}
             onToggleMember={toggleMember}
             onSetInput={setInput}
+            familyMap={familyMap}
           />
           <p className={`text-xs ${balanced ? 'text-ink-deep/50' : 'text-terra-deep'}`}>
             {balanced ? `Splits sum to ${formatCurrency(total, form.currency)}` : `Splits sum to ${formatCurrency(sumSplits, form.currency)} — adjust to match ${formatCurrency(total, form.currency)}`}

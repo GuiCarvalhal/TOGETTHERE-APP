@@ -60,6 +60,16 @@ export default async function(req) {
       }));
     }
 
+    // The target's families (for self, or full view of others) — used by the
+    // profile UI and by Expenses split grouping.
+    let families = [];
+    if (isSelf || visibility === 'full') {
+      const allFams = await base44.asServiceRole.entities.Family.list().catch(() => []);
+      families = (allFams || [])
+        .filter((f) => f.owner_user_id === user_id || (f.member_user_ids || []).includes(user_id))
+        .map((f) => ({ id: f.id, name: f.name, member_user_ids: f.member_user_ids || [], owner_user_id: f.owner_user_id }));
+    }
+
     const full = visibility === 'full';
     const safeUser = {
       full_name: targetUser?.full_name || targetMember?.full_name || 'Member',
@@ -69,6 +79,7 @@ export default async function(req) {
       home_currency: full ? (targetUser?.home_currency || null) : null,
       bio: full ? (targetUser?.bio || null) : null,
       interests: full ? ((targetUser?.interests?.length ? targetUser.interests : (targetMember?.interests || []))) : [],
+      dietary_preferences: full ? ((targetUser?.dietary_preferences?.length ? targetUser.dietary_preferences : (targetMember?.dietary_preferences || []))) : [],
     };
     const safeMember = targetMember ? {
       role: targetMember.role,
@@ -85,6 +96,7 @@ export default async function(req) {
       relationship: isSelf ? null : { myLevel, theirLevel, trust },
       visibility,
       groupsInCommon,
+      families,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

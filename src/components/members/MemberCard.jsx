@@ -16,7 +16,7 @@ export default function MemberCard({
 }) {
   const navigate = useNavigate();
   const avatarSize = showImages ? 'lg' : 'md';
-  const profileUrl = member.user_id ? `/gathering/${gatheringId}/profile/${member.user_id}` : null;
+  const profileUrl = member.user_id ? `/profile/${member.user_id}?g=${gatheringId}` : null;
   return (
     <div
       onClick={() => profileUrl && navigate(profileUrl)}

@@ -1,0 +1,46 @@
+{
+  "name": "Family",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Family / household name (e.g. \"The Okafor Family\")"
+    },
+    "owner_user_id": {
+      "type": "string",
+      "description": "User who created and manages this family"
+    },
+    "member_user_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User ids belonging to this family. Used by Expenses split grouping; never merges user records."
+    }
+  },
+  "required": [
+    "name",
+    "owner_user_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.owner_user_id": "{{user.id}}"
+        },
+        {
+          "data.member_user_ids": "{{user.id}}"
+        }
+      ]
+    },
+    "create": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_user_id": "{{user.id}}"
+    }
+  }
+}

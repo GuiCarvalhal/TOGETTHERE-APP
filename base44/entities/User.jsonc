@@ -27,6 +27,13 @@
       },
       "description": "Interests & preferences tags \u2014 global, helps the Agent tailor recommendations"
     },
+    "dietary_preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Dietary needs & restrictions (e.g. vegetarian, gluten-free, nut allergy) \u2014 universal profile field, consumed by the Agent"
+    },
     "photo": {
       "type": "string",
       "description": "Avatar photo URL \u2014 global profile field"

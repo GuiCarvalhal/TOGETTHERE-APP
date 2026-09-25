@@ -125,7 +125,7 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
         <DrawerTitle className="sr-only">Settings &amp; account</DrawerTitle>
         <div className="overflow-y-auto flex-1 min-h-0">
           {/* Profile header — links to the full Profile page */}
-          <button onClick={() => { onOpenChange(false); navigate(`/gathering/${gatheringId}/profile/${user?.id}`); }} className="w-full px-4 pt-3 pb-4 flex items-center gap-3 hover:bg-foreground/5 transition-colors text-left">
+          <button onClick={() => { onOpenChange(false); navigate(`/profile/${user?.id}?g=${gatheringId}`); }} className="w-full px-4 pt-3 pb-4 flex items-center gap-3 hover:bg-foreground/5 transition-colors text-left">
             <MemberAvatar member={currentMember || user} size="lg" />
             <div className="min-w-0 flex-1">
               <p className="font-display text-lg font-bold text-foreground truncate">{currentMember?.full_name || user?.full_name || 'Member'}</p>

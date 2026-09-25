@@ -4,27 +4,22 @@ import { Input } from '@/components/ui/input';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { formatCurrency } from '@/lib/gatheringHelpers';
 
-function surname(name) {
-  return (String(name || '').trim().split(/\s+/).pop() || '').toLowerCase();
-}
-
-// Groups members into families by shared surname (a heuristic — there is no
-// explicit family field on the Member entity). Singletons render as plain
-// rows; 2+ members with the same surname render under a family header with a
-// "select all" toggle. Individuals always keep their own checkbox + input, so
-// a family can be selected together and then overridden per person. No records
+// Groups split participants by family membership when a `familyMap` is provided
+// ({ [userId]: familyName }); otherwise each member is a singleton. Members of
+// the same family render under a family header with a "select all" toggle;
+// individuals always keep their own checkbox + input for overrides. No records
 // are merged — each member still receives an independent split entry.
-export function groupFamilies(members) {
+export function groupFamilies(members, familyMap = {}) {
   const groups = {};
   members.forEach((m) => {
-    const s = surname(m.full_name) || m.id;
-    (groups[s] = groups[s] || []).push(m);
+    const key = familyMap[m.user_id] || m.id;
+    (groups[key] = groups[key] || []).push(m);
   });
   return Object.values(groups).sort((a, b) => (a[0].full_name || '').localeCompare(b[0].full_name || ''));
 }
 
-export default function FamilySplitTable({ participants, selected, inputs, splitMethod, splitAmounts, currency, onToggleMember, onSetInput }) {
-  const families = groupFamilies(participants);
+export default function FamilySplitTable({ participants, selected, inputs, splitMethod, splitAmounts, currency, onToggleMember, onSetInput, familyMap = {} }) {
+  const families = groupFamilies(participants, familyMap);
 
   const toggleFamily = (fam) => {
     const allIn = fam.every((m) => selected.includes(m.id));
@@ -36,7 +31,7 @@ export default function FamilySplitTable({ participants, selected, inputs, split
       {families.map((fam) => {
         const isFamily = fam.length > 1;
         const allIn = fam.every((m) => selected.includes(m.id));
-        const familyName = isFamily ? `${fam[0].full_name?.split(' ').pop()} family` : '';
+        const familyName = isFamily ? (familyMap[fam[0].user_id] || `${fam[0].full_name?.split(' ').pop()} group`) : '';
         return (
           <div key={fam[0].id} className={isFamily ? 'rounded-lg bg-cream/70 p-2 border border-ink-charcoal/10' : ''}>
             {isFamily && (

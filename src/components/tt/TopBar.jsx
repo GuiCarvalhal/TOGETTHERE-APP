@@ -21,7 +21,7 @@ export default function TopBar({ gatheringId }) {
         </Link>
         <div className="flex items-center gap-1">
           <ActivityBell gatheringId={gatheringId} />
-          <Link to={`/gathering/${gatheringId}/profile/${user?.id}`} aria-label="Open your profile" className="rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]">
+          <Link to={`/profile/${user?.id}?g=${gatheringId}`} aria-label="Open your profile" className="rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]">
             <MemberAvatar member={{ photo, full_name: label }} size="sm" />
           </Link>
         </div>

@@ -21,6 +21,7 @@ import ExpenseStatement from '@/pages/ExpenseStatement';
 import GatheringMembers from '@/pages/GatheringMembers';
 import GatheringSettings from '@/pages/GatheringSettings';
 import Profile from '@/pages/Profile';
+import ProfileRedirect from '@/components/ProfileRedirect';
 import JoinGathering from '@/pages/JoinGathering';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
             <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
               <Route path="/" element={<Home />} />
               <Route path="/join/:gatheringId" element={<JoinGathering />} />
+              <Route path="/profile/:userId" element={<Profile />} />
               <Route path="/gathering/:id" element={<GatheringShell />}>
                 <Route index element={<Navigate to="journey" replace />} />
                 <Route path="agent" element={<GatheringAgent />} />
@@ -47,7 +49,7 @@ function App() {
                 <Route path="expenses/statement/:memberId" element={<ExpenseStatement />} />
                 <Route path="members" element={<GatheringMembers />} />
                 <Route path="settings" element={<GatheringSettings />} />
-                <Route path="profile/:userId" element={<Profile />} />
+                <Route path="profile/:userId" element={<ProfileRedirect />} />
               </Route>
             </Route>
             <Route path="*" element={<PageNotFound />} />
