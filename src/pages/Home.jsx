@@ -9,7 +9,7 @@ import { Image } from '@/components/ui/image';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, CalendarDays, Compass, ArrowRight, Route, Receipt, Sparkles } from 'lucide-react';
+import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, formatGatheringRange } from '@/lib/gatheringDates';
 import EmptyState from '@/components/tt/EmptyState';
 import ThemeToggle from '@/components/tt/ThemeToggle';
@@ -195,29 +195,26 @@ export default function Home() {
         )}
       </section>
 
-      {/* Why TOGETTHERE — condensed, at the bottom */}
+      {/* Three pillars — horizontal, icon + headline only, each links to how-it-works */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           {[
-            { icon: Route, title: 'A living itinerary', body: "Flights, stays and activities on one shared timeline." },
-            { icon: Receipt, title: 'Fair splits, sorted', body: 'Track shared costs and see exactly who owes whom.' },
-            { icon: Sparkles, title: 'An AI concierge', body: "Daily picks tailored to your crew and where you'll be." },
+            { icon: Route, title: 'A living itinerary' },
+            { icon: Receipt, title: 'Fair splits, sorted' },
+            { icon: Sparkles, title: 'An AI concierge' },
           ].map((f) => (
-            <div key={f.title} className="tt-ink-panel p-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-8 h-8 rounded-lg bg-terra/15 border border-terra/25 flex items-center justify-center">
-                  <f.icon className="w-4 h-4 text-terra-coral" />
-                </div>
-                <p className="font-display text-sm font-bold text-foreground">{f.title}</p>
+            <Link
+              key={f.title}
+              to="/how-it-works"
+              aria-label={f.title}
+              className="tt-ink-panel p-3 flex flex-col items-center text-center gap-2 rounded-xl hover:bg-foreground/5 active:scale-[0.98] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
+            >
+              <div className="w-9 h-9 rounded-lg bg-terra/15 border border-terra/25 flex items-center justify-center shrink-0">
+                <f.icon className="w-4 h-4 text-terra-coral" />
               </div>
-              <p className="text-muted-foreground text-xs leading-relaxed">{f.body}</p>
-            </div>
+              <p className="font-display text-xs font-bold text-foreground leading-tight">{f.title}</p>
+            </Link>
           ))}
-        </div>
-        <div className="mt-6 text-center">
-          <Button asChild className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-            <Link to="/how-it-works">See how it works <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
-          </Button>
         </div>
       </section>
 
