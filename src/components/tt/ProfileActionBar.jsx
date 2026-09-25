@@ -15,10 +15,10 @@ export default function ProfileActionBar({ onBack, isOwner, editing, onEdit, onS
     <StickyBar>
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-sm font-semibold text-foreground hover:bg-foreground/5 transition-colors"
+        aria-label="Back"
+        className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-terra text-cream hover:bg-terra-deep transition-colors shrink-0"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span>Back</span>
       </button>
 
       {isOwner && (
