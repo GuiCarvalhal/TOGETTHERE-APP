@@ -156,6 +156,33 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     }
   }
 
+  const optionalFields = (
+    <>
+      <div className="space-y-2">
+        <Label className="text-ink-deep">Notes</Label>
+        <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+      </div>
+      <div className="space-y-2">
+        <Label className="text-ink-deep">Attachments</Label>
+        <div className="flex flex-wrap gap-2">
+          {form.attachments.map((url, i) => (
+            <AttachmentChip key={url + i} url={url} onRemove={() => setForm((f) => ({ ...f, attachments: f.attachments.filter((_, idx) => idx !== i) }))} />
+          ))}
+          <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
+            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            Upload
+            <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])} />
+          </label>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-ink-deep">Who's joining</Label>
+        <ParticipantPicker members={members} selected={attendeeIds} onToggle={toggleAttendee} currentUserId={currentMember?.user_id} />
+        <p className="text-xs text-ink-deep/50">Only gathering members can be added. You're included by default.</p>
+      </div>
+    </>
+  );
+
   return (
     <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={item ? 'Edit segment' : 'Add segment'}>
       <form onSubmit={handleSave} className="space-y-4">
@@ -170,20 +197,6 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="j-title" className="text-ink-deep">Title</Label>
-            <Input id="j-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Flight to Naples" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="j-start" className="text-ink-deep">Start</Label>
-              <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => { setStartTouched(true); setForm({ ...form, start_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="j-end" className="text-ink-deep">End</Label>
-              <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => { setEndTouched(true); setForm({ ...form, end_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-            </div>
-          </div>
           {form.type === 'flight' ? (
             <FlightEditor
               form={form}
@@ -191,9 +204,24 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
               setStartTouched={setStartTouched}
               setEndTouched={setEndTouched}
               gatheringStartDate={gatheringStartDate}
+              optionalFields={optionalFields}
             />
           ) : (
             <>
+              <div className="space-y-2">
+                <Label htmlFor="j-title" className="text-ink-deep">Title</Label>
+                <Input id="j-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Flight to Naples" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="j-start" className="text-ink-deep">Start</Label>
+                  <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => { setStartTouched(true); setForm({ ...form, start_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="j-end" className="text-ink-deep">End</Label>
+                  <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => { setEndTouched(true); setForm({ ...form, end_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+                </div>
+              </div>
               {meta.fromTo && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
@@ -234,30 +262,10 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
                 <Label className="text-ink-deep">Confirmation #</Label>
                 <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
               </div>
+              {optionalFields}
             </>
           )}
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Notes</Label>
-            <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Attachments</Label>
-            <div className="flex flex-wrap gap-2">
-              {form.attachments.map((url, i) => (
-                <AttachmentChip key={url + i} url={url} onRemove={() => setForm((f) => ({ ...f, attachments: f.attachments.filter((_, idx) => idx !== i) }))} />
-              ))}
-              <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
-                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                Upload
-                <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])} />
-              </label>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Who's joining</Label>
-            <ParticipantPicker members={members} selected={attendeeIds} onToggle={toggleAttendee} currentUserId={currentMember?.user_id} />
-            <p className="text-xs text-ink-deep/50">Only gathering members can be added. You're included by default.</p>
-          </div>
+
           <DialogFooter className="pt-2 gap-2">
             <Button type="button" variant="ghost" onClick={onClose} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
             <Button type="submit" disabled={saving} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
