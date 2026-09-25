@@ -12,20 +12,20 @@ import { usePlacePhoto } from '@/lib/usePlacePhoto';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
-// Timeline journey segment row. The left rail column (type icon + start time
-// with tz abbreviation) stays separate from the card content and aligns to
-// the vertical timeline rail. Every type shares this one skeleton.
+// Timeline journey segment row. The left rail column (icon medallion + start
+// time) is kept separate from the card and aligns to the vertical rail. Both
+// the medallion and the time block carry a fully opaque page-surface
+// background (bg-background, no alpha) so the rail line never shows through
+// them — it reads as clean segments between nodes, in light and dark mode.
 //
-// Images ON  → the selected image (attachment or cached Google Places photo)
-//   becomes a full-card cover with a dark gradient scrim so all text is
-//   readable; no small thumbnail.
+// The card body starts with the metadata line (no item-type label line — the
+// rail icon already conveys the type), then the title, then timing, then the
+// actual participants of this item (attendee_user_ids, or the creator as a
+// fallback, never all gathering members).
+//
+// Images ON  → selected image as a full-card cover with a dark gradient scrim.
 // Images OFF → a clean white card with no image.
-//
-// Times render in each place's precise IANA timezone (departure airport tz for
-// the start, arrival airport tz for the end on flights), never a guessed
-// offset. Start time, end time when available, and a computed duration are
-// shown for timed items; all-day items show an all-day/date state instead.
-export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, participants, showImages, to }) {
+export default function JourneyCard({ item, typeColor, icon: Icon, participants, showImages, to }) {
   const navigate = useNavigate();
   const startTz = usePlaceTimezone(startLocation(item));
   const endTz = usePlaceTimezone(endLocation(item));
@@ -51,6 +51,9 @@ export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, pa
   const metaText = onCover ? 'text-white/80' : 'text-ink-deep/50';
   const dividerClass = onCover ? 'border-white/20' : 'border-ink-charcoal/10';
 
+  const hasParticipants = participants?.length > 0;
+  const hasAttachments = (item.attachments || []).length > 0;
+
   return (
     <div
       className="flex gap-2 items-stretch cursor-pointer rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
@@ -59,22 +62,23 @@ export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, pa
       onClick={open}
       onKeyDown={to ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}
     >
-      {/* Left rail column: type icon + start time (kept separate from card) */}
+      {/* Left rail column: icon medallion + start time. Both have an opaque
+          page-surface background so the rail line is interrupted by them. */}
       <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center relative z-10 border-2 border-background"
-          style={{ background: `${typeColor}1A`, color: typeColor }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center relative z-10 bg-background border-2"
+          style={{ color: typeColor, borderColor: typeColor }}
         >
           <Icon className="w-5 h-5" strokeWidth={2} />
         </div>
         {allDay ? (
-          <div className="mt-1.5 text-center leading-tight">
-            <p className="text-[0.625rem] font-bold text-ink-deep/55 whitespace-nowrap">All day</p>
+          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded">
+            <p className="text-[0.625rem] font-bold text-foreground/70 whitespace-nowrap">All day</p>
           </div>
         ) : timePart ? (
-          <div className="mt-1.5 text-center leading-tight">
-            <p className="text-xs font-bold text-ink-deep whitespace-nowrap">{timePart}</p>
-            {abbr && <p className="text-[0.625rem] text-ink-deep/45 mt-0.5">{abbr}</p>}
+          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded">
+            <p className="text-xs font-bold text-foreground whitespace-nowrap">{timePart}</p>
+            {abbr && <p className="text-[0.625rem] text-foreground/45 mt-0.5">{abbr}</p>}
           </div>
         ) : null}
       </div>
@@ -88,21 +92,12 @@ export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, pa
           </>
         )}
         <div className="relative p-3 min-h-[68px] flex flex-col">
-          {/* Category label (kept) + chevron. No redundant raw type / empty placeholder. */}
-          <div className="flex items-center gap-2">
-            {typeLabel && (
-              <span className="tt-label whitespace-nowrap" style={{ color: onCover ? '#fff' : typeColor }}>{typeLabel}</span>
-            )}
-            {!onCover && item.confirmation_number && (
-              <span className="text-[0.625rem] text-ink-deep/40 truncate">#{item.confirmation_number}</span>
-            )}
-            <ChevronRight className="w-4 h-4 ml-auto shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
-          </div>
+          <ChevronRight className="absolute top-3 right-3 w-4 h-4 shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
 
-          {/* Metadata line above the title */}
-          {meta && <p className={`text-[0.6875rem] mt-0.5 truncate ${metaText}`}>{meta}</p>}
+          {/* Metadata line — the first line of the card (no item-type label) */}
+          {meta && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{meta}</p>}
 
-          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 ${mainText}`}>{item.title}</h3>
+          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{item.title}</h3>
 
           {/* Timing: start → end · duration, in local tz; all-day state otherwise */}
           <div className={`flex items-center gap-1.5 mt-1 text-xs flex-wrap ${subText}`}>
@@ -124,25 +119,29 @@ export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, pa
             )}
           </div>
 
-          {(participants?.length > 0 || (item.attachments || []).length > 0) && (
-            <div className={`flex items-center gap-2 mt-2 pt-2 border-t ${dividerClass}`}>
-              {participants?.length > 0 && (
-                <div className="flex items-center min-w-0">
-                  {participants.slice(0, 4).map((m, i) => (
-                    <div key={m.id} className={`rounded-full ring-2 ${onCover ? 'ring-white/90' : 'ring-card'}`} style={{ marginLeft: i === 0 ? 0 : '-0.5rem' }}>
-                      <MemberAvatar member={m} size="xs" />
-                    </div>
-                  ))}
-                  {participants.length > 4 && <span className={`text-[0.625rem] ml-1.5 ${subText}`}>+{participants.length - 4}</span>}
-                </div>
-              )}
-              {(item.attachments || []).length > 0 && (
-                <span className={`inline-flex items-center gap-1 text-[0.625rem] px-1.5 py-0.5 rounded-full ${onCover ? 'bg-white/15 text-white' : 'bg-cream-pale text-ink-deep/50 border border-ink-charcoal/10'}`}>
-                  <Paperclip className="w-3 h-3" />{(item.attachments || []).length}
-                </span>
-              )}
-            </div>
-          )}
+          {/* Actual participants of this item + attachments. Never falls back
+              to all gathering members — shows the creator when no one opted in,
+              or an honest "No one joined yet" when even the creator isn't
+              resolvable. +N reflects real participants only. */}
+          <div className={`flex items-center gap-2 mt-2 pt-2 border-t ${dividerClass}`}>
+            {hasParticipants ? (
+              <div className="flex items-center min-w-0">
+                {participants.slice(0, 4).map((m, i) => (
+                  <div key={m.id} className={`rounded-full ring-2 ${onCover ? 'ring-white/90' : 'ring-card'}`} style={{ marginLeft: i === 0 ? 0 : '-0.5rem' }}>
+                    <MemberAvatar member={m} size="xs" />
+                  </div>
+                ))}
+                {participants.length > 4 && <span className={`text-[0.625rem] ml-1.5 ${subText}`}>+{participants.length - 4}</span>}
+              </div>
+            ) : (
+              <span className={`text-xs italic ${subText}`}>No one joined yet</span>
+            )}
+            {hasAttachments && (
+              <span className={`inline-flex items-center gap-1 text-[0.625rem] px-1.5 py-0.5 rounded-full ml-auto ${onCover ? 'bg-white/15 text-white' : 'bg-cream-pale text-ink-deep/50 border border-ink-charcoal/10'}`}>
+                <Paperclip className="w-3 h-3" />{item.attachments.length}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -19,6 +19,16 @@ const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color])
 
 function dayKey(d, tz) { return d ? tzDateKey(d, tz) : 'unscheduled'; }
 
+// Per-item participants: the opt-in attendee_user_ids, or — when no one has
+// opted in (e.g. legacy items with empty attendee lists) — just the creator.
+// Never falls back to member_user_ids (the ACL list of all gathering members).
+function itemParticipants(item, memberById) {
+  const ids = (item.attendee_user_ids || []).length
+    ? item.attendee_user_ids
+    : (item.owner_id ? [item.owner_id] : []);
+  return ids.map((uid) => memberById[uid]).filter(Boolean);
+}
+
 export default function GatheringJourney() {
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
   const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
@@ -136,7 +146,7 @@ export default function GatheringJourney() {
                 {/* Day marker on the rail */}
                 <div className="flex items-center gap-3">
                   <div className="w-12 flex justify-center shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-terra/15 border-2 border-background flex items-center justify-center relative z-10">
+                    <div className="w-10 h-10 rounded-full bg-background border-2 border-terra-coral flex items-center justify-center relative z-10">
                       <Calendar className="w-4 h-4 text-terra-coral" />
                     </div>
                   </div>
@@ -154,7 +164,7 @@ export default function GatheringJourney() {
                       typeLabel={TYPE_LABEL[item.type]}
                       typeColor={TYPE_COLOR[item.type] || TYPE_COLOR.other}
                       icon={ICONS[item.type] || MapPin}
-                      participants={(item.member_user_ids || []).map((uid) => memberById[uid]).filter(Boolean)}
+                      participants={itemParticipants(item, memberById)}
                       showImages={images}
                       to={`/gathering/${gatheringId}/journey/${item.id}`}
                     />
