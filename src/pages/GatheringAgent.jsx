@@ -128,9 +128,8 @@ export default function GatheringAgent() {
   const addPlace = (p) => setJourneyInitial({ type: 'activity', title: p.name, location_name: p.address });
 
   return (
-    <div className="space-y-4">
-      <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
-
+    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages}>
+      <div className="space-y-4">
       {/* Stage */}
       <div className="tt-card p-4">
         <div className="flex items-start gap-3">
@@ -271,6 +270,7 @@ export default function GatheringAgent() {
           {show('info') && data.goodToKnow && <GoodToKnowCard goodToKnow={data.goodToKnow} rate={data.rate} />}
         </div>
       )}
+      </div>
 
       {journeyInitial && (
         <JourneyItemForm
@@ -281,6 +281,6 @@ export default function GatheringAgent() {
           onSaved={() => setJourneyInitial(null)}
         />
       )}
-    </div>
+    </PageToolbar>
   );
 }

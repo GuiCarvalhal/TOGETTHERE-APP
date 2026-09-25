@@ -135,9 +135,7 @@ export default function GatheringJourney() {
   );
 
   return (
-    <div className="space-y-5">
-      <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd} />
-
+    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd}>
       {visibleItems.length === 0 ? (
         <EmptyState
           icon={Compass}
@@ -199,6 +197,6 @@ export default function GatheringJourney() {
           onSaved={load}
         />
       )}
-    </div>
+    </PageToolbar>
   );
 }

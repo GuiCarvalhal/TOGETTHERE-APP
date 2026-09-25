@@ -75,9 +75,8 @@ export default function GatheringExpenses() {
   }
 
   return (
-    <div className="space-y-5">
-      <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} />
-
+    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false}>
+      <div className="space-y-5">
       {/* Compact personal dashboard */}
       <section className="tt-card p-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -172,6 +171,7 @@ export default function GatheringExpenses() {
         )}
       </section>
 
+      </div>
       {open && (
         <ExpenseForm
           gatheringId={gatheringId}
@@ -183,6 +183,6 @@ export default function GatheringExpenses() {
           onSaved={d.reload}
         />
       )}
-    </div>
+    </PageToolbar>
   );
 }

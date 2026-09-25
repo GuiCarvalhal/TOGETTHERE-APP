@@ -88,9 +88,7 @@ export default function GatheringMembers() {
   const visibleMembers = scope === 'mine' ? members.filter((m) => m.id === currentMember?.id) : members;
 
   return (
-    <div className="space-y-5">
-      <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
-
+    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages}>
       {visibleMembers.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -157,6 +155,6 @@ export default function GatheringMembers() {
           </DialogFooter>
         </form>
       </FormSheet>
-    </div>
+    </PageToolbar>
   );
 }
