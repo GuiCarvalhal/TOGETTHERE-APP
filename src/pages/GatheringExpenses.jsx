@@ -5,13 +5,58 @@ import { useExpensesData } from '@/hooks/useExpensesData';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { canSeeExpenses, canAddExpense, formatCurrency } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
-import ExpenseCard from '@/components/tt/cards/ExpenseCard';
+import ExpenseTimelineCard from '@/components/tt/cards/ExpenseTimelineCard';
 import PageToolbar from '@/components/tt/PageToolbar';
+import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { Button } from '@/components/ui/button';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, ChevronRight, Scale, FileText } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
+
+// Journey-style timeline skeleton: dashboard + nav placeholders, then the rail
+// with day markers and rows (medallion + amount block + card) so loading reads
+// the same as the Journey page.
+function ExpenseTimelineSkeleton() {
+  return (
+    <div className="space-y-5">
+      <Skeleton className="h-28 w-full" />
+      <div className="grid sm:grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => <Skeleton key={i} className="h-20" />)}
+      </div>
+      <div className="relative">
+        <div className="absolute left-6 top-0 bottom-0 w-px bg-foreground/12" aria-hidden />
+        <div className="space-y-6">
+          {[0, 1].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 flex justify-center shrink-0">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                </div>
+                <div className="space-y-2"><Skeleton className="h-3 w-14" /><Skeleton className="h-5 w-36" /></div>
+              </div>
+              <div className="space-y-3">
+                {[0, 1].map((j) => (
+                  <div key={j} className="flex gap-2">
+                    <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
+                      <Skeleton className="w-10 h-10 rounded-xl" />
+                      <Skeleton className="h-3 w-10 mt-1.5" />
+                    </div>
+                    <div className="flex-1 tt-card p-3 space-y-2">
+                      <Skeleton className="h-3 w-1/4" tone="cream" />
+                      <Skeleton className="h-4 w-2/3" tone="cream" />
+                      <Skeleton className="h-3 w-1/2" tone="cream" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function GatheringExpenses() {
   const d = useExpensesData();
@@ -20,12 +65,9 @@ export default function GatheringExpenses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  useEffect(() => {
-    if (canAddExpense(role)) {
-      setFab({ label: 'Add Expense', icon: Plus, onClick: () => { setEditing(null); setOpen(true); } });
-    }
-    return () => setFab(null);
-  }, [setFab, role]);
+  // No floating Add button — the sticky PageToolbar Add button is the single
+  // entry point, matching the Journey page.
+  useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   if (!canSeeExpenses(role)) {
     return (
@@ -36,16 +78,7 @@ export default function GatheringExpenses() {
       </div>
     );
   }
-  if (d.loading) return (
-    <div className="space-y-5">
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-28 w-full" />
-      <div className="grid sm:grid-cols-3 gap-3">
-        {[0, 1, 2].map((i) => <Skeleton key={i} className="h-20" />)}
-      </div>
-      {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24" />)}
-    </div>
-  );
+  if (d.loading) return <ExpenseTimelineSkeleton />;
   if (d.error) return (
     <div className="tt-card p-10 text-center max-w-md mx-auto">
       <ReceiptIcon className="w-10 h-10 text-terra mx-auto mb-4" />
@@ -55,7 +88,7 @@ export default function GatheringExpenses() {
     </div>
   );
 
-  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, toBase, conv, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
+  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, conv, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
 
   const visibleExpenses = scope === 'mine'
     ? expenses.filter((e) => e.payer_member_id === currentMember?.id || (splitsByExpense[e.id] || []).some((s) => s.member_id === currentMember?.id))
@@ -68,6 +101,23 @@ export default function GatheringExpenses() {
   const myPaid = expenses.filter((e) => !e.settled && e.payer_member_id === me?.id).reduce((s, e) => s + conv(e.amount, e.currency), 0);
   const myShare = splits.filter((s) => unsettledIds.has(s.expense_id) && s.member_id === me?.id).reduce((s, sp) => s + conv(sp.amount, d.expCurrency[sp.expense_id]), 0);
 
+  // Chronological ascending + day grouping, mirroring the Journey timeline.
+  // Expense dates are date-only (YYYY-MM-DD), so lexical sort == chronological.
+  const sorted = [...visibleExpenses].sort((a, b) => new Date(a.date || a.created_date) - new Date(b.date || b.created_date));
+  const byDay = {};
+  sorted.forEach((e) => {
+    const k = e.date || 'unscheduled';
+    (byDay[k] = byDay[k] || []).push(e);
+  });
+  const days = Object.keys(byDay).sort();
+
+  // Rail display amount/currency: converted to the gathering's display currency
+  // when live rates are available, otherwise the original amount + currency
+  // (matching the dashboard's "showing original amounts" fallback).
+  const railDisplay = (exp) => ratesAvailable
+    ? { amount: conv(exp.amount, exp.currency), currency: baseCurrency }
+    : { amount: exp.amount, currency: exp.currency || 'USD' };
+
   async function deleteExpense(exp) {
     if (!confirm('Delete this expense?')) return;
     await base44.entities.ExpenseSplit.deleteMany({ expense_id: exp.id });
@@ -76,7 +126,13 @@ export default function GatheringExpenses() {
   }
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false}>
+    <PageToolbar
+      scope={scope}
+      setScope={setScope}
+      showImagesToggle={false}
+      onAdd={() => { setEditing(null); setOpen(true); }}
+      canAdd={canAddExpense(role)}
+    >
       <div className="space-y-5">
       {/* Compact personal dashboard */}
       <section className="tt-card p-4">
@@ -138,7 +194,7 @@ export default function GatheringExpenses() {
         </Link>
       </section>
 
-      {/* Expense list */}
+      {/* Expense timeline — same rail, day markers and card rhythm as Journey */}
       <section>
         <h3 className="tt-label text-foreground/50 mb-2.5">{scope === 'mine' ? 'Your expenses' : 'All expenses'}</h3>
         {visibleExpenses.length === 0 ? (
@@ -153,22 +209,32 @@ export default function GatheringExpenses() {
             ) : undefined}
           />
         ) : (
-          <div className="space-y-3">
-            {visibleExpenses.map((exp) => (
-              <ExpenseCard
-                key={exp.id}
-                exp={exp}
-                payer={memberById[exp.payer_member_id]}
-                splits={splitsByExpense[exp.id] || []}
-                members={members}
-                canEdit={role === 'owner' || (role === 'member' && exp.payer_member_id === currentMember?.id)}
-                onEdit={() => { setEditing(exp); setOpen(true); }}
-                onDelete={() => deleteExpense(exp)}
-                baseCurrency={baseCurrency}
-                baseAmount={toBase(exp.amount, exp.currency)}
-              />
+          <Timeline>
+            {days.map((day) => (
+              <div key={day} className="space-y-3">
+                <TimelineDay day={day} />
+                <div className="space-y-3">
+                  {byDay[day].map((exp) => {
+                    const disp = railDisplay(exp);
+                    return (
+                      <ExpenseTimelineCard
+                        key={exp.id}
+                        exp={exp}
+                        payer={memberById[exp.payer_member_id]}
+                        splits={splitsByExpense[exp.id] || []}
+                        members={members}
+                        canEdit={role === 'owner' || (role === 'member' && exp.payer_member_id === currentMember?.id)}
+                        onEdit={() => { setEditing(exp); setOpen(true); }}
+                        onDelete={() => deleteExpense(exp)}
+                        displayAmount={disp.amount}
+                        displayCurrency={disp.currency}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             ))}
-          </div>
+          </Timeline>
         )}
       </section>
 

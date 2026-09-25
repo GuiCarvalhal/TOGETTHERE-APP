@@ -4,13 +4,14 @@ import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
-import { tzDateKey, formatDayHeader } from '@/lib/formatPlaceTime';
+import { tzDateKey } from '@/lib/formatPlaceTime';
+import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import PageToolbar from '@/components/tt/PageToolbar';
 import { Button } from '@/components/ui/button';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus, Calendar } from 'lucide-react';
+import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 
@@ -149,43 +150,27 @@ export default function GatheringJourney() {
           ) : undefined}
         />
       ) : (
-        <div className="relative">
-          {/* Continuous left timeline rail */}
-          <div className="absolute left-6 top-0 bottom-0 w-px bg-foreground/12" aria-hidden />
-          <div className="space-y-8">
-            {days.map((day) => (
-              <div key={day} className="space-y-3">
-                {/* Day marker on the rail */}
-                <div className="flex items-center gap-3">
-                  <div className="w-12 flex justify-center shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-background border-2 border-terra-coral flex items-center justify-center relative z-10">
-                      <Calendar className="w-4 h-4 text-terra-coral" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="tt-label text-terra-coral">{day === 'unscheduled' ? 'Unscheduled' : 'Day'}</p>
-                    <p className="font-display text-lg text-foreground">{formatDayHeader(day)}</p>
-                  </div>
-                </div>
-                {/* Segment rows */}
-                <div className="space-y-3">
-                  {byDay[day].map((entry) => (
-                    <JourneyCard
-                      key={entry.key}
-                      item={entry.item}
-                      leg={entry.leg}
-                      typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
-                      icon={ICONS[entry.item.type] || MapPin}
-                      participants={itemParticipants(entry.item, memberById)}
-                      showImages={images}
-                      to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
-                    />
-                  ))}
-                </div>
+        <Timeline>
+          {days.map((day) => (
+            <div key={day} className="space-y-3">
+              <TimelineDay day={day} />
+              <div className="space-y-3">
+                {byDay[day].map((entry) => (
+                  <JourneyCard
+                    key={entry.key}
+                    item={entry.item}
+                    leg={entry.leg}
+                    typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
+                    icon={ICONS[entry.item.type] || MapPin}
+                    participants={itemParticipants(entry.item, memberById)}
+                    showImages={images}
+                    to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          ))}
+        </Timeline>
       )}
 
       {open && (
