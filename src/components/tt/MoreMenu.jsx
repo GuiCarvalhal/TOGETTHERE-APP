@@ -13,7 +13,7 @@ import MemberAvatar from '@/components/tt/MemberAvatar';
 import { timeAgo, canManageGathering } from '@/lib/gatheringHelpers';
 import {
   Sun, Moon, Monitor, Bell, BellRing, BellOff, Check, Loader2, Send, Users, Heart,
-  Settings as SettingsIcon, LogOut, Pencil, ChevronRight, Receipt, Route, UserPlus,
+  Settings as SettingsIcon, LogOut, ChevronRight, Receipt, Route, UserPlus,
   UserCheck, Plane, Clock, Sparkles,
 } from 'lucide-react';
 
@@ -54,9 +54,6 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
   const { user, logout } = useAuth();
   const { mode, setMode } = useTheme();
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
-  const [profile, setProfile] = useState({ full_name: '', home_city: '' });
-  const [savingProfile, setSavingProfile] = useState(false);
   const [prefs, setPrefs] = useState(null);
   const [savingPref, setSavingPref] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -65,7 +62,6 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
 
   useEffect(() => {
     if (currentMember) {
-      setProfile({ full_name: currentMember.full_name || '', home_city: currentMember.home_city || '' });
       setPrefs({
         notify_master: currentMember.notify_master !== false,
         notify_journey: currentMember.notify_journey !== false,
@@ -86,20 +82,6 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
   }, [gatheringId]);
   useEffect(() => { if (open) loadActivity(); }, [open, loadActivity]);
 
-  async function saveProfile() {
-    setSavingProfile(true);
-    try {
-      await base44.functions.invoke('updateMyProfile', {
-        gathering_id: gatheringId,
-        fields: { full_name: profile.full_name.trim(), home_city: profile.home_city },
-      });
-      setEditing(false);
-      refresh();
-    } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Could not save');
-    } finally { setSavingProfile(false); }
-  }
-
   async function togglePref(key, val) {
     setPrefs((p) => ({ ...p, [key]: val }));
     setSavingPref(key);
@@ -112,10 +94,8 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
   }
 
   async function setRelationship(targetUserId, rel) {
-    const rels = { ...(currentMember?.relationships || {}) };
-    rels[targetUserId] = rel;
     try {
-      await base44.functions.invoke('updateMyProfile', { gathering_id: gatheringId, fields: { relationships: rels } });
+      await base44.functions.invoke('setRelationship', { gathering_id: gatheringId, target_user_id: targetUserId, level: rel });
       refresh();
     } catch (e) {
       alert(e.response?.data?.error || e.message || 'Could not update relationship');
@@ -144,35 +124,15 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
       <DrawerContent className="max-h-[88vh] bg-background">
         <DrawerTitle className="sr-only">Settings &amp; account</DrawerTitle>
         <div className="overflow-y-auto flex-1 min-h-0">
-          {/* Profile header */}
-          <div className="px-4 pt-3 pb-4 flex items-center gap-3">
+          {/* Profile header — links to the full Profile page */}
+          <button onClick={() => { onOpenChange(false); navigate(`/gathering/${gatheringId}/profile/${user?.id}`); }} className="w-full px-4 pt-3 pb-4 flex items-center gap-3 hover:bg-foreground/5 transition-colors text-left">
             <MemberAvatar member={currentMember || user} size="lg" />
             <div className="min-w-0 flex-1">
               <p className="font-display text-lg font-bold text-foreground truncate">{currentMember?.full_name || user?.full_name || 'Member'}</p>
               <p className="text-xs text-foreground/50 truncate">{user?.email}</p>
             </div>
-            <button onClick={() => setEditing((v) => !v)} className="inline-flex items-center gap-1 text-xs font-semibold text-terra-deep px-3 py-2 rounded-full hover:bg-terra/10">
-              <Pencil className="w-3.5 h-3.5" /> Edit
-            </button>
-          </div>
-          {editing && (
-            <div className="px-4 pb-4 space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-foreground/60">Name</Label>
-                <Input value={profile.full_name} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} className="bg-card border-foreground/15" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-foreground/60">Home city</Label>
-                <Input value={profile.home_city} onChange={(e) => setProfile({ ...profile, home_city: e.target.value })} className="bg-card border-foreground/15" />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="rounded-full">Cancel</Button>
-                <Button size="sm" onClick={saveProfile} disabled={savingProfile} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-                  {savingProfile && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />} Save
-                </Button>
-              </div>
-            </div>
-          )}
+            <ChevronRight className="w-5 h-5 text-foreground/40 shrink-0" />
+          </button>
 
           {/* Appearance */}
           <Section icon={Sun} title="Appearance">
@@ -230,7 +190,7 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
             ) : (
               <div className="space-y-2">
                 {others.map((m) => {
-                  const rel = (currentMember?.relationships || {})[m.user_id] || 'casual';
+                  const rel = m.myRelationship || 'casual';
                   return (
                     <div key={m.id} className="flex items-center gap-2">
                       <MemberAvatar member={m} size="sm" />

@@ -18,6 +18,7 @@ import JourneyDetail from '@/pages/JourneyDetail';
 import GatheringExpenses from '@/pages/GatheringExpenses';
 import GatheringMembers from '@/pages/GatheringMembers';
 import GatheringSettings from '@/pages/GatheringSettings';
+import Profile from '@/pages/Profile';
 import JoinGathering from '@/pages/JoinGathering';
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
                 <Route path="expenses" element={<GatheringExpenses />} />
                 <Route path="members" element={<GatheringMembers />} />
                 <Route path="settings" element={<GatheringSettings />} />
+                <Route path="profile/:userId" element={<Profile />} />
               </Route>
             </Route>
             <Route path="*" element={<PageNotFound />} />

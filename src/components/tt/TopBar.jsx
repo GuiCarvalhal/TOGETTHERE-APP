@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 // Slim persistent app frame above gathering content. The TOGETTHERE wordmark is
 // the primary home/back-to-gatherings affordance. The bell shows recent gathering
 // activity with an unread badge; the avatar opens the user profile sheet.
-export default function TopBar({ gatheringId, onOpenProfile }) {
+export default function TopBar({ gatheringId }) {
   const { user } = useAuth();
   const photo = user?.photo || user?.picture;
   const label = user?.full_name || user?.email || 'your profile';
@@ -21,14 +21,9 @@ export default function TopBar({ gatheringId, onOpenProfile }) {
         </Link>
         <div className="flex items-center gap-1">
           <ActivityBell gatheringId={gatheringId} />
-          <button
-            type="button"
-            onClick={onOpenProfile}
-            aria-label={`Open profile for ${label}`}
-            className="rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]"
-          >
+          <Link to={`/gathering/${gatheringId}/profile/${user?.id}`} aria-label="Open your profile" className="rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]">
             <MemberAvatar member={{ photo, full_name: label }} size="sm" />
-          </button>
+          </Link>
         </div>
       </div>
     </div>

@@ -1,0 +1,48 @@
+{
+  "name": "Relationship",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "The user who set this sharing level"
+    },
+    "target_user_id": {
+      "type": "string",
+      "description": "The user this level is directed toward"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "close",
+        "casual"
+      ],
+      "default": "casual"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "target_user_id",
+    "level"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.owner_user_id": "{{user.id}}"
+        },
+        {
+          "data.target_user_id": "{{user.id}}"
+        }
+      ]
+    },
+    "create": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "update": {
+      "data.owner_user_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.owner_user_id": "{{user.id}}"
+    }
+  }
+}

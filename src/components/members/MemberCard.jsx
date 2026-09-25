@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import RoleStamp from '@/components/tt/RoleStamp';
 import {
@@ -10,12 +11,17 @@ import { formatDate } from '@/lib/gatheringHelpers';
 // Compact member card. Avatar size scales with the "images" toggle (lg when on,
 // md when compact) for a tighter density when images are off.
 export default function MemberCard({
-  member, isOwner, canManage, isSelf, myRelationship, visibility, showImages = true,
+  member, gatheringId, isOwner, canManage, isSelf, myRelationship, visibility, showImages = true,
   onRelationshipChange, onRoleChange, onRemove,
 }) {
+  const navigate = useNavigate();
   const avatarSize = showImages ? 'lg' : 'md';
+  const profileUrl = member.user_id ? `/gathering/${gatheringId}/profile/${member.user_id}` : null;
   return (
-    <div className={`tt-card p-3.5 flex flex-col gap-2.5 ${member.role === 'viewer' ? 'border-dashed border-ink-charcoal/25 bg-cream-pale/40' : ''}`}>
+    <div
+      onClick={() => profileUrl && navigate(profileUrl)}
+      className={`tt-card p-3.5 flex flex-col gap-2.5 ${profileUrl ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${member.role === 'viewer' ? 'border-dashed border-ink-charcoal/25 bg-cream-pale/40' : ''}`}
+    >
       <div className="flex items-center gap-3">
         <MemberAvatar member={member} size={avatarSize} />
         <div className="min-w-0 flex-1">
@@ -67,7 +73,7 @@ export default function MemberCard({
       )}
 
       {!isSelf && (
-        <div className="pt-2 border-t border-ink-charcoal/10">
+        <div className="pt-2 border-t border-ink-charcoal/10" onClick={(e) => e.stopPropagation()}>
           <div className="inline-flex rounded-full bg-cream-pale p-0.5 border border-ink-charcoal/15">
             {['casual', 'close'].map((rel) => (
               <button key={rel} onClick={() => onRelationshipChange(rel)}
@@ -80,7 +86,7 @@ export default function MemberCard({
       )}
 
       {canManage && !isSelf && !(member.role === 'owner' && !isOwner) && (
-        <div className="pt-2 border-t border-ink-charcoal/10 flex items-center gap-2">
+        <div className="pt-2 border-t border-ink-charcoal/10 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Select value={member.role} onValueChange={(r) => onRoleChange(r)}>
             <SelectTrigger className="h-9 w-32 bg-cream-pale border-ink-charcoal/20 text-ink-deep text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>

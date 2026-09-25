@@ -59,7 +59,7 @@ function ShellInner() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TopBar gatheringId={id} onOpenProfile={() => setMoreOpen(true)} />
+      <TopBar gatheringId={id} />
       {/* Cover-photo header */}
       <header className="relative">
         <div className="relative h-[124px] sm:h-[168px] w-full overflow-hidden">
@@ -105,7 +105,7 @@ function ShellInner() {
       <NotificationOptInBanner onesignal={onesignal} gatheringId={id} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-36">
-        <Outlet />
+        <Outlet context={{ openMore: () => setMoreOpen(true) }} />
       </main>
 
       <FabButton />

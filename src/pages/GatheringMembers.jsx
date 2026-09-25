@@ -37,10 +37,8 @@ export default function GatheringMembers() {
   usePolling(silentRefresh, 25000);
 
   async function handleRelationshipChange(targetUserId, rel) {
-    const rels = { ...(currentMember.relationships || {}) };
-    rels[targetUserId] = rel;
     try {
-      await base44.functions.invoke('updateMyProfile', { gathering_id: gatheringId, fields: { relationships: rels } });
+      await base44.functions.invoke('setRelationship', { gathering_id: gatheringId, target_user_id: targetUserId, level: rel });
       refresh();
     } catch (e) {
       alert(e.response?.data?.error || e.message || 'Could not update relationship');
@@ -112,6 +110,7 @@ export default function GatheringMembers() {
               <MemberCard
                 key={m.id}
                 member={m}
+                gatheringId={gatheringId}
                 isOwner={isOwner}
                 canManage={canManage}
                 isSelf={isSelf}

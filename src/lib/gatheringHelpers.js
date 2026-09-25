@@ -46,6 +46,21 @@ export function relationshipLabel(rel) {
   return '—';
 }
 
+// Reciprocal trust from two one-directional sharing levels.
+// 'deep' = both close; 'asymmetric' = exactly one close; 'none' = neither.
+export function computeTrust(myLevel, theirLevel) {
+  if (myLevel === 'close' && theirLevel === 'close') return 'deep';
+  if (myLevel === 'close' || theirLevel === 'close') return 'asymmetric';
+  return 'none';
+}
+
+// Visibility for a target given the viewer's gathering role + trust.
+// Owners always see full (coordination); otherwise deep trust => full.
+export function visibilityForTrust(viewerRole, trust) {
+  if (viewerRole === 'owner') return 'full';
+  return trust === 'deep' ? 'full' : 'limited';
+}
+
 export function formatCurrency(amount, currency = 'USD') {
   const n = Number(amount || 0);
   try {

@@ -98,8 +98,11 @@ export default async function(req) {
 
     // ---- Context for Gemini ----
     const participants = (members || []).filter((m) => m.role !== 'viewer');
-    const profiles = participants.map((m) =>
-      `${m.full_name || 'A member'} — home city: ${m.home_city || 'unknown'}; dietary: ${(m.dietary_preferences || []).join(', ') || 'none'}; interests: ${(m.interests || []).join(', ') || 'general'}; budget: ${m.budget_level || 'moderate'}`);
+    const profiles = participants.map((m) => {
+      const hc = m.user_id === user.id ? (user.home_city || m.home_city) : m.home_city;
+      const ints = m.user_id === user.id ? (user.interests || m.interests) : m.interests;
+      return `${m.full_name || 'A member'} — home city: ${hc || 'unknown'}; dietary: ${(m.dietary_preferences || []).join(', ') || 'none'}; interests: ${(ints || []).join(', ') || 'general'}; budget: ${m.budget_level || 'moderate'}`;
+    });
     const journeyText = sorted.length
       ? sorted.map((j) => `- ${j.type}: ${j.title}${j.start_datetime ? ' @ ' + j.start_datetime : ''}${legLocation(j) ? ' (' + legLocation(j) + ')' : ''}`).join('\n')
       : 'No segments added yet — base suggestions on the destinations and dates.';
@@ -134,7 +137,7 @@ ORDERED LOCATIONS the group travels through: ${allLegs.map((l) => l.location).jo
 Produce JSON with exactly these keys:
 - "vibe": { "tags": [2-3 short badge labels capturing the trip style], "paragraph": a 2-4 sentence narrative synthesis of what kind of trip this is, grounded in the actual journey composition and member mix, "tip": one concrete actionable tip for the group }
 - "tasks": 5-8 practical prep/checklist items relevant to these destinations and dates (documents, tickets, packing for the season, local customs, logistics). Each item: { "text": short imperative, "category": one of documents|tickets|packing|customs|logistics|other, "forMembers": [] or a list of specific member names if the task applies only to them (e.g. a visa for a specific nationality) }
-- "goodToKnow": { "destinationCurrency": ISO 4217 code for the destination, "homeCurrency": ISO 4217 code for the current user's home city (${me.home_city || 'unknown'}), "weather": expected weather/season for the travel dates in one short phrase, "timezone": { "name": destination timezone name, "offset": UTC offset string like "UTC+1", "dstNote": short DST note or empty string }, "language": local language, "plug": electrical plug type and voltage like "Type F, 230V 50Hz" }
+- "goodToKnow": { "destinationCurrency": ISO 4217 code for the destination, "homeCurrency": ${user.home_currency ? '"' + user.home_currency + '"' : 'ISO 4217 code for the current user\'s home city (' + (user.home_city || me.home_city || 'unknown') + ')'}, "weather": expected weather/season for the travel dates in one short phrase, "timezone": { "name": destination timezone name, "offset": UTC offset string like "UTC+1", "dstNote": short DST note or empty string }, "language": local language, "plug": electrical plug type and voltage like "Type F, 230V 50Hz" }
 
 Return only JSON matching the schema.`;
       const schema = {
@@ -225,6 +228,7 @@ Return only JSON matching the schema.`;
     const vibe = parsed.vibe || { tags: [], paragraph: '', tip: '' };
     const aiTasks = parsed.tasks || [];
     const goodToKnow = parsed.goodToKnow || {};
+    if (user.home_currency) goodToKnow.homeCurrency = user.home_currency;
 
     let rate = null;
     if (ratesData && ratesData.rates) {

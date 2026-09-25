@@ -26,24 +26,43 @@ export default async function(req) {
       await syncChildArrays(base44, gatheringId);
     }
 
-    const relationships = me.relationships || {};
+    // Reciprocal close/casual trust from the Relationship entity (with a
+    // Member.relationships fallback for legacy data). Deep trust (both close)
+    // or viewer-is-owner => full; otherwise limited.
+    const [relsOut, relsIn] = await Promise.all([
+      base44.asServiceRole.entities.Relationship.filter({ owner_user_id: user.id }).catch(() => []),
+      base44.asServiceRole.entities.Relationship.filter({ target_user_id: user.id }).catch(() => []),
+    ]);
+    const outMap = {}; (relsOut || []).forEach((r) => { outMap[r.target_user_id] = r.level; });
+    const inMap = {}; (relsIn || []).forEach((r) => { inMap[r.owner_user_id] = r.level; });
+    const myRels = me.relationships || {};
+
+    // Enrich my member record with global User profile fields so my card and the
+    // Agent reflect the global profile (home_city, interests).
+    me = { ...me, home_city: user.home_city || me.home_city, interests: (user.interests && user.interests.length) ? user.interests : me.interests };
+
     const masked = (members || []).map((m) => {
       if (m.id === me.id) {
-        return { ...me, visibility: 'full', myRelationship: null };
+        return { ...me, visibility: 'full', myRelationship: null, trust: null };
       }
-      const rel = relationships[m.user_id] || 'casual';
-      if (me.role === 'owner' || rel === 'close') {
-        return { ...m, visibility: 'full', myRelationship: rel };
+      const myLevel = outMap[m.user_id] || myRels[m.user_id] || 'casual';
+      const theirLevel = inMap[m.user_id] || (m.relationships || {})[user.id] || 'casual';
+      const trust = (myLevel === 'close' && theirLevel === 'close') ? 'deep'
+        : (myLevel === 'close' || theirLevel === 'close') ? 'asymmetric' : 'none';
+      if (me.role === 'owner' || trust === 'deep') {
+        return { ...m, visibility: 'full', myRelationship: myLevel, trust };
       }
-      const { contact_info, arrival_date, departure_date, private_notes, ...rest } = m;
+      const { contact_info, arrival_date, departure_date, private_notes, home_city, ...rest } = m;
       return {
         ...rest,
         contact_info: null,
         arrival_date: null,
         departure_date: null,
         private_notes: null,
+        home_city: null,
         visibility: 'limited',
-        myRelationship: rel,
+        myRelationship: myLevel,
+        trust,
       };
     });
 

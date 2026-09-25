@@ -7,6 +7,29 @@
         "admin",
         "user"
       ]
+    },
+    "home_city": {
+      "type": "string",
+      "description": "Home city \u2014 global profile field, used by the Agent for travel/timezone context"
+    },
+    "home_currency": {
+      "type": "string",
+      "description": "Home currency (ISO 4217) \u2014 global profile field, used by the Agent for live conversion"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Short intro / bio \u2014 global profile field"
+    },
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Interests & preferences tags \u2014 global, helps the Agent tailor recommendations"
+    },
+    "photo": {
+      "type": "string",
+      "description": "Avatar photo URL \u2014 global profile field"
     }
   },
   "required": [
