@@ -57,6 +57,16 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Flight editor mode is lifted to the parent so the submit handler can
+  // validate it. A new flight starts in search; an existing flight opens on
+  // its stored values — summary when it has full provider data, manual/
+  // editable when it was entered manually (missing provider fields), so Edit
+  // never forces a fresh lookup.
+  const initialHasFlight = !!(item?.confirmation_number && item?.from_place && item?.to_place && item?.start_datetime);
+  const [manual, setManual] = useState(item?.type === 'flight' ? !initialHasFlight : false);
+  const isFlight = form.type === 'flight';
+  const flightReady = !!(form.confirmation_number && form.from_place && form.to_place && form.start_datetime);
+  const flightNeedsSelection = isFlight && !manual && !flightReady;
 
   // Place-timezone awareness: the datetime inputs show the destination-local
   // clock time and save back to UTC interpreted in that timezone — so a 4:45 PM
@@ -121,7 +131,26 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    if (isFlight) {
+      if (!manual && !flightReady) {
+        toast({ title: 'Pick a flight', description: 'Search and choose a flight, or tap "Enter manually instead".', variant: 'destructive' });
+        return;
+      }
+      if (manual) {
+        const missing = [];
+        if (!form.title.trim()) missing.push('a title');
+        if (!form.start_datetime) missing.push('a departure time');
+        if (!form.location_from.trim()) missing.push('an origin');
+        if (!form.location_to.trim()) missing.push('a destination');
+        if (missing.length) {
+          toast({ title: 'Add the missing details', description: `Please add ${missing.join(', ')}.`, variant: 'destructive' });
+          return;
+        }
+      }
+    } else if (!form.title.trim()) {
+      toast({ title: 'Add a title', description: 'Give the segment a title to save.', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -205,6 +234,8 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
               setEndTouched={setEndTouched}
               gatheringStartDate={gatheringStartDate}
               optionalFields={optionalFields}
+              manual={manual}
+              setManual={setManual}
             />
           ) : (
             <>
@@ -266,9 +297,12 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
             </>
           )}
 
+          {flightNeedsSelection && (
+            <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap "Enter manually instead".</p>
+          )}
           <DialogFooter className="pt-2 gap-2">
             <Button type="button" variant="ghost" onClick={onClose} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
-            <Button type="submit" disabled={saving} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
+            <Button type="submit" disabled={saving || flightNeedsSelection} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {item ? 'Save changes' : 'Add segment'}
             </Button>

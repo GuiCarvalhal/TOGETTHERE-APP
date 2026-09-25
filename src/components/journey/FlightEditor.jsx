@@ -21,7 +21,7 @@ import { toast } from '@/components/ui/use-toast';
 //              Title, Departure/Arrival, From/To, Flight #, Booking ref.
 // All state lives on the parent form, so the parent submit still receives
 // every required value and validation is unchanged.
-export default function FlightEditor({ form, setForm, setStartTouched, setEndTouched, gatheringStartDate, optionalFields }) {
+export default function FlightEditor({ form, setForm, setStartTouched, setEndTouched, gatheringStartDate, optionalFields, manual, setManual }) {
   const today = new Date().toISOString().slice(0, 10);
   const [mode, setMode] = useState('number');
   const [searchDate, setSearchDate] = useState(gatheringStartDate || (form.start_datetime ? form.start_datetime.slice(0, 10) : today));
@@ -31,7 +31,6 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [manual, setManual] = useState(false);
 
   const hasFlight = !!(form.confirmation_number && form.from_place && form.to_place && form.start_datetime);
   const showSummary = (hasFlight || selected) && !manual;
