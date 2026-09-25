@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 // strip itself is sourced from StickyBar so it stays identical to the journey
 // item detail action bar (single source of truth — no visual drift). Content
 // is wrapped in a consistent 20px gap (matching the shell's top padding).
-export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, onAdd, canAdd, children }) {
+export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, onAdd, canAdd, addLabel = 'item', children }) {
   return (
     <div>
       <StickyBar>
@@ -45,7 +45,7 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
             {canAdd && (
               <Button variant="default" size="sm" onClick={onAdd} className="shrink-0">
                 <Plus />
-                <span className="hidden sm:inline">Add item</span>
+                <span className="hidden sm:inline">Add {addLabel}</span>
                 <span className="sm:hidden">Add</span>
               </Button>
             )}

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { canManageMembers } from '@/lib/gatheringHelpers';
-import MemberCard from '@/components/members/MemberCard';
+import MemberRow from '@/components/members/MemberRow';
+import MemberDetailSheet from '@/components/members/MemberDetailSheet';
 import PageToolbar from '@/components/tt/PageToolbar';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { DialogFooter } from '@/components/ui/dialog';
@@ -16,23 +17,42 @@ import {
 import { UserPlus, Loader2, Users, X } from 'lucide-react';
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
+import Skeleton from '@/components/tt/Skeleton';
+
+// Compact row skeleton — same surface/rhythm as the rendered rows so the
+// loading state reads identically to Journey/Expenses.
+function MembersSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-3 rounded-2xl border border-ink-charcoal/15 bg-card p-3 tt-shadow-float">
+          <Skeleton className="w-9 h-9 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3.5 w-1/3" tone="cream" />
+            <Skeleton className="h-3 w-1/4" tone="cream" />
+          </div>
+          <Skeleton className="h-5 w-14 rounded-full" tone="cream" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function GatheringMembers() {
-  const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh } = useGathering();
-  const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
+  const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh, loading } = useGathering();
+  const { scope, setScope } = useViewPrefs(gatheringId);
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ full_name: '', role: 'member', home_city: '' });
   const [adding, setAdding] = useState(false);
+  const [activeMember, setActiveMember] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const canManage = canManageMembers(role);
   const isOwner = role === 'owner';
 
-  useEffect(() => {
-    if (canManage) {
-      setFab({ label: 'Add Member', icon: UserPlus, onClick: () => setAddOpen(true) });
-    }
-    return () => setFab(null);
-  }, [setFab, canManage]);
+  // Add member lives in the sticky PageToolbar (canonical button), not a FAB —
+  // matching Journey/Expenses.
+  useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   usePolling(silentRefresh, 25000);
 
@@ -56,6 +76,7 @@ export default function GatheringMembers() {
 
   async function handleRemove(member) {
     if (!confirm(`Remove ${member.full_name} from this gathering?`)) return;
+    setSheetOpen(false);
     try {
       await base44.functions.invoke('removeMember', { gathering_id: gatheringId, member_id: member.id });
       refresh();
@@ -86,10 +107,15 @@ export default function GatheringMembers() {
   }
 
   const visibleMembers = scope === 'mine' ? members.filter((m) => m.id === currentMember?.id) : members;
+  // Re-derive the open sheet's member from fresh data so role/relationship
+  // edits reflect immediately; falls back to the stored object if it's gone.
+  const active = activeMember ? (members.find((m) => m.id === activeMember.id) || activeMember) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages}>
-      {visibleMembers.length === 0 ? (
+    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} onAdd={() => setAddOpen(true)} canAdd={canManage} addLabel="member">
+      {loading ? (
+        <MembersSkeleton />
+      ) : visibleMembers.length === 0 ? (
         <EmptyState
           icon={Users}
           title={scope === 'mine' ? 'Nothing to show' : 'No members yet'}
@@ -101,28 +127,33 @@ export default function GatheringMembers() {
           ) : undefined}
         />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {visibleMembers.map((m) => {
-            const isSelf = m.id === currentMember?.id;
-            return (
-              <MemberCard
-                key={m.id}
-                member={m}
-                gatheringId={gatheringId}
-                isOwner={isOwner}
-                canManage={canManage}
-                isSelf={isSelf}
-                myRelationship={m.myRelationship}
-                visibility={m.visibility}
-                showImages={images}
-                onRelationshipChange={(rel) => handleRelationshipChange(m.user_id, rel)}
-                onRoleChange={(r) => handleRoleChange(m, r)}
-                onRemove={() => handleRemove(m)}
-              />
-            );
-          })}
+        <div className="space-y-3">
+          {visibleMembers.map((m) => (
+            <MemberRow
+              key={m.id}
+              member={m}
+              gatheringId={gatheringId}
+              isSelf={m.id === currentMember?.id}
+              onOpen={() => { setActiveMember(m); setSheetOpen(true); }}
+            />
+          ))}
         </div>
       )}
+
+      <MemberDetailSheet
+        member={active}
+        gatheringId={gatheringId}
+        isOwner={isOwner}
+        canManage={canManage}
+        isSelf={active ? active.id === currentMember?.id : false}
+        myRelationship={active?.myRelationship}
+        visibility={active?.visibility}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onRelationshipChange={(rel) => active && handleRelationshipChange(active.user_id, rel)}
+        onRoleChange={(r) => active && handleRoleChange(active, r)}
+        onRemove={() => active && handleRemove(active)}
+      />
 
       <FormSheet open={addOpen} onOpenChange={setAddOpen} title="Add a member" maxWidth="max-w-md">
         <form onSubmit={handleAdd} className="space-y-4">
