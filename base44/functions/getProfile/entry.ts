@@ -40,7 +40,10 @@ export default async function(req) {
     }
 
     const isOwner = me?.role === 'owner';
-    const visibility = isSelf || isOwner || trust === 'deep' ? 'full' : 'limited';
+    // Viewers are read-only: never see another user's full profile (email,
+    // home city, interests, dietary, arrival/departure) regardless of trust.
+    const isViewer = me?.role === 'viewer';
+    const visibility = isSelf || (!isViewer && (isOwner || trust === 'deep')) ? 'full' : 'limited';
 
     // Groups in common: other gatherings both belong to (only for full view of others).
     let groupsInCommon = [];

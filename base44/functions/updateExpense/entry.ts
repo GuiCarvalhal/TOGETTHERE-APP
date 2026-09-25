@@ -12,7 +12,7 @@ export default async function(req) {
     if (!gathering_id || !expense_id || !expense) return Response.json({ error: 'gathering_id, expense_id and expense required' }, { status: 400 });
 
     const me = await getMyMember(base44, gathering_id, user.id);
-    if (!me) return Response.json({ error: 'Not a member' }, { status: 403 });
+    if (!me || me.role === 'viewer') return Response.json({ error: 'Only participants can edit expenses' }, { status: 403 });
 
     const existing = await base44.asServiceRole.entities.Expense.get(expense_id);
     const isOwner = me.role === 'owner' || existing.owner_user_id === user.id;

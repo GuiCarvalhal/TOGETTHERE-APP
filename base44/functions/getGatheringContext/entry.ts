@@ -49,6 +49,13 @@ export default async function(req) {
       const theirLevel = inMap[m.user_id] || (m.relationships || {})[user.id] || 'casual';
       const trust = (myLevel === 'close' && theirLevel === 'close') ? 'deep'
         : (myLevel === 'close' || theirLevel === 'close') ? 'asymmetric' : 'none';
+      // Viewers are read-only observers: never reveal another member's
+      // contact_info, private_notes, arrival/departure, or home_city — even
+      // when a reciprocal "close" trust would otherwise grant full visibility.
+      if (me.role === 'viewer') {
+        const { contact_info, arrival_date, departure_date, private_notes, home_city, ...rest } = m;
+        return { ...rest, contact_info: null, arrival_date: null, departure_date: null, private_notes: null, home_city: null, visibility: 'limited', myRelationship: myLevel, trust };
+      }
       if (me.role === 'owner' || trust === 'deep') {
         return { ...m, visibility: 'full', myRelationship: myLevel, trust };
       }
