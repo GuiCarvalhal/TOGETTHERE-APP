@@ -8,13 +8,77 @@
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Short abbreviation (e.g. "CEST", "EDT", "BRT") for an IANA tz at a given instant.
+// Deterministic timezone abbreviation for an IANA tz at a given instant.
+// ROOT CAUSE: Intl timeZoneName:'short' is locale-dependent and cannot produce
+// correct abbreviations for all zones from one locale (Europe/Rome -> "GMT+2"
+// under en-US but "CEST" under en-GB; Asia/Tokyo -> "GMT+9" under both).
+// Resolution order:
+//  a) timeZoneName:'short' across candidate locales (en-US, en-GB); accept
+//     only if it is NOT a bare GMT offset.
+//  b) Acronym from timeZoneName:'long' — initial of each significant word
+//     ("Central European Summer Time" -> "CEST", "Japan Standard Time" -> "JST").
+//  c) GMT offset (e.g. "GMT+2", "GMT+5:30") only as a last resort.
 export function tzAbbrAt(iso, timeZone) {
   if (!timeZone) return '';
+  const instant = new Date(iso);
+  const isOffset = (v) => !v || /^GMT[+-]/.test(v) || /^[+-]\d{1,2}(:?\d{2})?$/.test(v);
+  const STOP = new Set(['of', 'the', 'and']);
+  // a) short across candidate locales
+  for (const locale of ['en-US', 'en-GB']) {
+    try {
+      const parts = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: 'short' }).formatToParts(instant);
+      const v = parts.find((p) => p.type === 'timeZoneName')?.value || '';
+      if (!isOffset(v)) return v;
+    } catch { /* try next locale */ }
+  }
+  // b) acronym from long name
   try {
-    const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short' }).formatToParts(new Date(iso));
-    return parts.find((p) => p.type === 'timeZoneName')?.value || '';
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'long' }).formatToParts(instant);
+    const long = parts.find((p) => p.type === 'timeZoneName')?.value || '';
+    if (long) {
+      const acr = long.split(/[\s/]+/).filter((w) => /^[A-Za-z]+$/.test(w) && w.length > 1 && !STOP.has(w.toLowerCase())).map((w) => w[0].toUpperCase()).join('');
+      if (acr.length >= 2) return acr;
+    }
+  } catch { /* fall through */ }
+  // c) GMT offset
+  return gmtOffset(timeZone, instant);
+}
+
+// "GMT+2" / "GMT+5:30" — computed from the wall clock vs UTC, as a last resort.
+function gmtOffset(timeZone, instant) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(instant);
+    const get = (t) => parts.find((p) => p.type === t)?.value || '';
+    let h = get('hour'); if (h === '24') h = '00';
+    const wallAsUtc = Date.UTC(Number(get('year')), Number(get('month')) - 1, Number(get('day')), Number(h), Number(get('minute')), Number(get('second')));
+    const offMin = Math.round((wallAsUtc - instant.getTime()) / 60000);
+    const sign = offMin >= 0 ? '+' : '-';
+    const abs = Math.abs(offMin);
+    const hh = Math.floor(abs / 60);
+    const mm = abs % 60;
+    return `GMT${sign}${hh}${mm ? `:${String(mm).padStart(2, '0')}` : ''}`;
   } catch { return ''; }
+}
+
+// "4:00 AM" — wall clock only (no abbreviation), in the place's local tz.
+export function formatTimeOnly(iso, timeZone) {
+  if (!iso || !timeZone) return '';
+  try {
+    return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(iso));
+  } catch { return ''; }
+}
+
+// "4:00 AM EDT - US" — wall clock + abbreviation + ISO country code, matching
+// the requested format. Without a country code: "4:00 AM EDT". Without an
+// abbreviation: the bare wall clock. The country code comes from the place
+// resolver (geocoded address_components country short_name, or a tz fallback).
+export function formatTimeWithCountry(iso, timeZone, countryCode) {
+  if (!iso || !timeZone) return '';
+  const time = formatTimeOnly(iso, timeZone);
+  const abbr = tzAbbrAt(iso, timeZone);
+  if (!time) return '';
+  if (!abbr) return time;
+  return countryCode ? `${time} ${abbr} - ${countryCode}` : `${time} ${abbr}`;
 }
 
 // "11:15 PM (CEST)" — time only, in the place's local tz with its real

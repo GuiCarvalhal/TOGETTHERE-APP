@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { JOURNEY_TYPES, canEditJourneyItem } from '@/lib/gatheringHelpers';
-import { formatFullDateTz, formatTimeTz, startLocation, endLocation } from '@/lib/formatPlaceTime';
-import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
+import { formatFullDateTz, formatTimeWithCountry, startLocation, endLocation } from '@/lib/formatPlaceTime';
+import { usePlaceTimezone, usePlaceCountryCode } from '@/lib/usePlaceTimezone';
 import { Image } from '@/components/ui/image';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import MemberAvatar from '@/components/tt/MemberAvatar';
@@ -46,6 +46,8 @@ export default function JourneyDetail() {
   const [editing, setEditing] = useState(false);
   const startTz = usePlaceTimezone(startLocation(item));
   const endTz = usePlaceTimezone(endLocation(item));
+  const startCc = usePlaceCountryCode(startLocation(item));
+  const endCc = usePlaceCountryCode(endLocation(item));
 
   async function load(silent) {
     if (!silent) { setLoading(true); setError(null); }
@@ -162,7 +164,7 @@ export default function JourneyDetail() {
                 <CalendarDays className="w-4 h-4 text-terra-coral mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(start, startTz)}</p>
-                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeTz(start, startTz)}</p>
+                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(start, startTz, startCc)}</p>
                 </div>
               </div>
             )}
@@ -171,7 +173,7 @@ export default function JourneyDetail() {
                 <CalendarDays className="w-4 h-4 text-ink-deep/35 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(end, endTz)}</p>
-                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeTz(end, endTz)}</p>
+                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(end, endTz, endCc)}</p>
                 </div>
               </div>
             )}
@@ -311,6 +313,7 @@ export default function JourneyDetail() {
         <JourneyItemForm
           gatheringId={gatheringId}
           currentMember={currentMember}
+          members={members}
           item={item}
           onClose={() => setEditing(false)}
           onSaved={load}

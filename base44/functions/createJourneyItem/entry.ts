@@ -23,13 +23,20 @@ export default async function(req) {
     const ownerUid = gatheringOwnerUserId(gathering, members);
     const memberUserIds = allMemberUserIds(members);
 
+    // Participant selection from the form: validate that every requested id is
+    // a gathering member, and always include the creator. attendee_user_ids is
+    // the opt-in participants list (NOT member_user_ids, the ACL list).
+    const requestedAttendees = Array.isArray(payload.attendee_user_ids)
+      ? payload.attendee_user_ids.filter((id) => memberUserIds.includes(id))
+      : [];
+    const attendeeUserIds = [...new Set([user.id, ...requestedAttendees])];
     const created = await base44.asServiceRole.entities.JourneyItem.create({
       ...payload,
       gathering_id,
       owner_id: user.id,
       owner_user_id: ownerUid,
       member_user_ids: memberUserIds,
-      attendee_user_ids: [user.id],
+      attendee_user_ids: attendeeUserIds,
     });
     await logActivity(base44, {
       gatheringId: gathering_id, type: 'journey_added',

@@ -18,11 +18,17 @@ export default async function(req) {
     const me = await getMyMember(base44, item.gathering_id, user.id);
     if (!me) return Response.json({ error: 'Not a member of this gathering' }, { status: 403 });
 
-    const ids = item.attendee_user_ids || [];
-    if (!ids.includes(user.id)) {
-      ids.push(user.id);
-      await base44.asServiceRole.entities.JourneyItem.update(itemId, { attendee_user_ids: ids });
+    // Self-service join OR leave (action defaults to 'join' for backward
+    // compatibility). The creator can never leave their own item via this flow
+    // — they're always a participant; they manage others via the edit form.
+    const action = body.action === 'leave' ? 'leave' : 'join';
+    let ids = [...(item.attendee_user_ids || [])];
+    if (action === 'join') {
+      if (!ids.includes(user.id)) ids.push(user.id);
+    } else if (item.owner_id !== user.id) {
+      ids = ids.filter((id) => id !== user.id);
     }
+    await base44.asServiceRole.entities.JourneyItem.update(itemId, { attendee_user_ids: ids });
     return Response.json({ attendee_user_ids: ids });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

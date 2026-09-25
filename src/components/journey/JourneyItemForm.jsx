@@ -13,6 +13,7 @@ import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import { isoToWallInput, isoToLocalInput, wallTimeToUtcIso, startLocation, endLocation } from '@/lib/formatPlaceTime';
 import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import AttachmentChip from '@/components/tt/AttachmentChip';
+import ParticipantPicker from '@/components/journey/ParticipantPicker';
 import { Loader2, Upload, Plane } from 'lucide-react';
 
 const TYPE_META = {
@@ -25,7 +26,16 @@ const TYPE_META = {
   other: { fromTo: false, place: true },
 };
 
-export default function JourneyItemForm({ gatheringId, currentMember, item, initial, onClose, onSaved }) {
+export default function JourneyItemForm({ gatheringId, currentMember, members, item, initial, onClose, onSaved }) {
+  // Participant selection (attendee_user_ids). For a new item the creator is
+  // included by default; for an edit we preselect the existing list, or the
+  // creator for legacy items with an empty attendee list.
+  const [attendeeIds, setAttendeeIds] = useState(() => {
+    const existing = item?.attendee_user_ids;
+    if (existing && existing.length) return existing;
+    const creator = item?.owner_id || currentMember?.user_id;
+    return creator ? [creator] : [];
+  });
   const [form, setForm] = useState({
     type: item?.type || initial?.type || 'activity',
     title: item?.title || initial?.title || '',
@@ -78,6 +88,10 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, init
   }, [endTz, endTouched]);
 
   const meta = TYPE_META[form.type] || TYPE_META.other;
+
+  function toggleAttendee(uid) {
+    setAttendeeIds((ids) => (ids.includes(uid) ? ids.filter((x) => x !== uid) : [...ids, uid]));
+  }
 
   async function uploadFile(file) {
     setUploading(true);
@@ -132,6 +146,7 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, init
         confirmation_number: form.confirmation_number,
         notes: form.notes,
         attachments: form.attachments,
+        attendee_user_ids: attendeeIds,
       };
       if (item) {
         await base44.functions.invoke('updateJourneyItem', { gathering_id: gatheringId, item_id: item.id, payload });
@@ -222,6 +237,11 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, init
                 <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])} />
               </label>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-ink-deep">Who's joining</Label>
+            <ParticipantPicker members={members} selected={attendeeIds} onToggle={toggleAttendee} currentUserId={currentMember?.user_id} />
+            <p className="text-xs text-ink-deep/50">Only gathering members can be added. You're included by default.</p>
           </div>
           <DialogFooter className="pt-2 gap-2">
             <Button type="button" variant="ghost" onClick={onClose} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>

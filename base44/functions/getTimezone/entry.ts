@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
 import { secrets } from 'base44:runtime';
-import { geocode } from '../../shared/googlePlaces.ts';
+import { geocode, TZ_COUNTRY } from '../../shared/googlePlaces.ts';
 
 // Resolve a place name (or lat/lng) to an IANA timezone id (e.g. "Europe/Rome")
 // via Google Geocoding + Time Zone API. Uses GOOGLEMAPS_TOGETTHERE. A per-cold-
@@ -24,6 +24,7 @@ export default async function(req) {
       const cached = tzCache.get(place.toLowerCase());
       if (cached) return Response.json({ timeZoneId: cached });
     }
+    let countryCode = '';
     if (lat == null || lng == null) {
       if (!place) return Response.json({ error: 'place or lat/lng required' }, { status: 400 });
       let g = await geocode(key, place);
@@ -36,6 +37,7 @@ export default async function(req) {
       if (!g) return Response.json({ error: 'Could not geocode place' }, { status: 404 });
       lat = g.lat;
       lng = g.lng;
+      countryCode = g.country || '';
     }
 
     const ts = Math.floor(Date.now() / 1000);
@@ -45,9 +47,12 @@ export default async function(req) {
     if (data.status !== 'OK' || !data.timeZoneId) {
       return Response.json({ error: data.errorMessage || data.status || 'timezone lookup failed' }, { status: 502 });
     }
+    // ISO country code: from the geocoded address_components, or a tz fallback.
+    if (!countryCode) countryCode = TZ_COUNTRY[data.timeZoneId] || '';
     if (place) tzCache.set(place.toLowerCase(), data.timeZoneId);
     return Response.json({
       timeZoneId: data.timeZoneId,
+      countryCode,
       timeZoneName: data.timeZoneName || '',
       rawOffset: data.rawOffset,
       dstOffset: data.dstOffset,

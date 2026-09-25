@@ -31,13 +31,21 @@ export default async function (req) {
     const ownerUid = gatheringOwnerUserId(gathering, members);
     const memberUserIds = allMemberUserIds(members);
 
-    await base44.asServiceRole.entities.JourneyItem.update(item_id, {
+    // Participant selection from the form: validate ids against current
+    // members and always keep the creator. Preserves and allows changing the
+    // participant list on edit.
+    const updateFields: any = {
       ...payload,
       gathering_id,
       owner_id: existing.owner_id,
       owner_user_id: ownerUid,
       member_user_ids: memberUserIds,
-    });
+    };
+    if (Array.isArray(payload.attendee_user_ids)) {
+      const valid = payload.attendee_user_ids.filter((id) => memberUserIds.includes(id));
+      updateFields.attendee_user_ids = [...new Set([existing.owner_id, ...valid])].filter(Boolean);
+    }
+    await base44.asServiceRole.entities.JourneyItem.update(item_id, updateFields);
 
     await logActivity(base44, {
       gatheringId: gathering_id, type: 'journey_added',

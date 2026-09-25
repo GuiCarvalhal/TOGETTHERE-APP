@@ -66,10 +66,23 @@ export default function GatheringJourney() {
     ? items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
     : items;
   const tzMap = useTimezonesForPlaces(visibleItems.map((it) => startLocation(it)));
-  const byDay = {};
+  // Expand stays (hotel) into a check-in entry at the start and a check-out
+  // entry at the end — one underlying record, two timeline positions, each on
+  // its correct day in chronological order. Other types stay single.
+  const entries = [];
   visibleItems.forEach((it) => {
-    const k = dayKey(it.start_datetime, tzMap[startLocation(it)]);
-    (byDay[k] = byDay[k] || []).push(it);
+    if (it.type === 'hotel' && it.start_datetime && it.end_datetime && it.start_datetime !== it.end_datetime) {
+      entries.push({ key: `${it.id}-in`, leg: 'check-in', at: it.start_datetime, item: it });
+      entries.push({ key: `${it.id}-out`, leg: 'check-out', at: it.end_datetime, item: it });
+    } else {
+      entries.push({ key: it.id, leg: null, at: it.start_datetime, item: it });
+    }
+  });
+  entries.sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
+  const byDay = {};
+  entries.forEach((e) => {
+    const k = dayKey(e.at, tzMap[startLocation(e.item)]);
+    (byDay[k] = byDay[k] || []).push(e);
   });
   const days = Object.keys(byDay).sort();
   const canAdd = canAddJourney(role);
@@ -157,16 +170,16 @@ export default function GatheringJourney() {
                 </div>
                 {/* Segment rows */}
                 <div className="space-y-3">
-                  {byDay[day].map((item) => (
+                  {byDay[day].map((entry) => (
                     <JourneyCard
-                      key={item.id}
-                      item={item}
-                      typeLabel={TYPE_LABEL[item.type]}
-                      typeColor={TYPE_COLOR[item.type] || TYPE_COLOR.other}
-                      icon={ICONS[item.type] || MapPin}
-                      participants={itemParticipants(item, memberById)}
+                      key={entry.key}
+                      item={entry.item}
+                      leg={entry.leg}
+                      typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
+                      icon={ICONS[entry.item.type] || MapPin}
+                      participants={itemParticipants(entry.item, memberById)}
                       showImages={images}
-                      to={`/gathering/${gatheringId}/journey/${item.id}`}
+                      to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
                     />
                   ))}
                 </div>
@@ -180,6 +193,7 @@ export default function GatheringJourney() {
         <JourneyItemForm
           gatheringId={gatheringId}
           currentMember={currentMember}
+          members={members}
           item={editing}
           onClose={() => setOpen(false)}
           onSaved={load}

@@ -29,20 +29,47 @@ export function formatPlace(p) {
   };
 }
 
-// Geocode a place name to { lat, lng }. Returns null on any failure so callers
-// can fall back to a named-area search without a location bias.
+// Geocode a place name to { lat, lng, country }. The country is the ISO
+// short_name from address_components (e.g. "IT", "US") so journey times can
+// render with a location code. Returns null on any failure so callers can
+// fall back to a named-area search without a location bias.
 export async function geocode(key, address) {
   try {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`;
     const res = await fetch(url);
     const data = await res.json();
     if (data.status !== 'OK' || !data.results?.length) return null;
-    const loc = data.results[0].geometry.location;
-    return { lat: loc.lat, lng: loc.lng };
+    const r = data.results[0];
+    const loc = r.geometry.location;
+    const country = (r.address_components || []).find((c) => (c.types || []).includes('country'))?.short_name || '';
+    return { lat: loc.lat, lng: loc.lng, country };
   } catch {
     return null;
   }
 }
+
+// IANA tz -> ISO country code fallback for when geocoding didn't yield a
+// country (e.g. lat/lng passed directly). Covers the common zones in this app.
+export const TZ_COUNTRY: Record<string, string> = {
+  'Europe/Rome': 'IT', 'Europe/London': 'GB', 'Europe/Paris': 'FR', 'Europe/Madrid': 'ES',
+  'Europe/Berlin': 'DE', 'Europe/Amsterdam': 'NL', 'Europe/Vienna': 'AT', 'Europe/Zurich': 'CH',
+  'Europe/Lisbon': 'PT', 'Europe/Athens': 'GR', 'Europe/Dublin': 'IE', 'Europe/Brussels': 'BE',
+  'Europe/Copenhagen': 'DK', 'Europe/Stockholm': 'SE', 'Europe/Oslo': 'NO', 'Europe/Helsinki': 'FI',
+  'Europe/Warsaw': 'PL', 'Europe/Prague': 'CZ', 'Europe/Budapest': 'HU', 'Europe/Bucharest': 'RO',
+  'Europe/Istanbul': 'TR', 'Europe/Moscow': 'RU',
+  'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US', 'America/Los_Angeles': 'US',
+  'America/Anchorage': 'US', 'America/Toronto': 'CA', 'America/Vancouver': 'CA', 'America/Mexico_City': 'MX',
+  'America/Sao_Paulo': 'BR', 'America/Argentina/Buenos_Aires': 'AR', 'America/Bogota': 'CO', 'America/Lima': 'PE',
+  'America/Santiago': 'CL',
+  'Asia/Tokyo': 'JP', 'Asia/Dubai': 'AE', 'Asia/Singapore': 'SG', 'Asia/Hong_Kong': 'HK',
+  'Asia/Bangkok': 'TH', 'Asia/Seoul': 'KR', 'Asia/Shanghai': 'CN', 'Asia/Kuala_Lumpur': 'MY',
+  'Asia/Jakarta': 'ID', 'Asia/Manila': 'PH', 'Asia/Taipei': 'TW', 'Asia/Kolkata': 'IN',
+  'Asia/Bahrain': 'BH', 'Asia/Qatar': 'QA', 'Asia/Tel_Aviv': 'IL',
+  'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Perth': 'AU',
+  'Pacific/Auckland': 'NZ', 'Pacific/Honolulu': 'US',
+  'Africa/Cairo': 'EG', 'Africa/Casablanca': 'MA', 'Africa/Johannesburg': 'ZA', 'Africa/Lagos': 'NG',
+  'Africa/Nairobi': 'KE',
+};
 
 // Search Google Places (New Places API) for a text query, returning the first
 // match's photo resource names (for place-photo thumbnails on journey cards).
