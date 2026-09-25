@@ -47,7 +47,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     location_from: item?.location_from || initial?.location_from || '',
     location_to: item?.location_to || initial?.location_to || '',
     location_name: item?.location_name || initial?.location_name || '',
-    place: item?.place || null,
+    place: item?.place || initial?.place || null,
     from_place: item?.from_place || null,
     to_place: item?.to_place || null,
     confirmation_number: item?.confirmation_number || initial?.confirmation_number || '',

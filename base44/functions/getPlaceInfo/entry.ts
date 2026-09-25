@@ -15,10 +15,21 @@ export default async function(req) {
     if (!query) return Response.json({ error: 'query required' }, { status: 400 });
     const key = secrets.get('GOOGLEMAPS_TOGETTHERE');
     if (!key) return Response.json({ error: 'Google Maps key not configured' }, { status: 500 });
-    const places = await searchText(key, query, null, 'places.displayName,places.rating,places.userRatingCount,places.editorialSummary,places.formattedAddress,places.googleMapsUri');
+    const places = await searchText(key, query, null, 'places.displayName,places.rating,places.userRatingCount,places.editorialSummary,places.formattedAddress,places.googleMapsUri,places.location,places.priceLevel,places.internationalPhoneNumber,places.nationalPhoneNumber,places.websiteUri,places.currentOpeningHours');
     const p = places[0];
     if (!p) return Response.json({ error: 'No place found' }, { status: 404 });
-    return Response.json(formatPlace(p));
+    // Additive over formatPlace: the extra fields (coords, hours, phone,
+    // website, price level) power the Agent place-detail page. Existing callers
+    // (VenueInfoBlock) read only the base fields, so they're unaffected.
+    return Response.json({
+      ...formatPlace(p),
+      lat: p.location?.latitude ?? null,
+      lng: p.location?.longitude ?? null,
+      priceLevel: p.priceLevel || null,
+      phone: p.internationalPhoneNumber || p.nationalPhoneNumber || '',
+      website: p.websiteUri || '',
+      openingHours: p.currentOpeningHours || null,
+    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
