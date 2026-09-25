@@ -25,7 +25,8 @@ export default async function(req) {
 
     const body = await req.json().catch(() => ({}));
     const flightNumber = (body.flight_number || '').trim();
-    if (!flightNumber) return Response.json({ error: 'flight_number required (e.g. AA123)' }, { status: 400 });
+    if (!flightNumber) return Response.json({ error: 'Enter a flight number (e.g. AA123).' }, { status: 400 });
+    if (!/^[A-Za-z]{2,3}\d{1,4}$/.test(flightNumber)) return Response.json({ error: 'That doesn\'t look like a flight number. Use the airline code plus number, e.g. AA123.' }, { status: 400 });
     const date = (body.date || new Date().toISOString().slice(0, 10)).trim();
 
     const key = secrets.get('RAPIDAPI_KEY');
@@ -40,11 +41,22 @@ export default async function(req) {
       },
     });
     if (!res.ok) {
-      return Response.json({ error: `AeroDataBox request failed (${res.status})` }, { status: 502 });
+      if (res.status === 400 || res.status === 404) {
+        return Response.json({ error: 'No flight found. Check the flight number (e.g. AA123) and date, then try again.' }, { status: 404 });
+      }
+      return Response.json({ error: 'Flight lookup is unavailable right now. Try again in a moment.' }, { status: 502 });
     }
-    const data = await res.json();
+    // AeroDataBox sometimes returns 200 with an empty body for unknown flights;
+    // parse defensively so a bad/unknown number yields a friendly 404, not a 500.
+    const raw = await res.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : [];
+    } catch {
+      return Response.json({ error: 'No flight found for that number and date.' }, { status: 404 });
+    }
     const list = Array.isArray(data) ? data : [];
-    if (!list.length) return Response.json({ error: 'No flight found for that number/date' }, { status: 404 });
+    if (!list.length) return Response.json({ error: 'No flight found for that number and date.' }, { status: 404 });
 
     const f = list[0];
     const fromIata = f.departure?.airport?.iata || f.departure?.airport?.name || '';

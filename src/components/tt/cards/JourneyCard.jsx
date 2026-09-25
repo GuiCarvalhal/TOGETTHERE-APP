@@ -103,7 +103,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
         {onCover && (
           <>
             <Image src={cover} alt="" className="absolute inset-0 w-full h-full" fittingType="fill" />
-            <div className="absolute inset-0 bg-gradient-to-br from-ink-deep/90 via-ink-deep/60 to-ink-deep/35" />
+            <div className="absolute inset-0 bg-gradient-to-br from-ink-scrim/90 via-ink-scrim/60 to-ink-scrim/35" />
           </>
         )}
         <div className="relative p-3 flex flex-col">

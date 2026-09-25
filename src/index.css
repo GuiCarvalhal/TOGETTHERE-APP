@@ -40,8 +40,9 @@
     --ink: 40 33% 96%;            /* canvas surface (bg-ink) */
     --ink-soft: 40 28% 92%;        /* subtle panel */
     --ink-charcoal: 40 18% 80%;   /* hairline border */
-    --ink-deep: 210 28% 10%;      /* text on cards (dark in both modes) */
-    --cream: 215 40% 12%;         /* canvas text (text-cream) — dark in light */
+    --ink-deep: 210 28% 10%;      /* text on surfaces — dark in light, light in dark */
+    --ink-scrim: 215 40% 10%;     /* dark overlay/placeholder — dark in both modes */
+    --cream: 40 30% 98%;          /* foreground on coloured/dark fills — light in both modes */
     --cream-pale: 40 30% 93%;     /* muted surface on cards */
     --cream-warm: 40 26% 88%;
     --terra: 8 71% 58%;
@@ -62,22 +63,22 @@
     /* TOGETTHERE — DARK mode (ink-navy canvas, cream cards) */
     --background: 215 45% 8%;        /* Ink Navy #0C131D */
     --foreground: 40 60% 98%;        /* Soft Cream text on ink */
-    --card: 38 60% 98%;              /* Soft Cream #FDFBF7 cards */
-    --card-foreground: 210 28% 10%;
-    --popover: 38 60% 98%;
-    --popover-foreground: 210 28% 10%;
+    --card: 215 32% 13%;             /* dark elevated surface */
+    --card-foreground: 40 30% 95%;
+    --popover: 215 32% 13%;
+    --popover-foreground: 40 30% 95%;
     --primary: 8 71% 58%;
     --primary-foreground: 40 60% 98%;
-    --secondary: 40 36% 93%;
-    --secondary-foreground: 210 28% 10%;
-    --muted: 215 12% 14%;
+    --secondary: 215 22% 20%;
+    --secondary-foreground: 40 30% 95%;
+    --muted: 215 14% 16%;
     --muted-foreground: 40 22% 76%;
     --accent: 8 82% 67%;
     --accent-foreground: 215 8% 8%;
     --destructive: 0 70% 55%;
     --destructive-foreground: 40 60% 98%;
-    --border: 215 26% 16%;
-    --input: 215 20% 18%;
+    --border: 215 24% 22%;
+    --input: 215 22% 20%;
     --ring: 8 71% 58%;
     --chart-1: 8 71% 58%;
     --chart-2: 40 36% 60%;
@@ -87,11 +88,12 @@
 
     --ink: 215 45% 8%;
     --ink-soft: 215 28% 12%;
-    --ink-charcoal: 215 26% 16%;
-    --ink-deep: 210 28% 10%;
-    --cream: 40 60% 98%;          /* canvas text — light in dark */
-    --cream-pale: 40 36% 93%;
-    --cream-warm: 40 30% 90%;
+    --ink-charcoal: 215 24% 24%;
+    --ink-deep: 40 30% 95%;       /* text on surfaces — light in dark */
+    --ink-scrim: 215 45% 6%;      /* dark overlay/placeholder — dark in both modes */
+    --cream: 40 30% 98%;          /* foreground on coloured/dark fills — light in both modes */
+    --cream-pale: 215 22% 18%;    /* dark surface for inputs */
+    --cream-warm: 215 18% 16%;
     --terra: 8 71% 58%;
     --terra-coral: 8 82% 67%;
     --terra-deep: 8 58% 48%;

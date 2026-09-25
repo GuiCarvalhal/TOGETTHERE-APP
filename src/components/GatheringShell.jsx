@@ -66,7 +66,7 @@ function ShellInner() {
           {gathering.cover_image ? (
             <Image src={gathering.cover_image} alt={gathering.name} className="w-full h-full object-cover" fittingType="fill" />
           ) : (
-            <div className="w-full h-full bg-ink-deep flex items-center justify-center">
+            <div className="w-full h-full bg-ink-scrim flex items-center justify-center">
               <span className="font-display italic text-white/20 text-4xl">TOGETTHERE</span>
             </div>
           )}

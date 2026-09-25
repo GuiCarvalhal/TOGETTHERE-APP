@@ -96,7 +96,7 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
 
       {creating && (
         <div className="space-y-3 rounded-xl bg-cream-pale p-3 border border-ink-charcoal/15">
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Family name (e.g. The Okafor Family)" className="bg-cream border-ink-charcoal/20 text-ink-deep" />
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Family name (e.g. The Okafor Family)" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
           {gatheringId ? (
             <div className="space-y-1.5">
               <Label className="text-xs text-ink-deep/60">Add members from this trip</Label>
@@ -123,7 +123,7 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
             <div key={fam.id} className="rounded-xl border border-ink-charcoal/12 p-3 space-y-2">
               {isEdit ? (
                 <>
-                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="bg-cream border-ink-charcoal/20 text-ink-deep" />
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
                   {gatheringId && (
                     <CandidateChips selected={editMembers} onToggle={(uid) => setEditMembers((s) => s.includes(uid) ? s.filter((x) => x !== uid) : [...s, uid])} />
                   )}

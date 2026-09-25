@@ -2,7 +2,7 @@ import React from 'react';
 
 const STYLES = {
   owner: 'bg-terra text-cream border-terra',
-  admin: 'bg-ink-deep text-cream border-ink-deep',
+  admin: 'bg-foreground text-background border-foreground',
   member: 'bg-cream-pale text-ink-deep border-ink-charcoal/25',
   viewer: 'bg-transparent text-ink-deep/55 border-ink-charcoal/25 border-dashed',
 };

@@ -309,7 +309,7 @@ export default function JourneyDetail() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setEditing(true)}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-ink-deep text-cream font-semibold hover:opacity-90 transition-opacity min-h-[44px]"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-foreground text-background font-semibold hover:opacity-90 transition-opacity min-h-[44px]"
           >
             <Pencil className="w-4 h-4" /> Edit
           </button>

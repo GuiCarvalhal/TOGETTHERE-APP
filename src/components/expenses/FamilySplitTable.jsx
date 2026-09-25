@@ -33,7 +33,7 @@ export default function FamilySplitTable({ participants, selected, inputs, split
         const allIn = fam.every((m) => selected.includes(m.id));
         const familyName = isFamily ? (familyMap[fam[0].user_id] || `${fam[0].full_name?.split(' ').pop()} group`) : '';
         return (
-          <div key={fam[0].id} className={isFamily ? 'rounded-lg bg-cream/70 p-2 border border-ink-charcoal/10' : ''}>
+          <div key={fam[0].id} className={isFamily ? 'rounded-lg bg-cream-pale/70 p-2 border border-ink-charcoal/10' : ''}>
             {isFamily && (
               <div className="flex items-center gap-3 pb-1.5 mb-1 border-b border-ink-charcoal/10">
                 <Checkbox checked={allIn} onCheckedChange={() => toggleFamily(fam)} />
@@ -49,10 +49,10 @@ export default function FamilySplitTable({ participants, selected, inputs, split
                   <MemberAvatar member={m} size="xs" />
                   <span className="flex-1 text-sm text-ink-deep truncate min-w-0">{m.full_name || 'Member'}</span>
                   {splitMethod === 'by_share' && checked && (
-                    <Input type="number" step="1" min="0" value={inputs[m.id] || ''} onChange={(e) => onSetInput(m.id, e.target.value)} placeholder="1" className="w-16 h-9 bg-cream border-ink-charcoal/20 text-ink-deep" />
+                    <Input type="number" step="1" min="0" value={inputs[m.id] || ''} onChange={(e) => onSetInput(m.id, e.target.value)} placeholder="1" className="w-16 h-9 bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
                   )}
                   {splitMethod === 'custom' && checked && (
-                    <Input type="number" step="0.01" min="0" value={inputs[m.id] || ''} onChange={(e) => onSetInput(m.id, e.target.value)} placeholder="0.00" className="w-20 h-9 bg-cream border-ink-charcoal/20 text-ink-deep" />
+                    <Input type="number" step="0.01" min="0" value={inputs[m.id] || ''} onChange={(e) => onSetInput(m.id, e.target.value)} placeholder="0.00" className="w-20 h-9 bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
                   )}
                   {checked && (
                     <span className="text-xs text-ink-deep/55 w-20 text-right whitespace-nowrap">{formatCurrency(splitAmounts[m.id] || 0, currency)}</span>

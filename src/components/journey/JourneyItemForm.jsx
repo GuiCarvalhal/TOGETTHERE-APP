@@ -16,6 +16,7 @@ import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import ParticipantPicker from '@/components/journey/ParticipantPicker';
 import { Loader2, Upload, Plane } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
 const TYPE_META = {
   flight: { fromTo: true, place: false },
@@ -111,7 +112,7 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
       const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
       setForm((f) => ({ ...f, attachments: [...f.attachments, file_url] }));
     } catch (e) {
-      alert(e.message || 'Upload failed');
+      toast({ title: 'Upload failed', description: e.message || 'Could not upload the file.', variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -119,14 +120,20 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
 
   async function lookupFlight() {
     const fn = (form.confirmation_number || '').trim();
-    if (!fn) { alert('Enter a flight number (e.g. AA123) in the Confirmation # field first'); return; }
+    if (!fn) {
+      toast({ title: 'Enter a flight number', description: 'Add a flight number like AA123 in the Confirmation # field, then tap Lookup.', variant: 'destructive' });
+      return;
+    }
     setFlightLoading(true);
     try {
       const date = form.start_datetime ? form.start_datetime.slice(0, 10) : new Date().toISOString().slice(0, 10);
       const res = await base44.functions.invoke('searchFlights', { flight_number: fn, date });
       const data = res.data || res;
       const f = data.flight;
-      if (!f) { alert(data.error || 'Flight not found'); return; }
+      if (!f) {
+        toast({ title: 'Flight not found', description: data.error || `Couldn't find ${fn} on that date. Check the number and date, then try again.`, variant: 'destructive' });
+        return;
+      }
       // Mark times touched so the tz re-derive effect doesn't overwrite the
       // flight's scheduled times once the airport tz resolves from from_place.
       setStartTouched(true);
@@ -142,7 +149,7 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
         end_datetime: s.end_datetime || f.arrival || '',
       }));
     } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Flight lookup failed');
+      toast({ title: 'Flight lookup failed', description: e.response?.data?.error || e.message || 'Something went wrong looking up the flight. You can still fill in the details manually.', variant: 'destructive' });
     } finally {
       setFlightLoading(false);
     }
@@ -178,7 +185,7 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
       onSaved();
       onClose();
     } catch (err) {
-      alert(err.message || 'Could not save segment');
+      toast({ title: 'Could not save segment', description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }

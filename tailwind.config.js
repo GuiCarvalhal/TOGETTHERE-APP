@@ -17,7 +17,8 @@ module.exports = {
   				DEFAULT: 'hsl(var(--ink))',
   				soft: 'hsl(var(--ink-soft))',
   				charcoal: 'hsl(var(--ink-charcoal))',
-  				deep: 'hsl(var(--ink-deep))'
+  				deep: 'hsl(var(--ink-deep))',
+  				scrim: 'hsl(var(--ink-scrim))'
   			},
   			terra: {
   				DEFAULT: 'hsl(var(--terra))',
