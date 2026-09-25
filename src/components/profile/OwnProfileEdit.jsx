@@ -8,15 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { COMMON_CURRENCIES, currencyLabel, formatDate } from '@/lib/gatheringHelpers';
+import { COMMON_CURRENCIES, currencyLabel } from '@/lib/gatheringHelpers';
 import { useToast } from '@/components/ui/use-toast';
-import { MapPin, Globe, Sparkles, Camera, UtensilsCrossed, CalendarDays } from 'lucide-react';
+import { MapPin, Globe, Sparkles, Camera, UtensilsCrossed } from 'lucide-react';
 
 // Editable universal profile. Global fields (home_city, home_currency, bio,
 // interests, dietary_preferences, photo) persist on the User entity via
 // updateMe; name + photo also sync to the current gathering's Member record so
-// cards/avatars update there. Family management is global. Gathering context
-// (role, dates) is shown read-only as a distinct section, not edited here.
+// cards/avatars update there. Family management is global. The profile is
+// universal — no gathering-scoped role/dates are shown here.
 //
 // The Save action lives in the page's sticky ProfileActionBar, so this
 // component exposes an imperative save() through its ref and reports dirty /
@@ -141,20 +141,6 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
 
       {/* Family (global) */}
       <FamilyManager families={families || []} gatheringId={gatheringId} userId={userId} onChanged={onSaved} />
-
-      {/* Gathering context — read-only, distinct from the universal profile */}
-      {gatheringId && member && (
-        <div className="tt-ink-panel p-4">
-          <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><CalendarDays className="w-3 h-3" /> In this trip</p>
-          <div className="flex items-center gap-2 flex-wrap text-sm text-ink-deep/75">
-            <span>Role: <strong className="capitalize text-ink-deep">{member.role}</strong></span>
-            {(member.arrival_date || member.departure_date) && (
-              <span className="inline-flex items-center gap-1"><CalendarDays className="w-3 h-3 text-terra-deep" />{member.arrival_date ? formatDate(member.arrival_date) : '—'} → {member.departure_date ? formatDate(member.departure_date) : '—'}</span>
-            )}
-          </div>
-          <p className="text-[0.6875rem] text-ink-deep/45 mt-2">These are trip-specific and separate from your universal profile.</p>
-        </div>
-      )}
 
       {/* Save lives in the sticky ProfileActionBar. */}
       {openMore && (
