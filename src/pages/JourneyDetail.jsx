@@ -7,11 +7,12 @@ import { formatFullDateTz, formatTimeWithCountry, startLocation, endLocation } f
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { Image } from '@/components/ui/image';
 import AttachmentChip from '@/components/tt/AttachmentChip';
-import MemberAvatar from '@/components/tt/MemberAvatar';
+import AvatarStack from '@/components/tt/AvatarStack';
+import SegmentMap from '@/components/journey/SegmentMap';
 import Skeleton from '@/components/tt/Skeleton';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useToast } from '@/components/ui/use-toast';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays, Pencil, Trash2, Navigation, Loader2 } from 'lucide-react';
+import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays, Pencil, Trash2, Loader2 } from 'lucide-react';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
 import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
 import VenueInfoBlock from '@/components/journey/VenueInfoBlock';
@@ -84,7 +85,6 @@ export default function JourneyDetail() {
   }
 
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
-  const owner = item ? (memberById[item.owner_id] || memberById[item.owner_user_id]) : null;
   const attendees = (item?.attendee_user_ids || []).map((uid) => memberById[uid]).filter(Boolean);
   const canEdit = item && canEditJourneyItem(role, item, currentMember);
   const canDelete = item && canDeleteJourneyItem(role, item, currentMember);
@@ -128,8 +128,10 @@ export default function JourneyDetail() {
   const typeStyle = TYPE_STYLE[item.type] || TYPE_STYLE.other;
   const typeColor = TYPE_COLOR[item.type] || TYPE_COLOR.other;
   const q = mapsQuery(item);
-  const embedSrc = q ? `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed` : '';
-  const openMapsUrl = q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : '';
+  const isRoute = ['flight', 'car', 'train', 'cruise'].includes(item.type);
+  const origin = isRoute ? item.from_place : null;
+  const destination = isRoute ? item.to_place : null;
+  const point = !isRoute ? item.place : null;
   const images = (item.attachments || []).filter(isImg);
   const docs = (item.attachments || []).filter((u) => !isImg(u));
 
@@ -168,27 +170,23 @@ export default function JourneyDetail() {
         <FlightStatusCard flightNumber={item.confirmation_number} date={item.start_datetime ? item.start_datetime.slice(0, 10) : ''} />
       )}
 
-      {/* Dates / times */}
+      {/* Dates / times — Start / End side by side; collapses to one column if no end */}
       {(start || end) && (
         <div className="tt-card p-4">
           <p className="tt-label text-ink-deep/40 mb-2.5">When</p>
-          <div className="space-y-2.5">
+          <div className={`grid gap-3 ${start && end ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {start && (
-              <div className="flex items-start gap-3">
-                <CalendarDays className="w-4 h-4 text-terra-coral mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(start, startTz)}</p>
-                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(start, startTz, startCc)}</p>
-                </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-deep/40 mb-1">Start</p>
+                <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(start, startTz)}</p>
+                <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(start, startTz, startCc)}</p>
               </div>
             )}
             {end && (
-              <div className="flex items-start gap-3">
-                <CalendarDays className="w-4 h-4 text-ink-deep/35 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(end, endTz)}</p>
-                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(end, endTz, endCc)}</p>
-                </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-deep/40 mb-1">End</p>
+                <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(end, endTz)}</p>
+                <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(end, endTz, endCc)}</p>
               </div>
             )}
           </div>
@@ -214,25 +212,9 @@ export default function JourneyDetail() {
             )}
           </div>
 
-          {q && (
-            <div className="mt-4">
-              <iframe
-                title={`Map of ${q}`}
-                src={embedSrc}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="w-full h-48 rounded-xl border border-ink-charcoal/15 bg-cream-pale"
-              />
-              <a
-                href={openMapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep transition-colors min-h-[44px]"
-              >
-                <Navigation className="w-4 h-4" /> Open in Google Maps
-              </a>
-            </div>
-          )}
+          <div className="mt-4">
+            <SegmentMap key={item.id} origin={origin} destination={destination} point={point} query={q} isFlight={item.type === 'flight'} />
+          </div>
 
           {(item.type === 'car' || item.type === 'train') && item.location_from && item.location_to && (
             <RouteDetailsCard origin={item.location_from} destination={item.location_to} />
@@ -243,30 +225,16 @@ export default function JourneyDetail() {
         </div>
       )}
 
-      {/* People */}
+      {/* People — participants only (owner display removed; owner field still drives permissions) */}
       <div className="tt-card p-4">
-        <p className="tt-label text-ink-deep/40 mb-2.5">People</p>
-        {owner && (
-          <div className="flex items-center gap-2.5">
-            <MemberAvatar member={owner} size="sm" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-deep truncate">{owner.full_name || 'Owner'}</p>
-              <p className="text-xs text-ink-deep/50 capitalize">{owner.role}</p>
-            </div>
-          </div>
-        )}
-        {attendees.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
-            <p className="text-xs text-ink-deep/45 mb-2">Also on this segment</p>
-            <div className="flex flex-wrap gap-2">
-              {attendees.map((m) => (
-                <div key={m.id} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-cream-pale border border-ink-charcoal/10">
-                  <MemberAvatar member={m} size="xs" />
-                  <span className="text-xs text-ink-deep truncate max-w-[120px]">{m.full_name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-2.5">
+          <p className="tt-label text-ink-deep/40">People</p>
+          {attendees.length > 0 && <span className="text-xs text-ink-deep/45">{attendees.length} on this segment</span>}
+        </div>
+        {attendees.length > 0 ? (
+          <AvatarStack people={attendees} max={8} size="sm" />
+        ) : (
+          <p className="text-sm text-ink-deep/50">No one has joined this segment yet.</p>
         )}
         <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
           <JoinSegmentButton item={item} currentMember={currentMember} onJoined={() => load(true)} />
