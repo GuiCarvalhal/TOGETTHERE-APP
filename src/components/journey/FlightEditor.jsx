@@ -229,6 +229,15 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
             </div>
           </div>
           <div className="space-y-1.5">
+            <Label className="text-ink-deep">Title <span className="text-ink-deep/40 font-normal">(optional)</span></Label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="Flight to Naples"
+              className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+            />
+          </div>
+          <div className="space-y-1.5">
             <Label className="text-ink-deep">Booking ref</Label>
             <Input
               value={form.booking_reference || ''}

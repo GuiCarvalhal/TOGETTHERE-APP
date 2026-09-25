@@ -9,25 +9,18 @@ import { Image } from '@/components/ui/image';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, MapPin, CalendarDays, Compass, ArrowRight, Route, Receipt, Sparkles } from 'lucide-react';
-import { formatDateRange, getGatheringStatus } from '@/lib/gatheringHelpers';
+import { Loader2, Plus, CalendarDays, Compass, ArrowRight, Route, Receipt, Sparkles } from 'lucide-react';
+import { getGatheringStatus } from '@/lib/gatheringHelpers';
 import EmptyState from '@/components/tt/EmptyState';
-import AvatarStack from '@/components/tt/AvatarStack';
 import ThemeToggle from '@/components/tt/ThemeToggle';
 import Skeleton from '@/components/tt/Skeleton';
+import GatheringCard from '@/components/tt/cards/GatheringCard';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
   'https://images.unsplash.com/photo-1502602898657-3e9fa60e1900?w=1200&q=80',
   'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&q=80',
 ];
-
-const STATUS_CLASSES = {
-  terra: 'bg-terra/15 text-terra-deep border-terra/25',
-  green: 'bg-[#4a8b6f]/15 text-[#3f7a5e] border-[#4a8b6f]/30',
-  muted: 'bg-cream-pale text-ink-deep/55 border-ink-charcoal/15',
-};
-const STATUS_DOT = { terra: 'bg-terra', green: 'bg-[#4a8b6f]', muted: 'bg-ink-deep/40' };
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -104,9 +97,9 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-ink text-cream">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-ink/95 backdrop-blur-xl border-b border-white/5 tt-safe-top">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-xl border-b border-border tt-safe-top">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <span className="font-display text-2xl font-bold tracking-tight">TOGETTHERE</span>
           <div className="flex items-center gap-2">
@@ -124,28 +117,9 @@ export default function Home() {
         <h1 className="font-display text-4xl sm:text-6xl font-bold leading-[1.05] tt-text-balance max-w-3xl">
           Plan the journey together.<br /><span className="italic text-terra-coral">Get there, together.</span>
         </h1>
-        <p className="text-cream/70 mt-5 max-w-xl text-[0.9375rem] leading-relaxed">
+        <p className="text-muted-foreground mt-5 max-w-xl text-[0.9375rem] leading-relaxed">
           A living itinerary for your crew — flights and stays on a shared timeline, expenses split fairly, and an AI concierge that tailors each day to where the group actually is.
         </p>
-      </section>
-
-      {/* Why TOGETTHERE */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
-        <div className="grid sm:grid-cols-3 gap-4">
-          {[
-            { icon: Route, title: 'A living itinerary', body: "Flights, stays and activities on one shared timeline everyone can read." },
-            { icon: Receipt, title: 'Fair splits, sorted', body: 'Track shared costs and see exactly who owes whom — down to the cent.' },
-            { icon: Sparkles, title: 'An AI concierge', body: "Daily picks tailored to your crew's diets, interests and where you'll actually be." },
-          ].map((f) => (
-            <div key={f.title} className="tt-ink-panel p-5 hover:-translate-y-0.5 hover:border-terra/30 transition-all duration-300">
-              <div className="w-10 h-10 rounded-xl bg-terra/15 border border-terra/25 flex items-center justify-center mb-3">
-                <f.icon className="w-5 h-5 text-terra-coral" />
-              </div>
-              <p className="font-display text-lg font-bold text-cream">{f.title}</p>
-              <p className="text-cream/60 text-sm mt-1 leading-relaxed">{f.body}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* Gatherings grid */}
@@ -156,7 +130,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               {FILTERS.map((f) => (
                 <button key={f.key} onClick={() => setFilter(f.key)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${filter === f.key ? 'bg-terra text-cream' : 'tt-ink-panel text-cream/70 hover:text-cream'}`}>
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${filter === f.key ? 'bg-primary text-primary-foreground' : 'tt-ink-panel text-muted-foreground hover:text-foreground'}`}>
                   {f.label}
                 </button>
               ))}
@@ -194,43 +168,45 @@ export default function Home() {
             body={filter === 'past' ? 'Completed trips will show up here once your gatherings wrap.' : 'Upcoming and in-progress gatherings will appear here. Switch to “All” to see everything.'}
           />
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {sorted.map(({ g, status }) => {
-              const role = roleOf(g.id);
-              const people = previews[g.id] || [];
-              return (
-                <Link key={g.id} to={`/gathering/${g.id}/journey`} className="group tt-card overflow-hidden hover:-translate-y-1 transition-transform duration-300">
-                  <div className="aspect-[16/10] w-full overflow-hidden bg-cream-pale">
-                    {g.cover_image ? (
-                      <Image src={g.cover_image} alt={g.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" fittingType="fill" />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-cream-pale to-cream-warm flex items-center justify-center">
-                        <span className="font-display italic text-ink/30 text-3xl">{g.name?.[0]}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <h3 className="font-display text-xl font-bold text-ink-deep leading-tight line-clamp-1">{g.name}</h3>
-                      {role && <span className={`tt-stamp ${role === 'owner' ? 'bg-terra text-cream border-terra' : 'bg-cream-pale text-ink-deep border-ink-charcoal/20'} capitalize`}>{role}</span>}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-deep/60 mt-2">
-                      {g.start_date && <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{formatDateRange(g.start_date, g.end_date)}</span>}
-                      {g.destinations?.length > 0 && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{g.destinations.slice(0, 2).join(', ')}</span>}
-                    </div>
-                    <div className="flex items-center justify-between mt-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.6875rem] font-semibold border ${STATUS_CLASSES[status.tone]}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status.tone]}`} />
-                        {status.label}
-                      </span>
-                      <AvatarStack people={people} max={4} size="xs" />
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sorted.map(({ g, status }) => (
+              <GatheringCard
+                key={g.id}
+                gathering={g}
+                status={status}
+                role={roleOf(g.id)}
+                people={previews[g.id] || []}
+                to={`/gathering/${g.id}/journey`}
+              />
+            ))}
           </div>
         )}
+      </section>
+
+      {/* Why TOGETTHERE — condensed, at the bottom */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            { icon: Route, title: 'A living itinerary', body: "Flights, stays and activities on one shared timeline." },
+            { icon: Receipt, title: 'Fair splits, sorted', body: 'Track shared costs and see exactly who owes whom.' },
+            { icon: Sparkles, title: 'An AI concierge', body: "Daily picks tailored to your crew and where you'll be." },
+          ].map((f) => (
+            <div key={f.title} className="tt-ink-panel p-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-8 h-8 rounded-lg bg-terra/15 border border-terra/25 flex items-center justify-center">
+                  <f.icon className="w-4 h-4 text-terra-coral" />
+                </div>
+                <p className="font-display text-sm font-bold text-foreground">{f.title}</p>
+              </div>
+              <p className="text-muted-foreground text-xs leading-relaxed">{f.body}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 text-center">
+          <Button asChild className="bg-terra hover:bg-terra-deep text-cream rounded-full">
+            <Link to="/how-it-works">See how it works <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
+          </Button>
+        </div>
       </section>
 
       {/* Create dialog */}

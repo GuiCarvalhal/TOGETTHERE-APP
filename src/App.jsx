@@ -11,6 +11,7 @@ import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Home from '@/pages/Home';
+import HowItWorks from '@/pages/HowItWorks';
 import GatheringShell from '@/components/GatheringShell';
 import GatheringAgent from '@/pages/GatheringAgent';
 import GatheringJourney from '@/pages/GatheringJourney';
@@ -37,6 +38,7 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
               <Route path="/" element={<Home />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/join/:gatheringId" element={<JoinGathering />} />
               <Route path="/profile/:userId" element={<Profile />} />
               <Route path="/gathering/:id" element={<GatheringShell />}>
