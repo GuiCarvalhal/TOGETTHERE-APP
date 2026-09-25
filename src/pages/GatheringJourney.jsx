@@ -3,7 +3,9 @@ import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { JOURNEY_TYPES, canEditJourneyItem, canAddJourney, formatDate } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canEditJourneyItem, canAddJourney } from '@/lib/gatheringHelpers';
+import { tzDateKey, formatDayHeader, startLocation } from '@/lib/formatPlaceTime';
+import { useTimezonesForPlaces } from '@/lib/usePlaceTimezone';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import PageToolbar from '@/components/tt/PageToolbar';
@@ -24,7 +26,7 @@ const TYPE_STYLE = {
   other: 'bg-cream-pale text-ink-deep/50',
 };
 
-function dayKey(d) { return d ? new Date(d).toISOString().slice(0, 10) : 'unscheduled'; }
+function dayKey(d, tz) { return d ? tzDateKey(d, tz) : 'unscheduled'; }
 
 export default function GatheringJourney() {
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
@@ -65,9 +67,10 @@ export default function GatheringJourney() {
   const visibleItems = scope === 'mine'
     ? items.filter((it) => it.owner_id === currentMember?.user_id || it.owner_user_id === currentMember?.user_id)
     : items;
+  const tzMap = useTimezonesForPlaces(visibleItems.map((it) => startLocation(it)));
   const byDay = {};
   visibleItems.forEach((it) => {
-    const k = dayKey(it.start_datetime);
+    const k = dayKey(it.start_datetime, tzMap[startLocation(it)]);
     (byDay[k] = byDay[k] || []).push(it);
   });
   const days = Object.keys(byDay).sort();
@@ -131,7 +134,7 @@ export default function GatheringJourney() {
                 </div>
                 <div>
                   <p className="tt-label text-terra-coral">{day === 'unscheduled' ? 'Unscheduled' : 'Day'}</p>
-                  <p className="font-display text-base text-foreground">{day !== 'unscheduled' ? formatDate(day, { weekday: 'long', month: 'long', day: 'numeric' }) : 'No time set'}</p>
+                  <p className="font-display text-base text-foreground">{day !== 'unscheduled' ? formatDayHeader(day) : 'No time set'}</p>
                 </div>
                 <div className="flex-1 h-px bg-foreground/10 ml-2" />
               </div>

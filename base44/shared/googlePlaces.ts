@@ -43,3 +43,21 @@ export async function geocode(key, address) {
     return null;
   }
 }
+
+// Resolve an IANA timezone id (e.g. "Europe/Rome") for a place name via Google
+// Geocoding + Time Zone API. Used by backend functions that must render times
+// in the destination's local timezone (journey reminders). Returns null on any
+// failure so callers can fall back to UTC.
+export async function resolveTimezoneId(key, place) {
+  try {
+    const g = await geocode(key, place);
+    if (!g) return null;
+    const ts = Math.floor(Date.now() / 1000);
+    const url = `https://maps.googleapis.com/maps/api/timezone/json?location=${g.lat},${g.lng}&timestamp=${ts}&key=${key}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return data.status === 'OK' ? data.timeZoneId : null;
+  } catch {
+    return null;
+  }
+}

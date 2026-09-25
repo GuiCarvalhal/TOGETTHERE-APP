@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, MapPin, Pencil, Trash2, ChevronRight, Paperclip } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import MemberAvatar from '@/components/tt/MemberAvatar';
-import { formatDate } from '@/lib/gatheringHelpers';
+import { formatTimeTz, startLocation, endLocation } from '@/lib/formatPlaceTime';
+import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
@@ -14,6 +15,8 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // - Footer shows owner, assigned participants, attachment count, and edit/delete.
 export default function JourneyCard({ item, typeLabel, typeStyle, typeColor, icon: Icon, owner, participants, canEdit, onEdit, onDelete, showImages, to }) {
   const navigate = useNavigate();
+  const startTz = usePlaceTimezone(startLocation(item));
+  const endTz = usePlaceTimezone(endLocation(item));
   const imageAtt = showImages ? (item.attachments || []).find(isImg) : null;
   const otherAtts = (item.attachments || []).filter((u) => u !== imageAtt);
   const open = () => { if (to) navigate(to); };
@@ -57,7 +60,7 @@ export default function JourneyCard({ item, typeLabel, typeStyle, typeColor, ico
               {item.start_datetime && (
                 <p className="flex items-center gap-1">
                   <Clock className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{formatDate(item.start_datetime, { hour: 'numeric', minute: '2-digit' })}{item.end_datetime ? ` → ${formatDate(item.end_datetime, { hour: 'numeric', minute: '2-digit' })}` : ''}</span>
+                  <span className="truncate">{formatTimeTz(item.start_datetime, startTz)}{item.end_datetime ? ` → ${formatTimeTz(item.end_datetime, endTz)}` : ''}</span>
                 </p>
               )}
               {(item.location_from || item.location_to) && <p className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0" />{item.location_from} → {item.location_to}</p>}

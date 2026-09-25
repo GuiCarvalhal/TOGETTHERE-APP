@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
-import { JOURNEY_TYPES, canEditJourneyItem, formatDate } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canEditJourneyItem } from '@/lib/gatheringHelpers';
+import { formatFullDateTz, formatTimeTz, startLocation, endLocation } from '@/lib/formatPlaceTime';
+import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import { Image } from '@/components/ui/image';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import MemberAvatar from '@/components/tt/MemberAvatar';
@@ -42,6 +44,8 @@ export default function JourneyDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
+  const startTz = usePlaceTimezone(startLocation(item));
+  const endTz = usePlaceTimezone(endLocation(item));
 
   async function load(silent) {
     if (!silent) { setLoading(true); setError(null); }
@@ -157,8 +161,8 @@ export default function JourneyDetail() {
               <div className="flex items-start gap-3">
                 <CalendarDays className="w-4 h-4 text-terra-coral mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-ink-deep">{formatDate(start, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(start, { hour: 'numeric', minute: '2-digit' })}</p>
+                  <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(start, startTz)}</p>
+                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeTz(start, startTz)}</p>
                 </div>
               </div>
             )}
@@ -166,8 +170,8 @@ export default function JourneyDetail() {
               <div className="flex items-start gap-3">
                 <CalendarDays className="w-4 h-4 text-ink-deep/35 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-ink-deep">{formatDate(end, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(end, { hour: 'numeric', minute: '2-digit' })}</p>
+                  <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(end, endTz)}</p>
+                  <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeTz(end, endTz)}</p>
                 </div>
               </div>
             )}

@@ -72,7 +72,13 @@ export function formatCurrency(amount, currency = 'USD') {
 
 export function formatDate(d, opts = { month: 'short', day: 'numeric' }) {
   if (!d) return '';
-  try { return new Date(d).toLocaleDateString('en-US', opts); } catch { return d; }
+  try {
+    const s = String(d);
+    // Date-only strings parse as UTC and shift a day in western timezones;
+    // parse as a local calendar date so the date is stable everywhere.
+    const dt = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T00:00:00') : new Date(s);
+    return dt.toLocaleDateString('en-US', opts);
+  } catch { return d; }
 }
 
 export function formatDateRange(start, end) {

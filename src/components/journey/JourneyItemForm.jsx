@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
@@ -10,6 +10,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
+import { isoToWallInput, isoToLocalInput, wallTimeToUtcIso, startLocation, endLocation } from '@/lib/formatPlaceTime';
+import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import { Loader2, Upload, Plane } from 'lucide-react';
 
@@ -27,8 +29,8 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, init
   const [form, setForm] = useState({
     type: item?.type || initial?.type || 'activity',
     title: item?.title || initial?.title || '',
-    start_datetime: item?.start_datetime ? item.start_datetime.slice(0, 16) : (initial?.start_datetime || ''),
-    end_datetime: item?.end_datetime ? item.end_datetime.slice(0, 16) : (initial?.end_datetime || ''),
+    start_datetime: item?.start_datetime ? isoToLocalInput(item.start_datetime) : (initial?.start_datetime || ''),
+    end_datetime: item?.end_datetime ? isoToLocalInput(item.end_datetime) : (initial?.end_datetime || ''),
     location_from: item?.location_from || initial?.location_from || '',
     location_to: item?.location_to || initial?.location_to || '',
     location_name: item?.location_name || initial?.location_name || '',
@@ -39,6 +41,41 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, init
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [flightLoading, setFlightLoading] = useState(false);
+
+  // Place-timezone awareness: the datetime inputs show the destination-local
+  // clock time and save back to UTC interpreted in that timezone — so a 4:45 PM
+  // entered for a JFK departure is stored as the correct UTC instant, and a
+  // saved time displayed back stays in the place's own wall clock.
+  const origStart = useRef(item?.start_datetime || null);
+  const origEnd = useRef(item?.end_datetime || null);
+  const [startTouched, setStartTouched] = useState(false);
+  const [endTouched, setEndTouched] = useState(false);
+  const [debStartLoc, setDebStartLoc] = useState('');
+  const [debEndLoc, setDebEndLoc] = useState('');
+  const startTz = usePlaceTimezone(debStartLoc);
+  const endTz = usePlaceTimezone(debEndLoc);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebStartLoc(startLocation(form)), 400);
+    return () => clearTimeout(id);
+  }, [form.type, form.location_from, form.location_to, form.location_name]);
+  useEffect(() => {
+    const id = setTimeout(() => setDebEndLoc(endLocation(form)), 400);
+    return () => clearTimeout(id);
+  }, [form.type, form.location_from, form.location_to, form.location_name]);
+
+  // Once the place tz resolves, re-derive the input from the original stored
+  // instant in that tz — unless the user has already edited the field.
+  useEffect(() => {
+    if (!startTouched && origStart.current && startTz) {
+      setForm((f) => ({ ...f, start_datetime: isoToWallInput(origStart.current, startTz) }));
+    }
+  }, [startTz, startTouched]);
+  useEffect(() => {
+    if (!endTouched && origEnd.current && endTz) {
+      setForm((f) => ({ ...f, end_datetime: isoToWallInput(origEnd.current, endTz) }));
+    }
+  }, [endTz, endTouched]);
 
   const meta = TYPE_META[form.type] || TYPE_META.other;
 
@@ -87,8 +124,8 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, init
         owner_id: item?.owner_id || currentMember?.user_id,
         type: form.type,
         title: form.title.trim(),
-        start_datetime: form.start_datetime ? new Date(form.start_datetime).toISOString() : undefined,
-        end_datetime: form.end_datetime ? new Date(form.end_datetime).toISOString() : undefined,
+        start_datetime: form.start_datetime ? wallTimeToUtcIso(form.start_datetime, startTz) : undefined,
+        end_datetime: form.end_datetime ? wallTimeToUtcIso(form.end_datetime, endTz) : undefined,
         location_from: meta.fromTo ? form.location_from : undefined,
         location_to: meta.fromTo ? form.location_to : undefined,
         location_name: meta.place ? form.location_name : undefined,
@@ -131,11 +168,11 @@ export default function JourneyItemForm({ gatheringId, currentMember, item, init
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="j-start" className="text-ink-deep">Start</Label>
-              <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => setForm({ ...form, start_datetime: e.target.value })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => { setStartTouched(true); setForm({ ...form, start_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="j-end" className="text-ink-deep">End</Label>
-              <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => setForm({ ...form, end_datetime: e.target.value })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => { setEndTouched(true); setForm({ ...form, end_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
           </div>
           {meta.fromTo && (

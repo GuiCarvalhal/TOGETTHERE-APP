@@ -2,24 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plane, RefreshCw, ChevronDown, Clock } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-// AeroDataBox local times look like "2021-08-15 08:30+02:00". Show the
-// destination-local wall clock plus the UTC offset in parentheses — no Date
-// parsing, so the airport's own wall time is shown verbatim.
-function formatLocal(raw) {
-  if (!raw) return '';
-  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2}).*?([+-]\d{2}:\d{2})?/);
-  if (!m) return raw;
-  const mo = MONTHS[parseInt(m[2], 10) - 1];
-  return `${mo} ${parseInt(m[3], 10)} · ${m[4]}${m[5] ? ` (UTC${m[5]})` : ''}`;
-}
-function timeOnly(raw) {
-  if (!raw) return '';
-  const m = raw.match(/[ T](\d{2}:\d{2}).*?([+-]\d{2}:\d{2})?/);
-  return m ? `${m[1]}${m[2] ? ` (UTC${m[2]})` : ''}` : '';
-}
+import { formatOffsetLocal, formatOffsetTime } from '@/lib/formatPlaceTime';
+import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 
 const STATUS_TONE = {
   Scheduled: 'bg-ink-deep/8 text-ink-deep/70 border-ink-charcoal/15',
@@ -50,6 +34,8 @@ export default function FlightStatusCard({ flightNumber, date }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [more, setMore] = useState(false);
+  const depTz = usePlaceTimezone(data?.departure?.airport || data?.departure?.iata || '');
+  const arrTz = usePlaceTimezone(data?.arrival?.airport || data?.arrival?.iata || '');
 
   const load = useCallback(async (silent) => {
     if (!silent) setLoading(true);
@@ -104,8 +90,8 @@ export default function FlightStatusCard({ flightNumber, date }) {
         <div className="tt-ink-panel p-3 min-w-0">
           <p className="tt-label text-ink-deep/40 mb-1 truncate">{dep.iata || 'Departure'}</p>
           <p className="text-sm font-semibold text-ink-deep truncate">{dep.airport || dep.iata || '—'}</p>
-          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatLocal(dep.actual || dep.revised || dep.scheduled) || '—'}</p>
-          {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">Sched {timeOnly(dep.scheduled)}</p>}
+          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(dep.actual || dep.revised || dep.scheduled, depTz) || '—'}</p>
+          {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">Sched {formatOffsetTime(dep.scheduled, depTz)}</p>}
           {(dep.terminal || dep.gate) && (
             <p className="text-[0.625rem] text-ink-deep/55 mt-1.5">{dep.terminal && `T${dep.terminal}`}{dep.terminal && dep.gate && ' · '}{dep.gate && `Gate ${dep.gate}`}</p>
           )}
@@ -113,8 +99,8 @@ export default function FlightStatusCard({ flightNumber, date }) {
         <div className="tt-ink-panel p-3 min-w-0">
           <p className="tt-label text-ink-deep/40 mb-1 truncate">{arr.iata || 'Arrival'}</p>
           <p className="text-sm font-semibold text-ink-deep truncate">{arr.airport || arr.iata || '—'}</p>
-          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatLocal(arr.actual || arr.revised || arr.scheduled) || '—'}</p>
-          {(arr.actual || arr.revised) && arr.scheduled && (arr.actual || arr.revised) !== arr.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">Sched {timeOnly(arr.scheduled)}</p>}
+          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(arr.actual || arr.revised || arr.scheduled, arrTz) || '—'}</p>
+          {(arr.actual || arr.revised) && arr.scheduled && (arr.actual || arr.revised) !== arr.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">Sched {formatOffsetTime(arr.scheduled, arrTz)}</p>}
           {(arr.terminal || arr.gate) && (
             <p className="text-[0.625rem] text-ink-deep/55 mt-1.5">{arr.terminal && `T${arr.terminal}`}{arr.terminal && arr.gate && ' · '}{arr.gate && `Gate ${arr.gate}`}</p>
           )}

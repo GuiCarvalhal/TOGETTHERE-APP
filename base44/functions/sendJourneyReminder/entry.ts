@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
+import { resolveTimezoneId } from '../../shared/googlePlaces.ts';
 
 // Scheduled journey reminders. Finds journey items starting within the next
 // `window_hours` (default 24) that haven't been reminded yet, notifies the
@@ -32,11 +34,16 @@ export default async function (req) {
 
     const origin = req.headers.get('origin') || '';
     const route = `/gathering/${gathering_id}/journey`;
+    const mapsKey = secrets.get('GOOGLEMAPS_TOGETTHERE');
+    const destPlace = ((gathering.destinations || [])[0] || '').trim();
+    const tz = destPlace && mapsKey ? await resolveTimezoneId(mapsKey, destPlace) : null;
     let sent = 0;
     const errors = [];
     for (const it of upcoming) {
       const when = new Date(it.start_datetime);
-      const time = when.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+      const time = tz
+        ? when.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: tz, timeZoneName: 'short' })
+        : when.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
       const result = await notifyGatheringMembers(base44, {
         gatheringId: gathering_id,
         category: 'reminders',
