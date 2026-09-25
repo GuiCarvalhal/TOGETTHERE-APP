@@ -29,6 +29,7 @@ export default async function(req) {
       owner_id: user.id,
       owner_user_id: ownerUid,
       member_user_ids: memberUserIds,
+      attendee_user_ids: [user.id],
     });
     await logActivity(base44, {
       gatheringId: gathering_id, type: 'journey_added',

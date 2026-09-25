@@ -17,6 +17,15 @@
         "type": "string"
       }
     },
+    "attendee_user_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "member_info": {
+      "type": "object"
+    },
     "type": {
       "type": "string",
       "enum": [

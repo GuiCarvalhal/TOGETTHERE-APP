@@ -9,6 +9,11 @@ import MemberAvatar from '@/components/tt/MemberAvatar';
 import Skeleton from '@/components/tt/Skeleton';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays, Pencil, Trash2, Navigation } from 'lucide-react';
+import FlightStatusCard from '@/components/journey/FlightStatusCard';
+import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
+import VenueInfoBlock from '@/components/journey/VenueInfoBlock';
+import SegmentInfoSections from '@/components/journey/SegmentInfoSections';
+import JoinSegmentButton from '@/components/journey/JoinSegmentButton';
 
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
@@ -38,15 +43,15 @@ export default function JourneyDetail() {
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
 
-  async function load() {
-    setLoading(true); setError(null);
+  async function load(silent) {
+    if (!silent) { setLoading(true); setError(null); }
     try {
       const data = await base44.entities.JourneyItem.get(itemId);
       setItem(data);
     } catch (e) {
-      setError(e);
+      if (!silent) setError(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
   useEffect(() => { load(); }, [itemId]);
@@ -61,9 +66,7 @@ export default function JourneyDetail() {
 
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
   const owner = item ? (memberById[item.owner_id] || memberById[item.owner_user_id]) : null;
-  const assigned = item?.member_user_ids?.length
-    ? item.member_user_ids.map((uid) => memberById[uid]).filter(Boolean)
-    : [];
+  const attendees = (item?.attendee_user_ids || []).map((uid) => memberById[uid]).filter(Boolean);
   const canEdit = item && canEditJourneyItem(role, item, currentMember);
 
   const back = () => navigate(`/gathering/${gatheringId}/journey`);
@@ -141,6 +144,10 @@ export default function JourneyDetail() {
         </div>
       </div>
 
+      {item.type === 'flight' && item.confirmation_number && (
+        <FlightStatusCard flightNumber={item.confirmation_number} date={item.start_datetime ? item.start_datetime.slice(0, 10) : ''} />
+      )}
+
       {/* Dates / times */}
       {(start || end) && (
         <div className="tt-card p-5">
@@ -206,37 +213,45 @@ export default function JourneyDetail() {
               </a>
             </div>
           )}
+
+          {(item.type === 'car' || item.type === 'train') && item.location_from && item.location_to && (
+            <RouteDetailsCard origin={item.location_from} destination={item.location_to} />
+          )}
+          {(item.type === 'hotel' || item.type === 'activity') && item.location_name && (
+            <VenueInfoBlock query={item.location_name} />
+          )}
         </div>
       )}
 
       {/* People */}
-      {(owner || assigned.length > 0) && (
-        <div className="tt-card p-5">
-          <p className="tt-label text-ink-deep/40 mb-3">People</p>
-          {owner && (
-            <div className="flex items-center gap-2.5">
-              <MemberAvatar member={owner} size="sm" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-deep truncate">{owner.full_name || 'Owner'}</p>
-                <p className="text-xs text-ink-deep/50 capitalize">{owner.role}</p>
-              </div>
+      <div className="tt-card p-5">
+        <p className="tt-label text-ink-deep/40 mb-3">People</p>
+        {owner && (
+          <div className="flex items-center gap-2.5">
+            <MemberAvatar member={owner} size="sm" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink-deep truncate">{owner.full_name || 'Owner'}</p>
+              <p className="text-xs text-ink-deep/50 capitalize">{owner.role}</p>
             </div>
-          )}
-          {assigned.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
-              <p className="text-xs text-ink-deep/45 mb-2">Also on this segment</p>
-              <div className="flex flex-wrap gap-2">
-                {assigned.map((m) => (
-                  <div key={m.id} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-cream-pale border border-ink-charcoal/10">
-                    <MemberAvatar member={m} size="xs" />
-                    <span className="text-xs text-ink-deep truncate max-w-[120px]">{m.full_name}</span>
-                  </div>
-                ))}
-              </div>
+          </div>
+        )}
+        {attendees.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
+            <p className="text-xs text-ink-deep/45 mb-2">Also on this segment</p>
+            <div className="flex flex-wrap gap-2">
+              {attendees.map((m) => (
+                <div key={m.id} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-cream-pale border border-ink-charcoal/10">
+                  <MemberAvatar member={m} size="xs" />
+                  <span className="text-xs text-ink-deep truncate max-w-[120px]">{m.full_name}</span>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
+        <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
+          <JoinSegmentButton item={item} currentMember={currentMember} onJoined={() => load(true)} />
         </div>
-      )}
+      </div>
 
       {/* Notes */}
       {item.notes && (
@@ -245,6 +260,8 @@ export default function JourneyDetail() {
           <p className="text-sm text-ink-deep/80 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
         </div>
       )}
+
+      <SegmentInfoSections item={item} currentMember={currentMember} members={members} />
 
       {/* Attachments */}
       {(images.length > 0 || docs.length > 0) && (
