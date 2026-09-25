@@ -10,7 +10,25 @@
     },
     "home_city": {
       "type": "string",
-      "description": "Home city \u2014 global profile field, used by the Agent for travel/timezone context"
+      "description": "Home city \u2014 display string for the user's home. Legacy free-text values are shown as-is; a new Google Places selection overwrites this with the resolved formatted address."
+    },
+    "home_place": {
+      "type": "object",
+      "description": "Structured Google Place for the user's home, resolved at entry time via autocomplete so future features (distance, local suggestions, travel logistics) have real coordinates. Set ONLY on an explicit new selection; legacy free-text home_city values have no home_place and display as-is. { place_id, lat, lng, country }",
+      "properties": {
+        "place_id": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "country": {
+          "type": "string"
+        }
+      }
     },
     "home_currency": {
       "type": "string",

@@ -79,6 +79,7 @@ export default async function(req) {
       email: full ? (targetUser?.email || null) : null,
       photo: targetUser?.photo || targetMember?.photo || null,
       home_city: full ? (targetUser?.home_city || targetMember?.home_city || null) : null,
+      home_place: full ? (targetUser?.home_place || null) : null,
       home_currency: full ? (targetUser?.home_currency || null) : null,
       bio: full ? (targetUser?.bio || null) : null,
       interests: full ? ((targetUser?.interests?.length ? targetUser.interests : (targetMember?.interests || []))) : [],

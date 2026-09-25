@@ -4,6 +4,7 @@ import MemberAvatar from '@/components/tt/MemberAvatar';
 import ChipPicker from '@/components/profile/ChipPicker';
 import { INTERESTS, CUISINE } from '@/lib/profileOptions';
 import FamilyManager from '@/components/profile/FamilyManager';
+import HomePlaceField from '@/components/profile/HomePlaceField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +30,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
     full_name: member?.full_name || user?.full_name || '',
     photo: user?.photo || member?.photo || '',
     home_city: user?.home_city || '',
+    home_place: user?.home_place || null,
     home_currency: user?.home_currency || 'USD',
     bio: user?.bio || '',
     interests: user?.interests || [],
@@ -65,6 +67,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
     try {
       await base44.auth.updateMe({
         home_city: form.home_city.trim(),
+        home_place: form.home_place || null,
         home_currency: form.home_currency,
         bio: form.bio.trim(),
         interests: form.interests,
@@ -112,7 +115,12 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><MapPin className="w-3 h-3" /> Home city</Label>
-            <Input value={form.home_city} onChange={(e) => setForm({ ...form, home_city: e.target.value })} placeholder="Brooklyn, NY" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            <HomePlaceField
+              value={form.home_city}
+              place={form.home_place}
+              onChange={(text, p) => setForm({ ...form, home_city: text, home_place: p })}
+              className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><Globe className="w-3 h-3" /> Home currency</Label>

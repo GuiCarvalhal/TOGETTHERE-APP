@@ -27,7 +27,13 @@ export default function OtherProfileView({ data, gatheringId, userId, onChanged 
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-xl font-bold text-ink-deep truncate">{user.full_name || 'Member'}</h2>
             {full && user.home_city && (
-              <span className="inline-flex items-center gap-1 text-xs text-ink-deep/55 mt-1"><MapPin className="w-3 h-3" />{user.home_city}</span>
+              user.home_place?.lat != null ? (
+                <a href={`https://www.google.com/maps/search/?api=1&query=${user.home_place.lat},${user.home_place.lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-ink-deep/55 mt-1 hover:text-terra transition-colors">
+                  <MapPin className="w-3 h-3" />{user.home_city}
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs text-ink-deep/55 mt-1"><MapPin className="w-3 h-3" />{user.home_city}</span>
+              )
             )}
           </div>
         </div>
