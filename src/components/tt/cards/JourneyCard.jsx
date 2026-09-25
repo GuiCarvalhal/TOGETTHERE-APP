@@ -1,41 +1,55 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Paperclip, ChevronRight } from 'lucide-react';
+import { Paperclip, ChevronRight, Clock, CalendarDays } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import MemberAvatar from '@/components/tt/MemberAvatar';
-import { formatTimeTz, startLocation } from '@/lib/formatPlaceTime';
+import {
+  formatTimeTz, formatDateTz, startLocation, endLocation,
+  formatDuration, isAllDayItem, journeyMeta,
+} from '@/lib/formatPlaceTime';
 import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
-// Timeline journey segment row. The left column (type icon + start time with
-// tz abbreviation) aligns to the vertical timeline rail; the compact card sits
-// to the right. Every type shares this one skeleton. Tapping anywhere on the
-// row opens Journey Detail — no owner names, no inline edit/delete on the card
-// (those actions live on the detail page). The cached Google Places photo is
-// shown only as a small subordinate thumbnail when the images toggle is on.
+// Timeline journey segment row. The left rail column (type icon + start time
+// with tz abbreviation) stays separate from the card content and aligns to
+// the vertical timeline rail. Every type shares this one skeleton.
+//
+// Images ON  → the selected image (attachment or cached Google Places photo)
+//   becomes a full-card cover with a dark gradient scrim so all text is
+//   readable; no small thumbnail.
+// Images OFF → a clean white card with no image.
+//
+// Times render in each place's precise IANA timezone (departure airport tz for
+// the start, arrival airport tz for the end on flights), never a guessed
+// offset. Start time, end time when available, and a computed duration are
+// shown for timed items; all-day items show an all-day/date state instead.
 export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, participants, showImages, to }) {
   const navigate = useNavigate();
   const startTz = usePlaceTimezone(startLocation(item));
+  const endTz = usePlaceTimezone(endLocation(item));
   const placePhoto = usePlacePhoto(item);
-  const imageAtt = showImages ? (item.attachments || []).find(isImg) : null;
-  const thumb = showImages ? (imageAtt || placePhoto) : null;
+  const imageAtt = (item.attachments || []).find(isImg);
+  const cover = showImages ? (imageAtt || placePhoto) : null;
+  const onCover = !!cover;
 
-  // Split "1:30 PM (CEST)" into the wall-clock time and the tz abbreviation so
-  // they can stack in the narrow rail column. Always the place's local tz.
-  const fullTime = formatTimeTz(item.start_datetime, startTz);
-  const timePart = fullTime ? fullTime.split(' (')[0] : '';
-  const abbr = (fullTime.match(/\(([^)]+)\)/) || [])[1] || '';
+  const allDay = isAllDayItem(item, startTz);
+  const startTime = allDay ? '' : formatTimeTz(item.start_datetime, startTz);
+  const endTime = (!allDay && item.end_datetime) ? formatTimeTz(item.end_datetime, endTz) : '';
+  const duration = (!allDay && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
+  const meta = journeyMeta(item);
 
-  // One concise subtitle line: route for transport types, place name otherwise.
-  const hasRoute = !!(item.location_from || item.location_to);
-  const route = hasRoute
-    ? `${item.location_from || ''}${item.location_from && item.location_to ? ' → ' : ''}${item.location_to || ''}`
-    : '';
-  const subtitle = route || item.location_name || '';
+  // Split the start time into wall-clock + tz abbreviation for the narrow rail.
+  const timePart = startTime ? startTime.split(' (')[0] : '';
+  const abbr = (startTime.match(/\(([^)]+)\)/) || [])[1] || '';
 
   const open = () => { if (to) navigate(to); };
+
+  const mainText = onCover ? 'text-white' : 'text-ink-deep';
+  const subText = onCover ? 'text-white/85' : 'text-ink-deep/55';
+  const metaText = onCover ? 'text-white/80' : 'text-ink-deep/50';
+  const dividerClass = onCover ? 'border-white/20' : 'border-ink-charcoal/10';
 
   return (
     <div
@@ -45,7 +59,7 @@ export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, pa
       onClick={open}
       onKeyDown={to ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}
     >
-      {/* Left rail column: type icon + start time with tz abbreviation */}
+      {/* Left rail column: type icon + start time (kept separate from card) */}
       <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center relative z-10 border-2 border-background"
@@ -53,56 +67,83 @@ export default function JourneyCard({ item, typeLabel, typeColor, icon: Icon, pa
         >
           <Icon className="w-5 h-5" strokeWidth={2} />
         </div>
-        {timePart && (
+        {allDay ? (
+          <div className="mt-1.5 text-center leading-tight">
+            <p className="text-[0.625rem] font-bold text-ink-deep/55 whitespace-nowrap">All day</p>
+          </div>
+        ) : timePart ? (
           <div className="mt-1.5 text-center leading-tight">
             <p className="text-xs font-bold text-ink-deep whitespace-nowrap">{timePart}</p>
             {abbr && <p className="text-[0.625rem] text-ink-deep/45 mt-0.5">{abbr}</p>}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Right: compact card */}
-      <div className="flex-1 min-w-0 tt-card p-3">
-        <div className="flex items-start gap-2.5">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="tt-label whitespace-nowrap" style={{ color: typeColor }}>{typeLabel}</span>
-              {item.confirmation_number && <span className="text-[0.625rem] text-ink-deep/40 truncate">#{item.confirmation_number}</span>}
-              <ChevronRight className="w-4 h-4 text-ink-deep/25 ml-auto shrink-0" />
-            </div>
-            <h3 className="font-display text-[0.95rem] font-bold text-ink-deep leading-tight mt-0.5 line-clamp-2">{item.title}</h3>
-            {subtitle && (
-              <p className="text-xs text-ink-deep/55 mt-1 flex items-center gap-1 min-w-0">
-                <MapPin className="w-3 h-3 shrink-0" />
-                <span className="truncate">{subtitle}</span>
-              </p>
+      {/* Card */}
+      <div className={`flex-1 min-w-0 rounded-2xl overflow-hidden relative ${onCover ? '' : 'tt-card'}`}>
+        {onCover && (
+          <>
+            <Image src={cover} alt="" className="absolute inset-0 w-full h-full" fittingType="fill" />
+            <div className="absolute inset-0 bg-gradient-to-br from-ink-deep/90 via-ink-deep/60 to-ink-deep/35" />
+          </>
+        )}
+        <div className="relative p-3 min-h-[68px] flex flex-col">
+          {/* Category label (kept) + chevron. No redundant raw type / empty placeholder. */}
+          <div className="flex items-center gap-2">
+            {typeLabel && (
+              <span className="tt-label whitespace-nowrap" style={{ color: onCover ? '#fff' : typeColor }}>{typeLabel}</span>
+            )}
+            {!onCover && item.confirmation_number && (
+              <span className="text-[0.625rem] text-ink-deep/40 truncate">#{item.confirmation_number}</span>
+            )}
+            <ChevronRight className="w-4 h-4 ml-auto shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
+          </div>
+
+          {/* Metadata line above the title */}
+          {meta && <p className={`text-[0.6875rem] mt-0.5 truncate ${metaText}`}>{meta}</p>}
+
+          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 ${mainText}`}>{item.title}</h3>
+
+          {/* Timing: start → end · duration, in local tz; all-day state otherwise */}
+          <div className={`flex items-center gap-1.5 mt-1 text-xs flex-wrap ${subText}`}>
+            {allDay ? (
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="w-3 h-3" />
+                {formatDateTz(item.start_datetime, startTz) ? `${formatDateTz(item.start_datetime, startTz)} · All day` : 'All day'}
+              </span>
+            ) : (
+              <>
+                {startTime && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{startTime}</span>}
+                {endTime && <><span className="opacity-50">→</span><span>{endTime}</span></>}
+                {duration && (
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold ${onCover ? 'bg-white/20 text-white' : 'bg-cream-pale text-ink-deep/60 border border-ink-charcoal/10'}`}>
+                    {duration}
+                  </span>
+                )}
+              </>
             )}
           </div>
-          {thumb && (
-            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-ink-charcoal/10">
-              <Image src={thumb} alt="" className="w-full h-full object-cover" fittingType="fill" />
+
+          {(participants?.length > 0 || (item.attachments || []).length > 0) && (
+            <div className={`flex items-center gap-2 mt-2 pt-2 border-t ${dividerClass}`}>
+              {participants?.length > 0 && (
+                <div className="flex items-center min-w-0">
+                  {participants.slice(0, 4).map((m, i) => (
+                    <div key={m.id} className={`rounded-full ring-2 ${onCover ? 'ring-white/90' : 'ring-card'}`} style={{ marginLeft: i === 0 ? 0 : '-0.5rem' }}>
+                      <MemberAvatar member={m} size="xs" />
+                    </div>
+                  ))}
+                  {participants.length > 4 && <span className={`text-[0.625rem] ml-1.5 ${subText}`}>+{participants.length - 4}</span>}
+                </div>
+              )}
+              {(item.attachments || []).length > 0 && (
+                <span className={`inline-flex items-center gap-1 text-[0.625rem] px-1.5 py-0.5 rounded-full ${onCover ? 'bg-white/15 text-white' : 'bg-cream-pale text-ink-deep/50 border border-ink-charcoal/10'}`}>
+                  <Paperclip className="w-3 h-3" />{(item.attachments || []).length}
+                </span>
+              )}
             </div>
           )}
         </div>
-        {(participants?.length > 0 || (item.attachments || []).length > 0) && (
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-ink-charcoal/10">
-            {participants?.length > 0 && (
-              <div className="flex items-center min-w-0">
-                {participants.slice(0, 4).map((m, i) => (
-                  <div key={m.id} className="rounded-full ring-2 ring-card" style={{ marginLeft: i === 0 ? 0 : '-0.5rem' }}>
-                    <MemberAvatar member={m} size="xs" />
-                  </div>
-                ))}
-                {participants.length > 4 && <span className="text-[0.625rem] text-ink-deep/50 ml-1.5">+{participants.length - 4}</span>}
-              </div>
-            )}
-            {(item.attachments || []).length > 0 && (
-              <span className="inline-flex items-center gap-1 text-[0.625rem] text-ink-deep/50 px-1.5 py-0.5 rounded-full bg-cream-pale border border-ink-charcoal/10">
-                <Paperclip className="w-3 h-3" />{(item.attachments || []).length}
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

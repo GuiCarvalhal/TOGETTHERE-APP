@@ -17,14 +17,15 @@ export function tzAbbrAt(iso, timeZone) {
   } catch { return ''; }
 }
 
-// "11:15 PM (CEST)" — time only, always with abbreviation.
+// "11:15 PM (CEST)" — time only, in the place's local tz with its real
+// abbreviation. Returns '' while the tz is unknown (loading) so we never show a
+// guessed offset or fake UTC; the time appears once the IANA tz resolves.
 export function formatTimeTz(iso, timeZone) {
-  if (!iso) return '';
-  const tz = timeZone || 'UTC';
+  if (!iso || !timeZone) return '';
   try {
-    const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz }).format(new Date(iso));
-    const abbr = tzAbbrAt(iso, tz);
-    return abbr ? `${time} (${abbr})` : `${time} (UTC)`;
+    const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(iso));
+    const abbr = tzAbbrAt(iso, timeZone);
+    return abbr ? `${time} (${abbr})` : time;
   } catch { return ''; }
 }
 
@@ -187,4 +188,58 @@ export function endLocation(item) {
     return item.location_to || item.location_from || item.location_name || '';
   }
   return item.location_name || item.location_to || item.location_from || '';
+}
+
+// "2h 30m" / "3d 4h" — duration between two instants (tz-independent, from the
+// canonical stored UTC timestamps). Empty for missing/zero/negative spans.
+export function formatDuration(startIso, endIso) {
+  if (!startIso || !endIso) return '';
+  const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
+  if (!isFinite(ms) || ms <= 0) return '';
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+  const days = Math.floor(h / 24);
+  const remH = h % 24;
+  return remH ? `${days}d ${remH}h` : `${days}d`;
+}
+
+// Heuristic all-day detection for display only: a segment whose local start is
+// midnight and which has no end (or an end also at midnight). Timed items (a
+// 4:45 PM flight) are never misclassified. Canonical stored timestamps are
+// unchanged; this only affects how the card renders the time.
+export function isAllDayItem(item, timeZone) {
+  if (!item?.start_datetime) return false;
+  const atMidnight = (iso) => {
+    if (!iso) return false;
+    try {
+      const p = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timeZone || 'UTC' }).formatToParts(new Date(iso));
+      const h = p.find((x) => x.type === 'hour')?.value;
+      const m = p.find((x) => x.type === 'minute')?.value;
+      return h === '00' && m === '00';
+    } catch { return false; }
+  };
+  if (!atMidnight(item.start_datetime)) return false;
+  if (!item.end_datetime) return true;
+  return atMidnight(item.end_datetime);
+}
+
+// Metadata line above the title. Uses actual stored fields only; never invents
+// values. Flight → flight number + carrier (carrier parsed from the lookup-
+// generated title "Flight AA123 — American Airlines"); Stay/Activity → the
+// Google Places name (location_name); Ride → the destination (location_to).
+export function journeyMeta(item) {
+  if (!item) return '';
+  if (item.type === 'flight') {
+    const num = (item.confirmation_number || '').trim();
+    let carrier = '';
+    const m = (item.title || '').match(/^[Ff]light\s+\S+\s+[—–-]\s+(.+)$/);
+    if (m) carrier = m[1].trim();
+    return [num && `Flight ${num}`, carrier].filter(Boolean).join(' · ');
+  }
+  if (item.type === 'car') return item.location_to || item.location_name || '';
+  if (item.type === 'train') return item.location_to || item.location_from || '';
+  return item.location_name || '';
 }

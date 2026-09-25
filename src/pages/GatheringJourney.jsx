@@ -45,8 +45,15 @@ export default function GatheringJourney() {
   useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
+  const uid = currentMember?.user_id;
+  // MINE = items the signed-in user owns/created (owner_id is the item creator)
+  // OR is an explicit attendee of (attendee_user_ids is the opt-in list,
+  // distinct from the ACL member_user_ids which every visible item shares).
+  // owner_user_id is the gathering owner (set on every item), NOT the item
+  // creator, so it is intentionally not used here. GROUP = the complete combined
+  // journey for all participating members (everything the user can read).
   const visibleItems = scope === 'mine'
-    ? items.filter((it) => it.owner_id === currentMember?.user_id || it.owner_user_id === currentMember?.user_id)
+    ? items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
     : items;
   const tzMap = useTimezonesForPlaces(visibleItems.map((it) => startLocation(it)));
   const byDay = {};
@@ -106,7 +113,7 @@ export default function GatheringJourney() {
 
   return (
     <div className="space-y-5">
-      <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
+      <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd} />
 
       {visibleItems.length === 0 ? (
         <EmptyState
@@ -123,7 +130,7 @@ export default function GatheringJourney() {
         <div className="relative">
           {/* Continuous left timeline rail */}
           <div className="absolute left-6 top-0 bottom-0 w-px bg-foreground/12" aria-hidden />
-          <div className="space-y-6">
+          <div className="space-y-8">
             {days.map((day) => (
               <div key={day} className="space-y-3">
                 {/* Day marker on the rail */}
@@ -135,7 +142,7 @@ export default function GatheringJourney() {
                   </div>
                   <div>
                     <p className="tt-label text-terra-coral">{day === 'unscheduled' ? 'Unscheduled' : 'Day'}</p>
-                    <p className="font-display text-base text-foreground">{formatDayHeader(day)}</p>
+                    <p className="font-display text-lg text-foreground">{formatDayHeader(day)}</p>
                   </div>
                 </div>
                 {/* Segment rows */}
@@ -156,21 +163,6 @@ export default function GatheringJourney() {
               </div>
             ))}
           </div>
-
-          {/* Terminal add-segment node on the rail */}
-          {canAdd && (
-            <button
-              onClick={() => { setEditing(null); setOpen(true); }}
-              className="flex items-center gap-3 mt-4 min-h-[44px] group"
-            >
-              <div className="w-12 flex justify-center shrink-0">
-                <div className="w-10 h-10 rounded-full border-2 border-dashed border-terra/40 flex items-center justify-center group-hover:bg-terra/10 transition-colors relative z-10">
-                  <Plus className="w-4 h-4 text-terra" />
-                </div>
-              </div>
-              <span className="text-sm font-semibold text-terra-deep group-hover:text-terra transition-colors">Add segment</span>
-            </button>
-          )}
         </div>
       )}
 
