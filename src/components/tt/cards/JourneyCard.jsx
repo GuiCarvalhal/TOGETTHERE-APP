@@ -7,7 +7,7 @@ import {
   formatTimeOnly, formatTimeWithCountry, formatDateTz, startLocation, endLocation,
   formatDuration, isAllDayItem, journeyMeta, tzAbbrAt,
 } from '@/lib/formatPlaceTime';
-import { usePlaceTimezone, usePlaceCountryCode } from '@/lib/usePlaceTimezone';
+import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
@@ -30,10 +30,10 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // height never depends on whether avatars are present.
 export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to }) {
   const navigate = useNavigate();
-  const startTz = usePlaceTimezone(startLocation(item));
-  const endTz = usePlaceTimezone(endLocation(item));
-  const startCc = usePlaceCountryCode(startLocation(item));
-  const endCc = usePlaceCountryCode(endLocation(item));
+  const startTz = useItemStartTz(item);
+  const endTz = useItemEndTz(item);
+  const startCc = useItemStartCountry(item);
+  const endCc = useItemEndCountry(item);
   const placePhoto = usePlacePhoto(item);
   const imageAtt = (item.attachments || []).find(isImg);
   const cover = showImages ? (imageAtt || placePhoto) : null;

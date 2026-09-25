@@ -77,6 +77,87 @@
     "reminder_sent_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "place": {
+      "type": "object",
+      "description": "Resolved Google Place for STAY/ACTIVITY items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz }",
+      "properties": {
+        "place_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "country": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        }
+      }
+    },
+    "from_place": {
+      "type": "object",
+      "description": "Resolved Google Place for the ORIGIN of FLIGHT/RIDE/TRAIN/CRUISE items. Same shape as `place`.",
+      "properties": {
+        "place_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "country": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        }
+      }
+    },
+    "to_place": {
+      "type": "object",
+      "description": "Resolved Google Place for the DESTINATION of FLIGHT/RIDE/TRAIN/CRUISE items. Same shape as `place`.",
+      "properties": {
+        "place_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "country": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        }
+      }
     }
   },
   "required": [

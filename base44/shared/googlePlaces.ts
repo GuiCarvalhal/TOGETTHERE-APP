@@ -98,6 +98,87 @@ export async function fetchPhotoBlob(key, photoName, maxWidthPx = 400) {
   return await res.blob();
 }
 
+// Google Places Autocomplete (New Places API v1) — type-ahead predictions.
+// Returns [{ place_id, name, address }]. `types` optionally restricts to a
+// place type (e.g. "airport" for flight origin/destination). Used by the
+// searchPlaces backend function so the journey form can resolve a place at
+// entry time instead of free-texting a location that must be re-geocoded later.
+export async function autocompletePlaces(key, text, types) {
+  const body = { input: text, languageCode: 'en' };
+  if (types) body.includedPrimaryTypes = [types];
+  const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text.text,suggestions.placePrediction.structuredFormat.mainText.text,suggestions.placePrediction.structuredFormat.secondaryText.text',
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  return (data.suggestions || []).map((s) => {
+    const p = s.placePrediction || {};
+    const main = p.structuredFormat?.mainText?.text || p.text?.text || '';
+    const secondary = p.structuredFormat?.secondaryText?.text || '';
+    return {
+      place_id: p.placeId || '',
+      name: main,
+      address: secondary ? `${main}, ${secondary}` : main,
+    };
+  }).filter((p) => p.place_id);
+}
+
+// Place Details (New Places API v1) — resolve a place_id to full data.
+// Returns { place_id, name, address, lat, lng, country } or null. Used by the
+// resolvePlace backend function after the user selects an autocomplete
+// prediction; the caller appends the IANA tz from the Time Zone API.
+export async function getPlaceDetails(key, placeId) {
+  const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=en`;
+  const res = await fetch(url, {
+    headers: {
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,addressComponents',
+    },
+  });
+  if (!res.ok) return null;
+  const p = await res.json();
+  const country = (p.addressComponents || []).find((c) => (c.types || []).includes('country'))?.shortText || '';
+  return {
+    place_id: p.id || placeId,
+    name: p.displayName?.text || '',
+    address: p.formattedAddress || '',
+    lat: p.location?.latitude ?? null,
+    lng: p.location?.longitude ?? null,
+    country,
+  };
+}
+
+// Resolve an airport IATA code to a Google Place + IANA tz. Used by the flight
+// lookup so origin/destination airports are resolved at entry time (place_id,
+// name, address, lat, lng, country, tz) instead of storing a bare IATA string.
+export async function resolveAirportPlace(key, iata) {
+  const places = await searchText(key, `${iata} Airport`, undefined,
+    'places.id,places.displayName,places.formattedAddress,places.location,places.addressComponents');
+  const p = places[0];
+  if (!p) return null;
+  const country = (p.addressComponents || []).find((c) => (c.types || []).includes('country'))?.shortText || '';
+  const lat = p.location?.latitude ?? null;
+  const lng = p.location?.longitude ?? null;
+  let tz = '';
+  if (lat != null && lng != null) {
+    const ts = Math.floor(Date.now() / 1000);
+    const tzRes = await fetch(`https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${ts}&key=${key}`);
+    const tzData = await tzRes.json();
+    if (tzData.status === 'OK') tz = tzData.timeZoneId;
+  }
+  return {
+    place_id: p.id || '',
+    name: p.displayName?.text || iata,
+    address: p.formattedAddress || '',
+    lat, lng, country, tz,
+  };
+}
+
 // Resolve an IANA timezone id (e.g. "Europe/Rome") for a place name via Google
 // Geocoding + Time Zone API. Used by backend functions that must render times
 // in the destination's local timezone (journey reminders). Returns null on any

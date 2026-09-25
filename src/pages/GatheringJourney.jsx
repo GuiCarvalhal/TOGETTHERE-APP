@@ -4,8 +4,8 @@ import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
-import { tzDateKey, formatDayHeader, startLocation } from '@/lib/formatPlaceTime';
-import { useTimezonesForPlaces } from '@/lib/usePlaceTimezone';
+import { tzDateKey, formatDayHeader } from '@/lib/formatPlaceTime';
+import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import PageToolbar from '@/components/tt/PageToolbar';
@@ -65,7 +65,7 @@ export default function GatheringJourney() {
   const visibleItems = scope === 'mine'
     ? items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
     : items;
-  const tzMap = useTimezonesForPlaces(visibleItems.map((it) => startLocation(it)));
+  const tzMap = useItemStartTzMap(visibleItems);
   // Expand stays (hotel) into a check-in entry at the start and a check-out
   // entry at the end — one underlying record, two timeline positions, each on
   // its correct day in chronological order. Other types stay single.
@@ -81,7 +81,7 @@ export default function GatheringJourney() {
   entries.sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
   const byDay = {};
   entries.forEach((e) => {
-    const k = dayKey(e.at, tzMap[startLocation(e.item)]);
+    const k = dayKey(e.at, tzMap[e.item.id]);
     (byDay[k] = byDay[k] || []).push(e);
   });
   const days = Object.keys(byDay).sort();

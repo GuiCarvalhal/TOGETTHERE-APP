@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { JOURNEY_TYPES, canEditJourneyItem, canDeleteJourneyItem } from '@/lib/gatheringHelpers';
 import { formatFullDateTz, formatTimeWithCountry, startLocation, endLocation } from '@/lib/formatPlaceTime';
-import { usePlaceTimezone, usePlaceCountryCode } from '@/lib/usePlaceTimezone';
+import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { Image } from '@/components/ui/image';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import MemberAvatar from '@/components/tt/MemberAvatar';
@@ -47,10 +47,10 @@ export default function JourneyDetail() {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
-  const startTz = usePlaceTimezone(startLocation(item));
-  const endTz = usePlaceTimezone(endLocation(item));
-  const startCc = usePlaceCountryCode(startLocation(item));
-  const endCc = usePlaceCountryCode(endLocation(item));
+  const startTz = useItemStartTz(item);
+  const endTz = useItemEndTz(item);
+  const startCc = useItemStartCountry(item);
+  const endCc = useItemEndCountry(item);
 
   async function load(silent) {
     if (!silent) { setLoading(true); setError(null); }

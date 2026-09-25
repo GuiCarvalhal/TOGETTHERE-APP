@@ -237,6 +237,16 @@ export function wallTimeToUtcIso(wallStr, timeZone) {
   return new Date(asUtcGuess - offset).toISOString();
 }
 
+// Split an arrow-style route ("Bomerano → Nocelle", "JFK -> LHR") and return the
+// FIRST segment so legacy free-text records that don't geocode as a whole can
+// still resolve a timezone from their origin. Records created via autocomplete
+// store a resolved place and never hit this fallback.
+export function arrowFirst(place) {
+  if (!place) return '';
+  const parts = String(place).split(/\s*(?:→|->)\s*/).filter(Boolean);
+  return parts[0] || place;
+}
+
 // --- Journey item location → timezone key helpers ---
 // The relevant place for a segment's start vs end time.
 export function startLocation(item) {

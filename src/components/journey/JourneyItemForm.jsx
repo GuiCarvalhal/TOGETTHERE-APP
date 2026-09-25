@@ -10,8 +10,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
-import { isoToWallInput, isoToLocalInput, wallTimeToUtcIso, startLocation, endLocation } from '@/lib/formatPlaceTime';
+import { isoToWallInput, isoToLocalInput, wallTimeToUtcIso, startLocation, endLocation, arrowFirst } from '@/lib/formatPlaceTime';
 import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
+import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import ParticipantPicker from '@/components/journey/ParticipantPicker';
 import { Loader2, Upload, Plane } from 'lucide-react';
@@ -44,6 +45,9 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
     location_from: item?.location_from || initial?.location_from || '',
     location_to: item?.location_to || initial?.location_to || '',
     location_name: item?.location_name || initial?.location_name || '',
+    place: item?.place || null,
+    from_place: item?.from_place || null,
+    to_place: item?.to_place || null,
     confirmation_number: item?.confirmation_number || initial?.confirmation_number || '',
     notes: item?.notes || initial?.notes || '',
     attachments: item?.attachments || initial?.attachments || [],
@@ -62,8 +66,16 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
   const [endTouched, setEndTouched] = useState(false);
   const [debStartLoc, setDebStartLoc] = useState('');
   const [debEndLoc, setDebEndLoc] = useState('');
-  const startTz = usePlaceTimezone(debStartLoc);
-  const endTz = usePlaceTimezone(debEndLoc);
+  // Prefer the place tz resolved at entry time (autocomplete / flight lookup);
+  // only fall back to render-time geocoding for free text, geocoding the first
+  // segment before an arrow so legacy "A → B" routes still resolve.
+  const isRoute = ['flight', 'car', 'train', 'cruise'].includes(form.type);
+  const storedStartTz = isRoute ? form.from_place?.tz : form.place?.tz;
+  const storedEndTz = isRoute ? form.to_place?.tz : form.place?.tz;
+  const startFallback = usePlaceTimezone(storedStartTz ? '' : arrowFirst(debStartLoc));
+  const endFallback = usePlaceTimezone(storedEndTz ? '' : arrowFirst(debEndLoc));
+  const startTz = storedStartTz || startFallback || null;
+  const endTz = storedEndTz || endFallback || null;
 
   useEffect(() => {
     const id = setTimeout(() => setDebStartLoc(startLocation(form)), 400);
@@ -115,11 +127,19 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
       const data = res.data || res;
       const f = data.flight;
       if (!f) { alert(data.error || 'Flight not found'); return; }
+      // Mark times touched so the tz re-derive effect doesn't overwrite the
+      // flight's scheduled times once the airport tz resolves from from_place.
+      setStartTouched(true);
+      setEndTouched(true);
       setForm((s) => ({
         ...s,
         title: s.title || `Flight ${f.number}${f.airline ? ' — ' + f.airline : ''}`,
-        location_from: s.location_from || f.from,
-        location_to: s.location_to || f.to,
+        location_from: s.location_from || f.from || '',
+        from_place: s.from_place || f.from_place || null,
+        location_to: s.location_to || f.to || '',
+        to_place: s.to_place || f.to_place || null,
+        start_datetime: s.start_datetime || f.departure || '',
+        end_datetime: s.end_datetime || f.arrival || '',
       }));
     } catch (e) {
       alert(e.response?.data?.error || e.message || 'Flight lookup failed');
@@ -143,6 +163,8 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
         location_from: meta.fromTo ? form.location_from : undefined,
         location_to: meta.fromTo ? form.location_to : undefined,
         location_name: meta.place ? form.location_name : undefined,
+        ...(meta.fromTo ? { from_place: form.from_place || null, to_place: form.to_place || null } : {}),
+        ...(meta.place ? { place: form.place || null } : {}),
         confirmation_number: form.confirmation_number,
         notes: form.notes,
         attachments: form.attachments,
@@ -194,18 +216,38 @@ export default function JourneyItemForm({ gatheringId, currentMember, members, i
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-ink-deep">From</Label>
-                <Input value={form.location_from} onChange={(e) => setForm({ ...form, location_from: e.target.value })} placeholder="JFK" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+                <PlaceAutocomplete
+                  value={form.location_from}
+                  onText={(v) => setForm((f) => ({ ...f, location_from: v, from_place: null }))}
+                  onSelect={(p) => setForm((f) => ({ ...f, from_place: p }))}
+                  placeholder={form.type === 'flight' ? 'Origin airport' : 'Pickup point'}
+                  types={form.type === 'flight' ? 'airport' : undefined}
+                  className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-ink-deep">To</Label>
-                <Input value={form.location_to} onChange={(e) => setForm({ ...form, location_to: e.target.value })} placeholder="NAP" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+                <PlaceAutocomplete
+                  value={form.location_to}
+                  onText={(v) => setForm((f) => ({ ...f, location_to: v, to_place: null }))}
+                  onSelect={(p) => setForm((f) => ({ ...f, to_place: p }))}
+                  placeholder={form.type === 'flight' ? 'Destination airport' : 'Destination'}
+                  types={form.type === 'flight' ? 'airport' : undefined}
+                  className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+                />
               </div>
             </div>
           )}
           {meta.place && (
             <div className="space-y-2">
               <Label className="text-ink-deep">Location</Label>
-              <Input value={form.location_name} onChange={(e) => setForm({ ...form, location_name: e.target.value })} placeholder="Hotel Santa Caterina, Amalfi" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+              <PlaceAutocomplete
+                value={form.location_name}
+                onText={(v) => setForm((f) => ({ ...f, location_name: v, place: null }))}
+                onSelect={(p) => setForm((f) => ({ ...f, place: p }))}
+                placeholder="Hotel Santa Caterina, Amalfi"
+                className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+              />
             </div>
           )}
           <div className="space-y-2">
