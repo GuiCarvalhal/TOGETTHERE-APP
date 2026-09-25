@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/tt/Skeleton';
-import TopBar from '@/components/tt/TopBar';
+import AppHeader from '@/components/tt/AppHeader';
 import ProfileActionBar from '@/components/tt/ProfileActionBar';
 import OwnProfileEdit from '@/components/profile/OwnProfileEdit';
 import OwnProfileView from '@/components/profile/OwnProfileView';
@@ -56,7 +56,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TopBar gatheringId={gatheringId} />
+      <AppHeader gatheringId={gatheringId} />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 pb-24">
         <ProfileActionBar
           onBack={onBack}

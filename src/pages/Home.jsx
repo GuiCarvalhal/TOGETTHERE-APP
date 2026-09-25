@@ -12,7 +12,7 @@ import {
 import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, X } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, formatGatheringRange } from '@/lib/gatheringDates';
 import EmptyState from '@/components/tt/EmptyState';
-import ThemeToggle from '@/components/tt/ThemeToggle';
+import AppHeader from '@/components/tt/AppHeader';
 import Skeleton from '@/components/tt/Skeleton';
 import GatheringCard from '@/components/tt/cards/GatheringCard';
 import DestinationPicker from '@/components/tt/DestinationPicker';
@@ -109,18 +109,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-xl border-b border-border tt-safe-top">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <span className="font-display text-2xl font-bold tracking-tight">TOGETTHERE</span>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button onClick={() => setOpen(true)}>
-              <Plus /> New Gathering
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Universal header */}
+      <AppHeader />
 
       {/* Hero intro */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10">
@@ -135,6 +125,7 @@ export default function Home() {
 
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
+        <Button onClick={() => setOpen(true)} className="w-full sm:w-auto mb-6"><Plus /> New Gathering</Button>
         <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
           <h2 className="font-display text-2xl font-bold">Your gatherings</h2>
           {gatherings.length > 1 && (

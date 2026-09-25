@@ -65,3 +65,11 @@ export function useGathering() {
   if (!ctx) throw new Error('useGathering must be used within GatheringProvider');
   return ctx;
 }
+
+// Non-throwing variant for components that render both inside a gathering
+// (GatheringShell) and outside one (Home, Profile, How-it-works) — e.g. the
+// avatar menu, which hides its gathering-scoped sections when there's no
+// gathering. Returns null when no provider is mounted above the caller.
+export function useOptionalGathering() {
+  return useContext(GatheringCtx);
+}

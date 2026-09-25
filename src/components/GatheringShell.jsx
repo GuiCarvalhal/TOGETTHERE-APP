@@ -64,7 +64,7 @@ function ShellInner() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TopBar gatheringId={id} />
+      <TopBar gatheringId={id} onOpenMenu={() => setMoreOpen(true)} />
       {/* Cover-photo header */}
       <header className="relative">
         <div className="relative h-[124px] sm:h-[168px] w-full overflow-hidden">

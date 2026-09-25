@@ -30,6 +30,7 @@ export default function ActivityBell({ gatheringId }) {
   const [lastSeen, setLastSeen] = useState(() => Number(localStorage.getItem(`tt-act-seen-${gatheringId}`) || 0));
 
   const load = useCallback(async () => {
+    if (!gatheringId) return;
     try {
       const res = await base44.functions.invoke('getActivity', { gathering_id: gatheringId });
       const data = res.data || res;

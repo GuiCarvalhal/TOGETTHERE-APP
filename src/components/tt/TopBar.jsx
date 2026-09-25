@@ -4,10 +4,13 @@ import ActivityBell from '@/components/tt/ActivityBell';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { useAuth } from '@/lib/AuthContext';
 
-// Slim persistent app frame above gathering content. The TOGETTHERE wordmark is
-// the primary home/back-to-gatherings affordance. The bell shows recent gathering
-// activity with an unread badge; the avatar opens the user profile sheet.
-export default function TopBar({ gatheringId }) {
+// Universal app header used on every page (Home, gathering pages, Profile,
+// How-it-works). Left: the TOGETTHERE wordmark (tap -> Home). Right: the
+// activity bell (existing ActivityBell, keeps its unread badge) and the
+// signed-in user's avatar, which opens the user menu (MoreMenu) via onOpenMenu.
+// Sticky at h-12 (3rem) so the shared StickyBar action bars pin directly below
+// it at calc(3rem + env(safe-area-inset-top)) with no overlap or jump.
+export default function TopBar({ gatheringId, onOpenMenu }) {
   const { user } = useAuth();
   const photo = user?.photo || user?.picture;
   const label = user?.full_name || user?.email || 'your profile';
@@ -21,9 +24,9 @@ export default function TopBar({ gatheringId }) {
         </Link>
         <div className="flex items-center gap-1">
           <ActivityBell gatheringId={gatheringId} />
-          <Link to={`/profile/${user?.id}?g=${gatheringId}`} aria-label="Open your profile" className="rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]">
+          <button onClick={onOpenMenu} aria-label="Open account menu" className="rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]">
             <MemberAvatar member={{ photo, full_name: label }} size="sm" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>

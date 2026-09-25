@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Route, Receipt, Sparkles, ArrowRight } from 'lucide-react';
+import { Route, Receipt, Sparkles, ArrowRight } from 'lucide-react';
+import AppHeader from '@/components/tt/AppHeader';
 
 const PILLARS = [
   {
@@ -30,14 +31,7 @@ const PILLARS = [
 export default function HowItWorks() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-xl border-b border-border tt-safe-top">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4" /> Back
-          </Link>
-          <span className="font-display text-sm font-bold tracking-tight">TOGETTHERE</span>
-        </div>
-      </header>
+      <AppHeader />
 
       <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-8">
         <p className="tt-label text-terra-coral mb-3">How it works</p>

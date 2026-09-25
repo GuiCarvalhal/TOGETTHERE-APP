@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGathering } from '@/lib/gatheringContext';
+import { useOptionalGathering } from '@/lib/gatheringContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/theme';
 import { base44 } from '@/api/base44Client';
@@ -47,10 +47,16 @@ function Section({ icon: Icon, title, children }) {
   );
 }
 
-// Expandable account-level menu, opened from the bottom tab bar's "More" tab.
-// Designed as a stack of sections so more settings can be appended later.
+// Expandable account-level menu, opened from the header avatar (every page)
+// and the gathering bottom-bar "More" tab. Universal sections (profile,
+// appearance/theme, sign out) always render; gathering-scoped sections
+// (notifications, sharing depth, recent activity, gathering settings) only
+// render inside a gathering (useOptionalGathering returns the context). On
+// top-level pages (Home/Profile/How-it-works) the menu still gives a home for
+// Profile + theme + sign out.
 export default function MoreMenu({ open, onOpenChange, onesignal }) {
-  const { gatheringId, members, currentMember, role, refresh } = useGathering();
+  const gctx = useOptionalGathering() || {};
+  const { gatheringId, members, currentMember, role, refresh } = gctx;
   const { user, logout } = useAuth();
   const { mode, setMode } = useTheme();
   const navigate = useNavigate();
@@ -74,6 +80,7 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
   }, [currentMember?.id]);
 
   const loadActivity = useCallback(async () => {
+    if (!gatheringId) return;
     try {
       const res = await base44.functions.invoke('getActivity', { gathering_id: gatheringId });
       const data = res.data || res;
@@ -117,7 +124,7 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
   const granted = permission === 'granted';
   const isViewer = role === 'viewer';
   const visiblePrefs = PREFS.filter((p) => !(p.participantsOnly && isViewer));
-  const others = members.filter((m) => m.id !== currentMember?.id);
+  const others = (members || []).filter((m) => m.id !== currentMember?.id);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -125,7 +132,7 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
         <DrawerTitle className="sr-only">Settings &amp; account</DrawerTitle>
         <div className="overflow-y-auto flex-1 min-h-0">
           {/* Profile header — links to the full Profile page */}
-          <button onClick={() => { onOpenChange(false); navigate(`/profile/${user?.id}?g=${gatheringId}`); }} className="w-full px-4 pt-3 pb-4 flex items-center gap-3 hover:bg-foreground/5 transition-colors text-left">
+          <button onClick={() => { onOpenChange(false); navigate(`/profile/${user?.id}${gatheringId ? `?g=${gatheringId}` : ''}`); }} className="w-full px-4 pt-3 pb-4 flex items-center gap-3 hover:bg-foreground/5 transition-colors text-left">
             <MemberAvatar member={currentMember || user} size="lg" />
             <div className="min-w-0 flex-1">
               <p className="font-display text-lg font-bold text-foreground truncate">{currentMember?.full_name || user?.full_name || 'Member'}</p>
@@ -145,7 +152,8 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
             </div>
           </Section>
 
-          {/* Notifications */}
+          {/* Notifications — gathering-scoped */}
+          {gctx && (
           <Section icon={Bell} title="Notifications">
             {!configured && <p className="text-xs text-foreground/55">Push notifications aren't configured for this app yet.</p>}
             {configured && !supported && <p className="text-xs text-foreground/55 flex items-center gap-1.5"><BellOff className="w-3.5 h-3.5" /> Your browser doesn't support web push.</p>}
@@ -181,8 +189,10 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
               </div>
             )}
           </Section>
+          )}
 
-          {/* Sharing depth */}
+          {/* Sharing depth — gathering-scoped */}
+          {gctx && (
           <Section icon={Heart} title="Sharing depth">
             <p className="text-xs text-foreground/55 mb-2">Mark members as Close to share your contact info, precise times and private notes with them. Casual connections see a limited profile.</p>
             {others.length === 0 ? (
@@ -206,9 +216,10 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
               </div>
             )}
           </Section>
+          )}
 
-          {/* Recent activity */}
-          {activities.length > 0 && (
+          {/* Recent activity — gathering-scoped */}
+          {gctx && activities.length > 0 && (
             <Section icon={Bell} title="Recent activity">
               <div className="space-y-2">
                 {activities.map((a) => {
@@ -227,14 +238,14 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
             </Section>
           )}
 
-          {/* Gathering settings (owner) */}
+          {/* Gathering settings (owner) — gathering-scoped */}
           {canManageGathering(role) && (
             <button onClick={() => { onOpenChange(false); navigate(`/gathering/${gatheringId}/settings`); }} className="w-full px-4 py-3.5 border-t border-foreground/8 flex items-center gap-2 text-sm font-medium text-foreground hover:bg-foreground/5">
               <SettingsIcon className="w-4 h-4 text-terra-deep" /> Gathering settings <ChevronRight className="w-4 h-4 ml-auto text-foreground/40" />
             </button>
           )}
 
-          {/* Sign out */}
+          {/* Sign out — universal */}
           <button onClick={() => logout()} className="w-full px-4 py-3.5 border-t border-foreground/8 flex items-center gap-2 text-sm font-medium text-destructive hover:bg-destructive/5">
             <LogOut className="w-4 h-4" /> Sign out
           </button>
