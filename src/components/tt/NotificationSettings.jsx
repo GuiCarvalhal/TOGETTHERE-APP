@@ -93,8 +93,8 @@ export default function NotificationSettings({ onesignal }) {
           {configured && supported && !granted && (
             <div className="space-y-2">
               <p className="text-sm text-ink-deep/70">Get a heads-up when the journey changes, expenses are added, or someone joins.</p>
-              <Button type="button" onClick={requestPermission} disabled={!ready} className="w-full bg-terra hover:bg-terra-deep text-cream rounded-full">
-                <BellRing className="w-4 h-4 mr-2" /> Turn on notifications
+              <Button type="button" className="w-full" onClick={requestPermission} disabled={!ready}>
+                <BellRing /> Turn on notifications
               </Button>
             </div>
           )}
@@ -125,8 +125,8 @@ export default function NotificationSettings({ onesignal }) {
 
           {role === 'owner' && configured && supported && (
             <div className="pt-2 border-t border-ink-charcoal/10">
-              <Button type="button" variant="outline" onClick={sendTest} disabled={testing} className="w-full rounded-full border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
-                {testing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+              <Button type="button" variant="outline" className="w-full" onClick={sendTest} disabled={testing}>
+                {testing ? <Loader2 className="animate-spin" /> : <Send />}
                 Send test notification
               </Button>
               {testResult === 'sent' && <p className="text-xs text-terra-deep mt-1.5 text-center">Test sent — check your device.</p>}

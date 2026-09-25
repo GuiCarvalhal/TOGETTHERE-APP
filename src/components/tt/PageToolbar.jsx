@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, Users, Image as ImageIcon, ImageOff, Plus } from 'lucide-react';
 import StickyBar from '@/components/tt/StickyBar';
+import { Button } from '@/components/ui/button';
 
 // Shared per-page toolbar + content shell used by every page that has the
 // Mine/Group scope switcher (Journey, Expenses, Members, Agent). The sticky
@@ -29,25 +30,24 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
           </div>
           <div className="ml-auto flex items-center gap-2">
             {showImagesToggle && (
-              <button
+              <Button
+                variant={images ? 'default' : 'outline'}
+                size="sm"
                 onClick={() => setImages(!images)}
                 aria-pressed={images}
                 aria-label={images ? 'Hide cover images' : 'Show cover images'}
-                className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold border transition-colors ${images ? 'bg-terra/10 text-terra-deep border-terra/25' : 'bg-transparent text-foreground/50 border-foreground/15 hover:bg-foreground/5'}`}
+                className={images ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
               >
-                {images ? <ImageIcon className="w-3.5 h-3.5" /> : <ImageOff className="w-3.5 h-3.5" />}
+                {images ? <ImageIcon /> : <ImageOff />}
                 <span className="hidden sm:inline">{images ? 'Images' : 'Compact'}</span>
-              </button>
+              </Button>
             )}
             {canAdd && (
-              <button
-                onClick={onAdd}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold bg-terra text-cream hover:bg-terra-deep transition-colors shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
+              <Button variant="default" size="sm" onClick={onAdd} className="shrink-0">
+                <Plus />
                 <span className="hidden sm:inline">Add item</span>
                 <span className="sm:hidden">Add</span>
-              </button>
+              </Button>
             )}
           </div>
       </StickyBar>

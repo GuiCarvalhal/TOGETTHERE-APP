@@ -16,7 +16,7 @@ import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import ParticipantPicker from '@/components/journey/ParticipantPicker';
 import FlightEditor from '@/components/journey/FlightEditor';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, X, Plus, Check } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 const TYPE_META = {
@@ -301,9 +301,9 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
             <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap "Enter manually instead".</p>
           )}
           <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="ghost" onClick={onClose} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
-            <Button type="submit" disabled={saving || flightNeedsSelection} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            <Button type="button" variant="outline" onClick={onClose}><X /> Cancel</Button>
+            <Button type="submit" disabled={saving || flightNeedsSelection}>
+              {saving ? <Loader2 className="animate-spin" /> : item ? <Check /> : <Plus />}
               {item ? 'Save changes' : 'Add segment'}
             </Button>
           </DialogFooter>

@@ -9,7 +9,7 @@ import { Image } from '@/components/ui/image';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles } from 'lucide-react';
+import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, X } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, formatGatheringRange } from '@/lib/gatheringDates';
 import EmptyState from '@/components/tt/EmptyState';
 import ThemeToggle from '@/components/tt/ThemeToggle';
@@ -115,8 +115,8 @@ export default function Home() {
           <span className="font-display text-2xl font-bold tracking-tight">TOGETTHERE</span>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button onClick={() => setOpen(true)} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-10 px-4">
-              <Plus className="w-4 h-4 mr-1.5" /> New Gathering
+            <Button onClick={() => setOpen(true)}>
+              <Plus /> New Gathering
             </Button>
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function Home() {
             icon={Compass}
             title="No gatherings yet"
             body="Start your first trip or event and invite your crew. TOGETTHERE keeps everyone on one shared timeline — itinerary, expenses, and daily AI picks, all in one place."
-            action={<Button onClick={() => setOpen(true)} className="bg-terra hover:bg-terra-deep text-cream rounded-full"><Plus className="w-4 h-4 mr-1.5" /> Create a gathering</Button>}
+            action={<Button onClick={() => setOpen(true)}><Plus /> Create a gathering</Button>}
           />
         ) : sorted.length === 0 ? (
           <EmptyState
@@ -255,10 +255,9 @@ export default function Home() {
               <Textarea id="g-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
             <DialogFooter className="pt-2 gap-2">
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
-              <Button type="submit" disabled={creating} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-                {creating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Create gathering
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}><X /> Cancel</Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? <Loader2 className="animate-spin" /> : <Plus />} Create gathering
               </Button>
             </DialogFooter>
           </form>

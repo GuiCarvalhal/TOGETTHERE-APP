@@ -7,6 +7,7 @@ import { canSeeExpenses, canAddExpense, formatCurrency } from '@/lib/gatheringHe
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseCard from '@/components/tt/cards/ExpenseCard';
 import PageToolbar from '@/components/tt/PageToolbar';
+import { Button } from '@/components/ui/button';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, ChevronRight, Scale, FileText } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
@@ -50,7 +51,7 @@ export default function GatheringExpenses() {
       <ReceiptIcon className="w-10 h-10 text-terra mx-auto mb-4" />
       <p className="font-display text-2xl mb-2 text-ink-deep">Couldn't load expenses</p>
       <p className="text-ink-deep/60 mb-6 text-sm">{d.error.message || 'Something went wrong.'}</p>
-      <button onClick={d.reload} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">Try again</button>
+      <Button onClick={d.reload}>Try again</Button>
     </div>
   );
 
@@ -146,9 +147,9 @@ export default function GatheringExpenses() {
             title={scope === 'mine' ? 'None involving you yet' : 'No expenses yet'}
             body={scope === 'mine' ? 'Expenses you pay or are split on will appear here.' : 'Add the first shared cost — dinner, gas, a rental — and TOGETTHERE splits it fairly and tracks who owes whom.'}
             action={canAddExpense(role) ? (
-              <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
-                <Plus className="w-4 h-4" /> Add expense
-              </button>
+              <Button onClick={() => { setEditing(null); setOpen(true); }}>
+                <Plus /> Add expense
+              </Button>
             ) : undefined}
           />
         ) : (

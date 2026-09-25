@@ -12,7 +12,7 @@ import CurrencySelect from '@/components/expenses/CurrencySelect';
 import SplitMethodTabs from '@/components/expenses/SplitMethodTabs';
 import FamilySplitTable from '@/components/expenses/FamilySplitTable';
 import AttachmentChip from '@/components/tt/AttachmentChip';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, X, Plus, Check } from 'lucide-react';
 
 const PREFS_KEY = (gid) => `tt-exp-prefs-${gid}`;
 function readPrefs(gid) { try { return JSON.parse(localStorage.getItem(PREFS_KEY(gid)) || 'null'); } catch { return null; } }
@@ -213,9 +213,9 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           <Switch checked={form.settled} onCheckedChange={(v) => setForm({ ...form, settled: v })} />
         </div>
         <DialogFooter className="pt-2 gap-2">
-          <Button type="button" variant="ghost" onClick={onClose} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
-          <Button type="submit" disabled={saving} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          <Button type="button" variant="outline" onClick={onClose}><X /> Cancel</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? <Loader2 className="animate-spin" /> : expense ? <Check /> : <Plus />}
             {expense ? 'Save changes' : 'Add expense'}
           </Button>
         </DialogFooter>

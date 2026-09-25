@@ -152,8 +152,8 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
             {configured && supported && !granted && (
               <div className="space-y-2">
                 <p className="text-xs text-foreground/60">Get a heads-up when the journey changes, expenses are added, or someone joins.</p>
-                <Button type="button" onClick={requestPermission} disabled={!ready} className="w-full bg-terra hover:bg-terra-deep text-cream rounded-full h-9">
-                  <BellRing className="w-4 h-4 mr-2" /> Turn on notifications
+                <Button type="button" className="w-full" size="sm" onClick={requestPermission} disabled={!ready}>
+                  <BellRing /> Turn on notifications
                 </Button>
               </div>
             )}
@@ -171,8 +171,8 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
                   </div>
                 ))}
                 {role === 'owner' && configured && supported && (
-                  <Button type="button" variant="outline" onClick={sendTest} disabled={testing} className="w-full mt-2 rounded-full h-9 text-xs">
-                    {testing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />} Send test
+                  <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={sendTest} disabled={testing}>
+                    {testing ? <Loader2 className="animate-spin" /> : <Send />} Send test
                   </Button>
                 )}
                 {testResult === 'sent' && <p className="text-xs text-terra-deep text-center mt-1">Test sent — check your device.</p>}

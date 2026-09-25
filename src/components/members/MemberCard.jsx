@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/select';
 import { MapPin, CalendarDays, Phone, StickyNote, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/gatheringHelpers';
+import { Button } from '@/components/ui/button';
 
 // Compact member card. Avatar size scales with the "images" toggle (lg when on,
 // md when compact) for a tighter density when images are off.
@@ -96,9 +97,9 @@ export default function MemberCard({
               <SelectItem value="viewer">Viewer</SelectItem>
             </SelectContent>
           </Select>
-          <button onClick={onRemove} className="ml-auto inline-flex items-center gap-1 text-xs text-terra-deep hover:text-terra px-2 py-2 min-h-[36px]">
+          <Button variant="destructive" size="sm" onClick={onRemove} className="ml-auto">
             <Trash2 className="w-3.5 h-3.5" /> Remove
-          </button>
+          </Button>
         </div>
       )}
     </div>

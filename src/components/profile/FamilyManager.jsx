@@ -88,8 +88,8 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
       <div className="flex items-center justify-between gap-2">
         <p className="tt-label text-ink-deep/40 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Family &amp; household</p>
         {!creating && (
-          <Button type="button" variant="outline" onClick={() => setCreating(true)} className="rounded-full h-9 text-xs">
-            <Plus className="w-3.5 h-3.5 mr-1" /> Create
+          <Button type="button" variant="outline" size="sm" onClick={() => setCreating(true)}>
+            <Plus /> Create
           </Button>
         )}
       </div>
@@ -106,8 +106,8 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
             <p className="text-xs text-ink-deep/50">Open this from a trip to add members to the family.</p>
           )}
           <div className="flex items-center gap-2">
-            <Button type="button" onClick={createFamily} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-9">Create family</Button>
-            <Button type="button" variant="ghost" onClick={() => { setCreating(false); setNewName(''); setNewMembers([]); }} className="text-ink-deep/60">Cancel</Button>
+            <Button type="button" size="sm" onClick={createFamily}>Create family</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setNewName(''); setNewMembers([]); }}>Cancel</Button>
           </div>
         </div>
       )}
@@ -128,16 +128,16 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
                     <CandidateChips selected={editMembers} onToggle={(uid) => setEditMembers((s) => s.includes(uid) ? s.filter((x) => x !== uid) : [...s, uid])} />
                   )}
                   <div className="flex items-center gap-2">
-                    <Button type="button" onClick={() => saveEdit(fam)} className="bg-terra hover:bg-terra-deep text-cream rounded-full h-9"><Check className="w-4 h-4 mr-1" /> Save</Button>
-                    <Button type="button" variant="ghost" onClick={() => setEditingId(null)} className="text-ink-deep/60">Cancel</Button>
+                    <Button type="button" size="sm" onClick={() => saveEdit(fam)}><Check /> Save</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="flex items-center gap-1">
                     <p className="font-semibold text-ink-deep text-sm flex-1 truncate">{fam.name}</p>
-                    <button type="button" onClick={() => startEdit(fam)} className="w-9 h-9 flex items-center justify-center rounded-lg text-ink-deep/50 hover:text-terra-deep hover:bg-cream-pale"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button type="button" onClick={() => removeFamily(fam)} className="w-9 h-9 flex items-center justify-center rounded-lg text-ink-deep/50 hover:text-terra-deep hover:bg-cream-pale"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => startEdit(fam)}><Pencil /> Edit</Button>
+                    <Button type="button" variant="destructive" size="sm" onClick={() => removeFamily(fam)}><Trash2 /> Delete</Button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <span className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-terra/10 text-terra-deep border border-terra/20 text-xs">

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pencil, Trash2, Paperclip, UtensilsCrossed, Hotel, Car, Compass, Receipt } from 'lucide-react';
 import { formatCurrency, formatDate, EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
 import MemberAvatar from '@/components/tt/MemberAvatar';
+import { Button } from '@/components/ui/button';
 
 const CAT_ICON = { food: UtensilsCrossed, lodging: Hotel, transport: Car, activities: Compass, other: Receipt };
 const CAT_LABEL = { food: 'Food', lodging: 'Lodging', transport: 'Transport', activities: 'Activities', other: 'Other' };
@@ -63,9 +64,9 @@ export default function ExpenseCard({ exp, payer, splits, members, canEdit, onEd
               </div>
             )}
             {canEdit && (
-              <div className="ml-auto flex items-center gap-1">
-                <button onClick={onEdit} className="w-11 h-11 flex items-center justify-center rounded-lg text-ink-deep/45 hover:text-terra-deep hover:bg-cream-pale"><Pencil className="w-4 h-4" /></button>
-                <button onClick={onDelete} className="w-11 h-11 flex items-center justify-center rounded-lg text-ink-deep/45 hover:text-terra-deep hover:bg-cream-pale"><Trash2 className="w-4 h-4" /></button>
+              <div className="ml-auto flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={onEdit}><Pencil className="w-3.5 h-3.5" /> Edit</Button>
+                <Button variant="destructive" size="sm" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /> Delete</Button>
               </div>
             )}
           </div>

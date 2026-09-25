@@ -20,7 +20,7 @@
     --accent: 8 82% 67%;             /* coral */
     --accent-foreground: 215 8% 10%;
     --destructive: 0 70% 50%;
-    --destructive-foreground: 40 60% 98%;
+    --destructive-foreground: 0 0% 100%;
     --border: 40 18% 82%;
     --input: 40 18% 85%;
     --ring: 8 71% 58%;
@@ -76,7 +76,7 @@
     --accent: 8 82% 67%;
     --accent-foreground: 215 8% 8%;
     --destructive: 0 70% 55%;
-    --destructive-foreground: 40 60% 98%;
+    --destructive-foreground: 0 0% 100%;
     --border: 215 24% 22%;
     --input: 215 22% 20%;
     --ring: 8 71% 58%;

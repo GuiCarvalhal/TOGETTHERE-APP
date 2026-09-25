@@ -170,8 +170,8 @@ export default function GatheringSettings() {
             <Label className="text-ink-deep flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" /> Invite link</Label>
             <div className="flex gap-2 mt-1.5">
               <Input readOnly value={inviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
-              <Button type="button" onClick={() => copy(inviteUrl, 'member')} className="bg-terra hover:bg-terra-deep text-cream rounded-full shrink-0">
-                {copied === 'member' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              <Button type="button" size="sm" onClick={() => copy(inviteUrl, 'member')} className="shrink-0" aria-label="Copy invite link">
+                {copied === 'member' ? <Check /> : <Copy />}
               </Button>
             </div>
             <p className="text-xs text-ink-deep/50 mt-1.5">Share this to invite people as members. {form.privacy_mode === 'open' ? 'They join instantly.' : form.privacy_mode === 'approval' ? 'They submit a request you approve.' : 'Use the direct add below.'}</p>
@@ -180,8 +180,8 @@ export default function GatheringSettings() {
             <Label className="text-ink-deep flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> Viewer invite link</Label>
             <div className="flex gap-2 mt-1.5">
               <Input readOnly value={viewerInviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
-              <Button type="button" variant="outline" onClick={() => copy(viewerInviteUrl, 'viewer')} className="rounded-full shrink-0 border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
-                {copied === 'viewer' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              <Button type="button" variant="outline" size="sm" onClick={() => copy(viewerInviteUrl, 'viewer')} className="shrink-0" aria-label="Copy viewer invite link">
+                {copied === 'viewer' ? <Check /> : <Copy />}
               </Button>
             </div>
             <p className="text-xs text-ink-deep/50 mt-1.5">Viewers get a read-only look at the journey and members — no expenses or agent.</p>
@@ -212,12 +212,12 @@ export default function GatheringSettings() {
                   </div>
                   <span className="tt-stamp bg-secondary text-card-foreground/60 border-ink-charcoal/15 capitalize hidden sm:inline-flex">{r.requested_role}</span>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => resolveRequest(r.id, true)} disabled={busyReq === r.id} className="inline-flex items-center gap-1 px-3.5 min-h-[44px] rounded-full bg-terra text-cream text-xs font-semibold hover:bg-terra-deep disabled:opacity-50">
-                      {busyReq === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />} Approve
-                    </button>
-                    <button onClick={() => resolveRequest(r.id, false)} disabled={busyReq === r.id} className="inline-flex items-center gap-1 px-3.5 min-h-[44px] rounded-full text-ink-deep/55 text-xs font-semibold hover:bg-ink/5 disabled:opacity-50">
-                      <UserX className="w-3.5 h-3.5" /> Decline
-                    </button>
+                    <Button variant="default" size="sm" onClick={() => resolveRequest(r.id, true)} disabled={busyReq === r.id}>
+                      {busyReq === r.id ? <Loader2 className="animate-spin" /> : <UserCheck />} Approve
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => resolveRequest(r.id, false)} disabled={busyReq === r.id}>
+                      <UserX /> Decline
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -261,8 +261,8 @@ export default function GatheringSettings() {
           </div>
           <div className="flex gap-2 mt-2">
             <Input value={photoQuery} onChange={(e) => setPhotoQuery(e.target.value)} placeholder={`Search Pexels (e.g. ${gatheringDestinations(gathering)[0]?.name || 'Amalfi'})`} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPhotos(); } }} />
-            <Button type="button" variant="outline" onClick={searchPhotos} className="shrink-0 border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale">
-              {photoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            <Button type="button" variant="outline" size="sm" onClick={searchPhotos} className="shrink-0" aria-label="Search photos">
+              {photoLoading ? <Loader2 className="animate-spin" /> : <Search />}
             </Button>
           </div>
           {photoResults.length > 0 && (
@@ -278,8 +278,8 @@ export default function GatheringSettings() {
           <Input value={form.cover_image} onChange={(e) => setForm({ ...form, cover_image: e.target.value })} placeholder="Or paste an image URL" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep mt-2" />
         </div>
         <div className="flex items-center gap-3 pt-2">
-          <Button type="submit" disabled={saving} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          <Button type="submit" disabled={saving}>
+            {saving ? <Loader2 className="animate-spin" /> : <Check />}
             Save changes
           </Button>
           {saved && <span className="inline-flex items-center gap-1 text-sm text-terra-deep font-semibold"><Check className="w-4 h-4" /> Saved</span>}

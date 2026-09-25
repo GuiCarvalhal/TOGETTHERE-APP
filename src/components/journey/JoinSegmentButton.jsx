@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
 import { Check, Loader2, Plus, LogOut } from 'lucide-react';
 
 const LABELS = {
@@ -44,15 +45,15 @@ export default function JoinSegmentButton({ item, currentMember, onJoined }) {
 
   if (amIn) {
     return (
-      <button onClick={toggle} disabled={busy} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full border border-ink-charcoal/20 text-ink-deep/70 font-semibold hover:bg-foreground/5 transition-colors min-h-[44px] disabled:opacity-60">
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />} Leave this segment
-      </button>
+      <Button variant="secondary" className="w-full h-11" onClick={toggle} disabled={busy}>
+        {busy ? <Loader2 className="animate-spin" /> : <LogOut />} Leave this segment
+      </Button>
     );
   }
 
   return (
-    <button onClick={toggle} disabled={busy} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep transition-colors min-h-[44px] disabled:opacity-60">
-      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} {LABELS[item.type] || LABELS.other}
-    </button>
+    <Button className="w-full h-11" onClick={toggle} disabled={busy}>
+      {busy ? <Loader2 className="animate-spin" /> : <Plus />} {LABELS[item.type] || LABELS.other}
+    </Button>
   );
 }

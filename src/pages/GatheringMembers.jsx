@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { UserPlus, Loader2, Users } from 'lucide-react';
+import { UserPlus, Loader2, Users, X } from 'lucide-react';
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 
@@ -95,9 +95,9 @@ export default function GatheringMembers() {
           title={scope === 'mine' ? 'Nothing to show' : 'No members yet'}
           body={scope === 'mine' ? 'Switch to Group to see everyone in this gathering.' : 'Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only.'}
           action={canManage && scope !== 'mine' ? (
-            <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
-              <UserPlus className="w-4 h-4" /> Add the first member
-            </button>
+            <Button onClick={() => setAddOpen(true)}>
+              <UserPlus /> Add the first member
+            </Button>
           ) : undefined}
         />
       ) : (
@@ -147,10 +147,9 @@ export default function GatheringMembers() {
             <p className="text-xs text-ink-deep/50">They'll be invited to claim their account from the Members page later.</p>
           </div>
           <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="ghost" onClick={() => setAddOpen(false)} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
-            <Button type="submit" disabled={adding} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-              {adding && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Add member
+            <Button type="button" variant="outline" onClick={() => setAddOpen(false)}><X /> Cancel</Button>
+            <Button type="submit" disabled={adding}>
+              {adding ? <Loader2 className="animate-spin" /> : <UserPlus />} Add member
             </Button>
           </DialogFooter>
         </form>

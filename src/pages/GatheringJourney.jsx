@@ -9,6 +9,7 @@ import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import PageToolbar from '@/components/tt/PageToolbar';
+import { Button } from '@/components/ui/button';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus, Calendar } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
@@ -130,7 +131,7 @@ export default function GatheringJourney() {
       <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
       <p className="font-display text-2xl mb-2 text-ink-deep">Couldn't load the journey</p>
       <p className="text-ink-deep/60 mb-6 text-sm">{error.message || 'Something went wrong.'}</p>
-      <button onClick={load} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">Try again</button>
+      <Button onClick={load}>Try again</Button>
     </div>
   );
 
@@ -142,9 +143,9 @@ export default function GatheringJourney() {
           title={scope === 'mine' ? 'No segments from you yet' : 'No segments yet'}
           body={scope === 'mine' ? 'Add your own flights, stays and activities to see them here.' : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together."}
           action={canAdd ? (
-            <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold hover:bg-terra-deep">
-              <Plus className="w-4 h-4" /> Add the first segment
-            </button>
+            <Button onClick={() => { setEditing(null); setOpen(true); }}>
+              <Plus /> Add the first segment
+            </Button>
           ) : undefined}
         />
       ) : (
