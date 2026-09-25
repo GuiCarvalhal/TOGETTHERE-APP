@@ -59,7 +59,12 @@
       "type": "string"
     },
     "confirmation_number": {
-      "type": "string"
+      "type": "string",
+      "description": "Flight number for flight segments (e.g. BA208), auto-filled from the flight API. Used by the card meta and live flight-status lookup."
+    },
+    "booking_reference": {
+      "type": "string",
+      "description": "Optional airline booking reference / PNR for flight segments. User-entered; not used for rendering."
     },
     "notes": {
       "type": "string"
@@ -80,7 +85,7 @@
     },
     "place": {
       "type": "object",
-      "description": "Resolved Google Place for STAY/ACTIVITY items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz }",
+      "description": "Resolved Google Place for STAY/ACTIVITY items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz, iata }",
       "properties": {
         "place_id": {
           "type": "string"
@@ -102,6 +107,10 @@
         },
         "tz": {
           "type": "string"
+        },
+        "iata": {
+          "type": "string",
+          "description": "IATA airport code when this place is an airport (flight segments)."
         }
       }
     },
@@ -129,6 +138,10 @@
         },
         "tz": {
           "type": "string"
+        },
+        "iata": {
+          "type": "string",
+          "description": "IATA airport code for the origin airport (flight segments)."
         }
       }
     },
@@ -156,6 +169,10 @@
         },
         "tz": {
           "type": "string"
+        },
+        "iata": {
+          "type": "string",
+          "description": "IATA airport code for the destination airport (flight segments)."
         }
       }
     }
