@@ -23,18 +23,18 @@ const TYPE_META = {
   other: { fromTo: false, place: true },
 };
 
-export default function JourneyItemForm({ gatheringId, currentMember, item, onClose, onSaved }) {
+export default function JourneyItemForm({ gatheringId, currentMember, item, initial, onClose, onSaved }) {
   const [form, setForm] = useState({
-    type: item?.type || 'activity',
-    title: item?.title || '',
-    start_datetime: item?.start_datetime ? item.start_datetime.slice(0, 16) : '',
-    end_datetime: item?.end_datetime ? item.end_datetime.slice(0, 16) : '',
-    location_from: item?.location_from || '',
-    location_to: item?.location_to || '',
-    location_name: item?.location_name || '',
-    confirmation_number: item?.confirmation_number || '',
-    notes: item?.notes || '',
-    attachments: item?.attachments || [],
+    type: item?.type || initial?.type || 'activity',
+    title: item?.title || initial?.title || '',
+    start_datetime: item?.start_datetime ? item.start_datetime.slice(0, 16) : (initial?.start_datetime || ''),
+    end_datetime: item?.end_datetime ? item.end_datetime.slice(0, 16) : (initial?.end_datetime || ''),
+    location_from: item?.location_from || initial?.location_from || '',
+    location_to: item?.location_to || initial?.location_to || '',
+    location_name: item?.location_name || initial?.location_name || '',
+    confirmation_number: item?.confirmation_number || initial?.confirmation_number || '',
+    notes: item?.notes || initial?.notes || '',
+    attachments: item?.attachments || initial?.attachments || [],
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
