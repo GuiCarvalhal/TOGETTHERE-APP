@@ -70,6 +70,10 @@
         "type": "string"
       }
     },
+    "place_photo": {
+      "type": "string",
+      "description": "Cached public URL of a small Google Places photo for the segment's primary place, resolved once and persisted so cards never re-fetch."
+    },
     "reminder_sent_at": {
       "type": "string",
       "format": "date-time"

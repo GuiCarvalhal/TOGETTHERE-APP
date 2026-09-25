@@ -20,7 +20,7 @@ export default function MemberCard({
   return (
     <div
       onClick={() => profileUrl && navigate(profileUrl)}
-      className={`tt-card p-3.5 flex flex-col gap-2.5 ${profileUrl ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${member.role === 'viewer' ? 'border-dashed border-ink-charcoal/25 bg-cream-pale/40' : ''}`}
+      className={`tt-card p-3 flex flex-col gap-2 ${profileUrl ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${member.role === 'viewer' ? 'border-dashed border-ink-charcoal/25 bg-cream-pale/40' : ''}`}
     >
       <div className="flex items-center gap-3">
         <MemberAvatar member={member} size={avatarSize} />

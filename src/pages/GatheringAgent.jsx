@@ -24,7 +24,7 @@ const CATS = [
 
 function SectionHeader({ icon: Icon, title, count }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
+    <div className="flex items-center gap-2 mb-2.5">
       <Icon className="w-4 h-4 text-terra-deep" />
       <h3 className="font-display text-base font-bold text-ink-deep">{title}</h3>
       {count != null && <span className="text-xs text-ink-deep/45">· {count}</span>}
@@ -128,7 +128,7 @@ export default function GatheringAgent() {
   const addPlace = (p) => setJourneyInitial({ type: 'activity', title: p.name, location_name: p.address });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
 
       {/* Stage */}
@@ -163,7 +163,7 @@ export default function GatheringAgent() {
       )}
 
       {loading && !data && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <div className="tt-card p-8 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-terra mx-auto mb-4" />
             <p className="font-display text-xl text-ink-deep">Curating your trip…</p>
@@ -199,11 +199,11 @@ export default function GatheringAgent() {
       )}
 
       {data && phase !== 'ended' && (
-        <div className="space-y-7">
+        <div className="space-y-5">
           {showToday && show('today') && (
             <section>
               <SectionHeader icon={CalendarDays} title="Today's picks" />
-              <p className="text-xs text-ink-deep/55 mb-3 -mt-1">
+              <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
                 Fits the gaps in today's plan{data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : ''}.
               </p>
               <div className="grid sm:grid-cols-2 gap-3">

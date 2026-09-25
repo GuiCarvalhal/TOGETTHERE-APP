@@ -96,7 +96,7 @@ export default function GatheringExpenses() {
     );
   }
   if (loading) return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Skeleton className="h-9 w-full" />
       <section>
         <Skeleton className="h-4 w-32 mb-3" />
@@ -180,7 +180,7 @@ export default function GatheringExpenses() {
   const currencyOptions = [...new Set([...COMMON_CURRENCIES, ...presentCurrencies])];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
 
       {/* Personal dashboard + base currency */}
@@ -230,7 +230,7 @@ export default function GatheringExpenses() {
 
       {/* Running balances (all members) */}
       <section>
-        <h3 className="tt-label text-foreground/50 mb-3">Running balances</h3>
+        <h3 className="tt-label text-foreground/50 mb-2.5">Running balances</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {participantMembers.map((m) => {
             const bal = balances[m.id] || 0;
@@ -254,8 +254,8 @@ export default function GatheringExpenses() {
       {/* Settle up suggestions */}
       {settle.length > 0 && (
         <section>
-          <h3 className="tt-label text-foreground/50 mb-3">Settle up suggestions</h3>
-          <div className="tt-card p-4 space-y-2.5">
+          <h3 className="tt-label text-foreground/50 mb-2.5">Settle up suggestions</h3>
+          <div className="tt-card p-4 space-y-2">
             {settle.map((t, i) => (
               <div key={i} className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <MemberAvatar member={memberById[t.from]} size="sm" />
@@ -272,7 +272,7 @@ export default function GatheringExpenses() {
 
       {/* Expense list */}
       <section>
-        <h3 className="tt-label text-foreground/50 mb-3">{scope === 'mine' ? 'Your expenses' : 'All expenses'}</h3>
+        <h3 className="tt-label text-foreground/50 mb-2.5">{scope === 'mine' ? 'Your expenses' : 'All expenses'}</h3>
         {visibleExpenses.length === 0 ? (
           <EmptyState
             icon={ReceiptIcon}

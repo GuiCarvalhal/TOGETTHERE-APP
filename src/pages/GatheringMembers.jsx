@@ -88,7 +88,7 @@ export default function GatheringMembers() {
   const visibleMembers = scope === 'mine' ? members.filter((m) => m.id === currentMember?.id) : members;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
 
       {visibleMembers.length === 0 ? (
@@ -103,7 +103,7 @@ export default function GatheringMembers() {
           ) : undefined}
         />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {visibleMembers.map((m) => {
             const isSelf = m.id === currentMember?.id;
             return (

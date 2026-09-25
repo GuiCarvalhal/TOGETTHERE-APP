@@ -76,18 +76,18 @@ export default function GatheringJourney() {
   const days = Object.keys(byDay).sort();
 
   if (loading) return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <div className="space-y-2">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-4 w-72" />
       </div>
       {[0, 1].map((i) => (
         <div key={i} className="space-y-3">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-2.5">
             <Skeleton className="w-9 h-9 rounded-full" />
             <div className="space-y-2"><Skeleton className="h-3 w-14" /><Skeleton className="h-5 w-36" /></div>
           </div>
-          <div className="pl-5 border-l border-foreground/10 ml-5 space-y-3">
+          <div className="pl-5 border-l border-foreground/10 ml-5 space-y-2.5">
             {[0, 1].map((j) => (
               <div key={j} className="tt-card p-4 space-y-3">
                 <Skeleton className="h-4 w-1/4" tone="cream" />
@@ -110,7 +110,7 @@ export default function GatheringJourney() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} />
 
       {visibleItems.length === 0 ? (
@@ -125,10 +125,10 @@ export default function GatheringJourney() {
           ) : undefined}
         />
       ) : (
-        <div className="space-y-7">
+        <div className="space-y-5">
           {days.map((day) => (
             <div key={day}>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-2.5">
                 <div className="w-9 h-9 rounded-full bg-terra/15 border border-terra/30 flex items-center justify-center">
                   <Calendar className="w-4 h-4 text-terra-coral" />
                 </div>
@@ -138,7 +138,7 @@ export default function GatheringJourney() {
                 </div>
                 <div className="flex-1 h-px bg-foreground/10 ml-2" />
               </div>
-              <div className="pl-5 border-l border-foreground/10 ml-5 space-y-3">
+              <div className="pl-5 border-l border-foreground/10 ml-5 space-y-2.5">
                 {byDay[day].map((item) => (
                   <JourneyCard
                     key={item.id}

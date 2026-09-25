@@ -44,6 +44,33 @@ export async function geocode(key, address) {
   }
 }
 
+// Search Google Places (New Places API) for a text query, returning the first
+// match's photo resource names (for place-photo thumbnails on journey cards).
+export async function searchPlacePhotos(key, textQuery) {
+  const body = { textQuery, languageCode: 'en' };
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': 'places.photos',
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  const place = (data.places || [])[0];
+  return place?.photos || [];
+}
+
+// Fetch a Google Places photo as a Blob (server-side only; the API key never
+// reaches the client). Returns null on any failure so callers can fall back.
+export async function fetchPhotoBlob(key, photoName, maxWidthPx = 400) {
+  const url = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=${maxWidthPx}&key=${key}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  return await res.blob();
+}
+
 // Resolve an IANA timezone id (e.g. "Europe/Rome") for a place name via Google
 // Geocoding + Time Zone API. Used by backend functions that must render times
 // in the destination's local timezone (journey reminders). Returns null on any

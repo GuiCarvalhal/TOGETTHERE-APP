@@ -82,12 +82,12 @@ export default function JourneyDetail() {
           <Skeleton className="h-9 w-9 rounded-full" />
           <Skeleton className="h-4 w-24" />
         </div>
-        <div className="tt-card p-5 space-y-4">
+        <div className="tt-card p-4 space-y-4">
           <Skeleton className="h-12 w-12 rounded-xl" />
           <Skeleton className="h-7 w-2/3" tone="cream" />
           <Skeleton className="h-4 w-1/2" tone="cream" />
         </div>
-        <div className="tt-card p-5 space-y-3">
+        <div className="tt-card p-4 space-y-3">
           <Skeleton className="h-4 w-1/3" tone="cream" />
           <Skeleton className="h-32 w-full rounded-xl" tone="cream" />
         </div>
@@ -121,7 +121,7 @@ export default function JourneyDetail() {
   const end = item.end_datetime;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Back affordance */}
       <button
         onClick={back}
@@ -133,7 +133,7 @@ export default function JourneyDetail() {
       </button>
 
       {/* Hero */}
-      <div className="tt-card p-5">
+      <div className="tt-card p-4">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${typeColor}1A`, color: typeColor, border: `1px solid ${typeColor}33` }}>
             <Icon className="w-7 h-7" strokeWidth={2} />
@@ -154,8 +154,8 @@ export default function JourneyDetail() {
 
       {/* Dates / times */}
       {(start || end) && (
-        <div className="tt-card p-5">
-          <p className="tt-label text-ink-deep/40 mb-3">When</p>
+        <div className="tt-card p-4">
+          <p className="tt-label text-ink-deep/40 mb-2.5">When</p>
           <div className="space-y-2.5">
             {start && (
               <div className="flex items-start gap-3">
@@ -181,8 +181,8 @@ export default function JourneyDetail() {
 
       {/* Locations */}
       {(item.location_from || item.location_to || item.location_name) && (
-        <div className="tt-card p-5">
-          <p className="tt-label text-ink-deep/40 mb-3">Where</p>
+        <div className="tt-card p-4">
+          <p className="tt-label text-ink-deep/40 mb-2.5">Where</p>
           <div className="space-y-2 text-sm text-ink-deep">
             {item.location_from && item.location_to && (
               <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-terra-coral shrink-0" /><span className="truncate">{item.location_from} → {item.location_to}</span></p>
@@ -228,8 +228,8 @@ export default function JourneyDetail() {
       )}
 
       {/* People */}
-      <div className="tt-card p-5">
-        <p className="tt-label text-ink-deep/40 mb-3">People</p>
+      <div className="tt-card p-4">
+        <p className="tt-label text-ink-deep/40 mb-2.5">People</p>
         {owner && (
           <div className="flex items-center gap-2.5">
             <MemberAvatar member={owner} size="sm" />
@@ -259,7 +259,7 @@ export default function JourneyDetail() {
 
       {/* Notes */}
       {item.notes && (
-        <div className="tt-card p-5">
+        <div className="tt-card p-4">
           <p className="tt-label text-ink-deep/40 mb-2">Notes</p>
           <p className="text-sm text-ink-deep/80 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
         </div>
@@ -269,8 +269,8 @@ export default function JourneyDetail() {
 
       {/* Attachments */}
       {(images.length > 0 || docs.length > 0) && (
-        <div className="tt-card p-5">
-          <p className="tt-label text-ink-deep/40 mb-3">Attachments</p>
+        <div className="tt-card p-4">
+          <p className="tt-label text-ink-deep/40 mb-2.5">Attachments</p>
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-2.5 mb-3">
               {images.map((url, i) => (

@@ -29,7 +29,7 @@ export default function ExpenseCard({ exp, payer, splits, members, canEdit, onTo
           <ReceiptIcon className="w-8 h-8" style={{ color: catColor, opacity: 0.5 }} strokeWidth={1.5} />
         </div>
       ) : null}
-      <div className="p-3.5 sm:p-4">
+      <div className="p-3">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${catColor}1A`, color: catColor, border: `1px solid ${catColor}33` }}>
             <ReceiptIcon className="w-4 h-4" />
@@ -59,7 +59,7 @@ export default function ExpenseCard({ exp, payer, splits, members, canEdit, onTo
             </div>
             {exp.receipt && !receiptImg && <div className="mt-2"><AttachmentChip url={exp.receipt} /></div>}
             {canEdit && (
-              <div className="flex items-center gap-0.5 mt-2.5 pt-2 border-t border-ink-charcoal/10">
+              <div className="flex items-center gap-0.5 mt-2 pt-1.5 border-t border-ink-charcoal/10">
                 <button onClick={onToggleSettled} title={exp.settled ? 'Mark unsettled' : 'Mark settled'} className={`p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg ${exp.settled ? 'text-terra-deep' : 'text-ink-deep/40 hover:text-terra-deep'} hover:bg-cream-pale`}><Check className="w-3.5 h-3.5" /></button>
                 <button onClick={onEdit} className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale"><Pencil className="w-3.5 h-3.5" /></button>
                 <button onClick={onDelete} className="ml-auto p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale">✕</button>
