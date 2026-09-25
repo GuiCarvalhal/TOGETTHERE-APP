@@ -12,12 +12,13 @@ import SegmentMap from '@/components/journey/SegmentMap';
 import Skeleton from '@/components/tt/Skeleton';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useToast } from '@/components/ui/use-toast';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays } from 'lucide-react';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
 import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
 import VenueInfoBlock from '@/components/journey/VenueInfoBlock';
 import SegmentInfoSections from '@/components/journey/SegmentInfoSections';
 import JoinSegmentButton from '@/components/journey/JoinSegmentButton';
+import DetailActionBar from '@/components/tt/DetailActionBar';
 
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
@@ -139,17 +140,16 @@ export default function JourneyDetail() {
   const end = item.end_datetime;
 
   return (
-    <div className="space-y-4">
-      {/* Back affordance */}
-      <button
-        onClick={back}
-        className="inline-flex items-center gap-2 -ml-1 px-3 py-2 rounded-full text-ink-deep/70 hover:text-terra-deep hover:bg-foreground/5 transition-colors"
-        aria-label="Back to journey"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span className="text-sm font-semibold">Journey</span>
-      </button>
-
+    <div>
+      <DetailActionBar
+        onBack={back}
+        canEdit={canEdit}
+        canDelete={canDelete}
+        onEdit={() => setEditing(true)}
+        onDelete={handleDelete}
+        deleting={deleting}
+      />
+      <div className="mt-5 space-y-4">
       {/* Hero */}
       <div className="tt-card p-4">
         <div className="flex items-start gap-4">
@@ -272,28 +272,6 @@ export default function JourneyDetail() {
         </div>
       )}
 
-      {/* Actions */}
-      {canEdit && (
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setEditing(true)}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-foreground text-background font-semibold hover:opacity-90 transition-opacity min-h-[44px]"
-          >
-            <Pencil className="w-4 h-4" /> Edit
-          </button>
-          {canDelete && (
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full border border-destructive/30 text-destructive font-semibold hover:bg-destructive/10 transition-colors min-h-[44px] disabled:opacity-60"
-              aria-label="Delete segment"
-            >
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            </button>
-          )}
-        </div>
-      )}
-
       {editing && (
         <JourneyItemForm
           gatheringId={gatheringId}
@@ -304,6 +282,7 @@ export default function JourneyDetail() {
           onSaved={load}
         />
       )}
+      </div>
     </div>
   );
 }

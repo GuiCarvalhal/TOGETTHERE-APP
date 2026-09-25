@@ -1,23 +1,16 @@
 import React from 'react';
 import { User, Users, Image as ImageIcon, ImageOff, Plus } from 'lucide-react';
+import StickyBar from '@/components/tt/StickyBar';
 
 // Shared per-page toolbar + content shell used by every page that has the
-// Mine/Group scope switcher (Journey, Expenses, Members, Agent). It renders the
-// scope switcher, an optional cover-images toggle and an Add-item action on a
-// single bar that sticks flush under the compact app header (TopBar) when the
-// page scrolls, then wraps the page content in a consistent gap so every
-// toolbar page inherits identical spacing above and below the bar (20px,
-// matching the shell's top padding) without per-page margin hacks.
-//
-// Sticky offset: TopBar is h-12 (3rem) + env(safe-area-inset-top) tall, so the
-// bar pins at calc(3rem + env(safe-area-inset-top)) — directly below it. The
-// bar is opaque (bg-background) at z-30 (below TopBar's z-40) so content scrolls
-// cleanly underneath and never shows through.
+// Mine/Group scope switcher (Journey, Expenses, Members, Agent). The sticky
+// strip itself is sourced from StickyBar so it stays identical to the journey
+// item detail action bar (single source of truth — no visual drift). Content
+// is wrapped in a consistent 20px gap (matching the shell's top padding).
 export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, onAdd, canAdd, children }) {
   return (
     <div>
-      <div className="-mx-4 sm:-mx-6 sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 bg-background border-b border-foreground/8">
-        <div className="px-4 sm:px-6 py-2.5 flex items-center gap-3">
+      <StickyBar>
           <div className="inline-flex rounded-full bg-foreground/5 p-1 border border-foreground/10">
             <button
               onClick={() => setScope('mine')}
@@ -57,8 +50,7 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
               </button>
             )}
           </div>
-        </div>
-      </div>
+      </StickyBar>
       {children != null && <div className="mt-5">{children}</div>}
     </div>
   );
