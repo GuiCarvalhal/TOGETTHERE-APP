@@ -68,6 +68,13 @@ function localDate(raw: string): string {
   return String(raw || '').slice(0, 10);
 }
 
+// Shift a "YYYY-MM-DD" date by ±N days (UTC arithmetic — calendar math only).
+function shiftDate(date: string, delta: number): string {
+  const d = new Date(date + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
 // Map a raw AeroDataBox flight entry (from either endpoint) into the stable
 // FlightSearchResult contract. `src` labels the airport objects ("departure"/
 // "arrival" for the departures endpoint with withLeg, or the same for the
@@ -261,17 +268,56 @@ export default async function (req) {
       const cachedVal = cached(cacheKey);
       if (cachedVal) return Response.json(cachedVal);
 
-      const url = `https://${RAPID_HOST}/flights/number/${encodeURIComponent(flightNumber)}/${date}`;
-      const r = await fetchJson(key, url, 'number');
-      if (r.__rate) return Response.json({ error: 'The flight provider is busy. Try again in a moment.' }, { status: 429 });
-      if (r.__notfound || r.__empty) {
-        const val = { results: [] };
-        setCache(cacheKey, val);
-        return Response.json(val);
+      // PROVIDER DATE vs ORIGIN-LOCAL DATE MISMATCH:
+      // AeroDataBox's /flights/number/{number}/{date} `date` is keyed to the
+      // provider's own date bucket (the UTC departure date), NOT the origin-
+      // local departure date. A flight departing MIA (UTC-4) at 22:40 local on
+      // Sep 24 is 02:40Z Sep 25, so the provider exposes it under endpoint
+      // date 2026-09-25. A user searching for the origin-local date 2026-09-24
+      // would therefore miss it if we only queried that date. To return every
+      // flight whose ORIGIN-LOCAL departure calendar date equals the selected
+      // date, we query selectedDate-1, selectedDate and selectedDate+1, merge,
+      // and filter by each result's departure.scheduledTime.local calendar
+      // date. Each provider-date response is cached individually so repeated
+      // searches reuse adjacent buckets instead of tripling quota. Partial
+      // failures are tolerated: if at least one date responds we use it; we
+      // only surface an error if all three fail.
+      const dates = [-1, 0, 1].map((d) => shiftDate(date, d));
+      let lastError: any = null;
+      let successCount = 0;
+      const merged: any[] = [];
+      let firstFetch = true;
+      for (const d of dates) {
+        const perDateKey = `fn:${flightNumber}:${d}`;
+        let perDate = cached(perDateKey);
+        if (perDate === undefined) {
+          if (!firstFetch) await sleep(1300);
+          firstFetch = false;
+          const url = `https://${RAPID_HOST}/flights/number/${encodeURIComponent(flightNumber)}/${d}`;
+          const r = await fetchJson(key, url, 'number');
+          if (r.__ok) {
+            const list = Array.isArray(r.data) ? r.data : [];
+            perDate = { results: dedupe(list.map(mapFlight)) };
+            setCache(perDateKey, perDate);
+          } else if (r.__notfound || r.__empty) {
+            perDate = { results: [] };
+            setCache(perDateKey, perDate);
+          } else {
+            if (r.__rate) lastError = 'rate';
+            else lastError = r.__error || 'error';
+            continue;
+          }
+        }
+        successCount++;
+        if (perDate.results) merged.push(...perDate.results);
       }
-      if (r.__error) return Response.json({ error: 'Flight lookup is unavailable right now. Try again in a moment.' }, { status: 502 });
-      const list = Array.isArray(r.data) ? r.data : [];
-      const results = dedupe(list.map(mapFlight));
+      if (successCount === 0) {
+        if (lastError === 'rate') return Response.json({ error: 'The flight provider is busy. Try again in a moment.' }, { status: 429 });
+        return Response.json({ error: 'Flight lookup is unavailable right now. Try again in a moment.' }, { status: 502 });
+      }
+      // Keep only flights whose origin-local departure calendar date matches
+      // the user's selected date, then dedupe across the three buckets.
+      const results = dedupe(merged.filter((r) => localDate(r.dep_local) === date));
       const val = { results };
       setCache(cacheKey, val);
       return Response.json(val);
