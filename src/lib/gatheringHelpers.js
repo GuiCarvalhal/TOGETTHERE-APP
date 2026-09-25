@@ -15,6 +15,16 @@ export function canEditJourneyItem(role, item, currentMember) {
   if (role === 'member' && item?.owner_id === currentMember?.user_id) return true;
   return false;
 }
+// Delete is more restrictive than edit: only the item creator or the gathering
+// owner can delete a segment (gathering admins can edit but not delete). This
+// matches the permission enforced by the deleteJourneyItem backend function,
+// so the trash button only appears for users who can actually delete — no
+// silent RLS denials.
+export function canDeleteJourneyItem(role, item, currentMember) {
+  if (role === 'owner') return true;
+  if (item?.owner_id === currentMember?.user_id) return true;
+  return false;
+}
 export function canAddExpense(role) { return role === 'owner' || role === 'member'; }
 export function canSeeExpenses(role) { return role === 'owner' || role === 'member'; }
 export function canSeeAgent(role) { return role === 'owner' || role === 'member'; }

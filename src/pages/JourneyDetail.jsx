@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
-import { JOURNEY_TYPES, canEditJourneyItem } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canEditJourneyItem, canDeleteJourneyItem } from '@/lib/gatheringHelpers';
 import { formatFullDateTz, formatTimeWithCountry, startLocation, endLocation } from '@/lib/formatPlaceTime';
 import { usePlaceTimezone, usePlaceCountryCode } from '@/lib/usePlaceTimezone';
 import { Image } from '@/components/ui/image';
@@ -10,7 +10,8 @@ import AttachmentChip from '@/components/tt/AttachmentChip';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import Skeleton from '@/components/tt/Skeleton';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays, Pencil, Trash2, Navigation } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays, Pencil, Trash2, Navigation, Loader2 } from 'lucide-react';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
 import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
 import VenueInfoBlock from '@/components/journey/VenueInfoBlock';
@@ -44,6 +45,8 @@ export default function JourneyDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
   const startTz = usePlaceTimezone(startLocation(item));
   const endTz = usePlaceTimezone(endLocation(item));
   const startCc = usePlaceCountryCode(startLocation(item));
@@ -66,14 +69,25 @@ export default function JourneyDetail() {
 
   async function handleDelete() {
     if (!confirm('Delete this segment?')) return;
-    await base44.entities.JourneyItem.delete(itemId);
-    navigate(`/gathering/${gatheringId}/journey`);
+    setDeleting(true);
+    try {
+      const res = await base44.functions.invoke('deleteJourneyItem', { gathering_id: gatheringId, item_id: itemId });
+      const data = res?.data || res;
+      if (data?.error) throw { message: data.error };
+      toast({ title: 'Segment deleted', description: `"${item?.title || 'Segment'}" was removed from the journey.` });
+      navigate(`/gathering/${gatheringId}/journey`);
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.data?.error || e?.message || 'Could not delete this segment.';
+      toast({ variant: 'destructive', title: 'Delete failed', description: msg });
+      setDeleting(false);
+    }
   }
 
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
   const owner = item ? (memberById[item.owner_id] || memberById[item.owner_user_id]) : null;
   const attendees = (item?.attendee_user_ids || []).map((uid) => memberById[uid]).filter(Boolean);
   const canEdit = item && canEditJourneyItem(role, item, currentMember);
+  const canDelete = item && canDeleteJourneyItem(role, item, currentMember);
 
   const back = () => navigate(`/gathering/${gatheringId}/journey`);
 
@@ -299,13 +313,16 @@ export default function JourneyDetail() {
           >
             <Pencil className="w-4 h-4" /> Edit
           </button>
-          <button
-            onClick={handleDelete}
-            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full border border-destructive/30 text-destructive font-semibold hover:bg-destructive/10 transition-colors min-h-[44px]"
-            aria-label="Delete segment"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full border border-destructive/30 text-destructive font-semibold hover:bg-destructive/10 transition-colors min-h-[44px] disabled:opacity-60"
+              aria-label="Delete segment"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            </button>
+          )}
         </div>
       )}
 
