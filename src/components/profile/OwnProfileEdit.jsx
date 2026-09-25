@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import InterestsEditor from '@/components/profile/InterestsEditor';
@@ -10,14 +10,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COMMON_CURRENCIES, currencyLabel, formatDate } from '@/lib/gatheringHelpers';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, MapPin, Globe, Sparkles, Camera, UtensilsCrossed, CalendarDays } from 'lucide-react';
+import { MapPin, Globe, Sparkles, Camera, UtensilsCrossed, CalendarDays } from 'lucide-react';
 
 // Editable universal profile. Global fields (home_city, home_currency, bio,
 // interests, dietary_preferences, photo) persist on the User entity via
 // updateMe; name + photo also sync to the current gathering's Member record so
 // cards/avatars update there. Family management is global. Gathering context
 // (role, dates) is shown read-only as a distinct section, not edited here.
-export default function OwnProfileEdit({ data, gatheringId, userId, onSaved, openMore }) {
+//
+// The Save action lives in the page's sticky ProfileActionBar, so this
+// component exposes an imperative save() through its ref and reports dirty /
+// saving state via callbacks. The save logic itself is unchanged.
+const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, userId, onSaved, onSaveDone, onDirtyChange, onSavingChange, openMore }, ref) {
   const { user, member, families } = data;
   const { toast } = useToast();
   const [form, setForm] = useState({
@@ -31,6 +35,15 @@ export default function OwnProfileEdit({ data, gatheringId, userId, onSaved, ope
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Dirty tracking — compare current form to the snapshot taken at mount so the
+  // action bar's Save can stay a no-op until something actually changed.
+  const initialRef = useRef(null);
+  if (!initialRef.current) initialRef.current = JSON.stringify(form);
+  const isDirty = JSON.stringify(form) !== initialRef.current;
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
+  useEffect(() => { onSavingChange?.(saving); }, [saving, onSavingChange]);
 
   async function onPhotoChange(e) {
     const file = e.target.files?.[0];
@@ -63,12 +76,15 @@ export default function OwnProfileEdit({ data, gatheringId, userId, onSaved, ope
       });
       toast({ title: 'Profile saved' });
       onSaved();
+      onSaveDone?.();
     } catch (e) {
       toast({ title: e.response?.data?.error || e.message || 'Could not save', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   }
+
+  useImperativeHandle(ref, () => ({ save }));
 
   return (
     <div className="space-y-4">
@@ -140,14 +156,12 @@ export default function OwnProfileEdit({ data, gatheringId, userId, onSaved, ope
         </div>
       )}
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button onClick={save} disabled={saving || uploading} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-          {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save profile
-        </Button>
-        {openMore && (
-          <Button variant="outline" onClick={openMore} className="rounded-full">Account settings</Button>
-        )}
-      </div>
+      {/* Save lives in the sticky ProfileActionBar. */}
+      {openMore && (
+        <Button variant="outline" onClick={openMore} className="rounded-full">Account settings</Button>
+      )}
     </div>
   );
-}
+});
+
+export default OwnProfileEdit;
