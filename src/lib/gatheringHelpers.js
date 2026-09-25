@@ -230,3 +230,22 @@ export const COMMON_CURRENCIES = [
   'CNY', 'INR', 'NZD', 'SGD', 'HKD', 'SEK', 'NOK', 'DKK', 'PLN', 'ZAR',
   'TRY', 'ILS', 'KRW', 'THB', 'IDR', 'PHP', 'MYR', 'CZK', 'HUF', 'RON',
 ];
+
+// Human-readable names for the selectable currency list, shown alongside the
+// code in every currency selector (e.g. "USD — US Dollar").
+export const CURRENCY_NAMES = {
+  USD: 'US Dollar', EUR: 'Euro', GBP: 'British Pound', AUD: 'Australian Dollar',
+  CAD: 'Canadian Dollar', AED: 'UAE Dirham', JPY: 'Japanese Yen', CHF: 'Swiss Franc',
+  BRL: 'Brazilian Real', MXN: 'Mexican Peso', CNY: 'Chinese Yuan', INR: 'Indian Rupee',
+  NZD: 'New Zealand Dollar', SGD: 'Singapore Dollar', HKD: 'Hong Kong Dollar',
+  SEK: 'Swedish Krona', NOK: 'Norwegian Krone', DKK: 'Danish Krone', PLN: 'Polish Zloty',
+  ZAR: 'South African Rand', TRY: 'Turkish Lira', ILS: 'Israeli Shekel', KRW: 'South Korean Won',
+  THB: 'Thai Baht', IDR: 'Indonesian Rupiah', PHP: 'Philippine Peso', MYR: 'Malaysian Ringgit',
+  CZK: 'Czech Koruna', HUF: 'Hungarian Forint', RON: 'Romanian Leu',
+};
+
+// "USD — US Dollar" for selectors; falls back to the bare code for unknown currencies.
+export function currencyLabel(code) {
+  const c = String(code || '').toUpperCase();
+  return CURRENCY_NAMES[c] ? `${c} — ${CURRENCY_NAMES[c]}` : c;
+}

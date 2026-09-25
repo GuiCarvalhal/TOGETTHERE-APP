@@ -16,6 +16,8 @@ import GatheringAgent from '@/pages/GatheringAgent';
 import GatheringJourney from '@/pages/GatheringJourney';
 import JourneyDetail from '@/pages/JourneyDetail';
 import GatheringExpenses from '@/pages/GatheringExpenses';
+import ExpenseRunningBalance from '@/pages/ExpenseRunningBalance';
+import ExpenseStatement from '@/pages/ExpenseStatement';
 import GatheringMembers from '@/pages/GatheringMembers';
 import GatheringSettings from '@/pages/GatheringSettings';
 import Profile from '@/pages/Profile';
@@ -41,6 +43,8 @@ function App() {
                 <Route path="journey" element={<GatheringJourney />} />
                 <Route path="journey/:itemId" element={<JourneyDetail />} />
                 <Route path="expenses" element={<GatheringExpenses />} />
+                <Route path="expenses/balance" element={<ExpenseRunningBalance />} />
+                <Route path="expenses/statement/:memberId" element={<ExpenseStatement />} />
                 <Route path="members" element={<GatheringMembers />} />
                 <Route path="settings" element={<GatheringSettings />} />
                 <Route path="profile/:userId" element={<Profile />} />

@@ -5,27 +5,37 @@ import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { computeSplitAmounts, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency } from '@/lib/gatheringHelpers';
+import CurrencySelect from '@/components/expenses/CurrencySelect';
+import SplitMethodTabs from '@/components/expenses/SplitMethodTabs';
+import FamilySplitTable from '@/components/expenses/FamilySplitTable';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import { Loader2, Upload } from 'lucide-react';
 
+const PREFS_KEY = (gid) => `tt-exp-prefs-${gid}`;
+function readPrefs(gid) { try { return JSON.parse(localStorage.getItem(PREFS_KEY(gid)) || 'null'); } catch { return null; } }
+function writePrefs(gid, p) { try { localStorage.setItem(PREFS_KEY(gid), JSON.stringify(p)); } catch {} }
+
 export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, onClose, onSaved }) {
   const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
+  // Restore the last split method + distribution for this gathering when adding
+  // a new expense (not when editing an existing one). Stored prefs never feed
+  // into the balance/save math — they only pre-fill the form.
+  const prefs = expense ? null : readPrefs(gatheringId);
   const [form, setForm] = useState({
     title: expense?.title || '',
     amount: expense?.amount || '',
-    currency: expense?.currency || 'USD',
+    currency: expense?.currency || prefs?.currency || 'USD',
     category: expense?.category || 'other',
-    split_method: expense?.split_method || 'equal',
+    split_method: expense?.split_method || prefs?.split_method || 'equal',
     payer_member_id: expense?.payer_member_id || currentMember?.id || participants[0]?.id || '',
     date: expense?.date || new Date().toISOString().slice(0, 10),
     receipt: expense?.receipt || '',
-    selected: expense ? splits.map((s) => s.member_id) : participants.map((m) => m.id),
-    inputs: expense ? Object.fromEntries(splits.map((s) => [s.member_id, s.amount])) : {},
+    settled: expense?.settled || false,
+    selected: expense ? splits.map((s) => s.member_id) : (prefs?.selected || participants.map((m) => m.id)),
+    inputs: expense ? Object.fromEntries(splits.map((s) => [s.member_id, s.amount])) : (prefs?.inputs || {}),
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -35,11 +45,18 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   const sumSplits = Object.values(splitAmounts).reduce((a, b) => a + b, 0);
   const balanced = Math.abs(sumSplits - total) < 0.02;
 
-  function toggleMember(id) {
-    setForm((f) => ({
-      ...f,
-      selected: f.selected.includes(id) ? f.selected.filter((x) => x !== id) : [...f.selected, id],
-    }));
+  function toggleMember(id, force) {
+    setForm((f) => {
+      const has = f.selected.includes(id);
+      const next = force === undefined ? !has : force;
+      return {
+        ...f,
+        selected: next ? (has ? f.selected : [...f.selected, id]) : f.selected.filter((x) => x !== id),
+      };
+    });
+  }
+  function setInput(id, val) {
+    setForm((f) => ({ ...f, inputs: { ...f.inputs, [id]: val } }));
   }
 
   async function uploadReceipt(file) {
@@ -70,7 +87,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
         category: form.category,
         receipt: form.receipt,
         date: form.date,
-        settled: expense?.settled || false,
+        settled: form.settled,
       };
       const splitInputs = form.selected.map((mid) => ({
         member_id: mid,
@@ -82,6 +99,13 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
       } else {
         await base44.functions.invoke('createExpense', { gathering_id: gatheringId, expense: expensePayload, splits: splitInputs });
       }
+      // Remember the last split method + distribution + currency for next time.
+      writePrefs(gatheringId, {
+        split_method: form.split_method,
+        selected: form.selected,
+        inputs: form.inputs,
+        currency: form.currency,
+      });
       onSaved();
       onClose();
     } catch (err) {
@@ -91,115 +115,91 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
     }
   }
 
+  const currencyOptions = [...new Set([(form.currency || 'USD').toUpperCase(), ...COMMON_CURRENCIES])];
+
   return (
     <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={expense ? 'Edit expense' : 'Add expense'}>
       <form onSubmit={handleSave} className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-ink-deep">Title</Label>
+          <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Dinner at Da Adolfo" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label className="text-ink-deep">Title</Label>
-            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Dinner at Da Adolfo" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Amount</Label>
-              <Input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="120.00" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Currency</Label>
-              <Select value={(form.currency || 'USD').toUpperCase()} onValueChange={(v) => setForm({ ...form, currency: v })}>
-                <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[...new Set([(form.currency || 'USD').toUpperCase(), ...COMMON_CURRENCIES])].map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Paid by</Label>
-              <Select value={form.payer_member_id} onValueChange={(v) => setForm({ ...form, payer_member_id: v })}>
-                <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {participants.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.full_name || 'Member'}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-ink-deep">Category</Label>
-              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {EXPENSE_CATEGORIES.map((c) => (
-                    <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Label className="text-ink-deep">Amount</Label>
+            <Input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="120.00" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
           </div>
           <div className="space-y-2">
-            <Label className="text-ink-deep">Split method</Label>
-            <Select value={form.split_method} onValueChange={(v) => setForm({ ...form, split_method: v })}>
-              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
+            <Label className="text-ink-deep">Currency</Label>
+            <CurrencySelect value={(form.currency || 'USD').toUpperCase()} onChange={(v) => setForm({ ...form, currency: v })} options={currencyOptions} triggerClass="w-full h-10" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label className="text-ink-deep">Paid by</Label>
+            <Select value={form.payer_member_id} onValueChange={(v) => setForm({ ...form, payer_member_id: v })}>
+              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="equal">Equal</SelectItem>
-                <SelectItem value="by_share">By shares</SelectItem>
-                <SelectItem value="custom">Custom amounts</SelectItem>
+                {participants.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name || 'Member'}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label className="text-ink-deep">Split between</Label>
-            <div className="space-y-2 max-h-44 overflow-y-auto rounded-lg bg-cream-pale p-3 border border-ink-charcoal/15">
-              {participants.map((m) => {
-                const checked = form.selected.includes(m.id);
-                return (
-                  <div key={m.id} className="flex items-center gap-3 py-1">
-                    <Checkbox checked={checked} onCheckedChange={() => toggleMember(m.id)} />
-                    <span className="flex-1 text-sm text-ink-deep">{m.full_name || 'Member'}</span>
-                    {form.split_method === 'by_share' && checked && (
-                      <Input type="number" step="1" min="0" value={form.inputs[m.id] || ''} onChange={(e) => setForm((f) => ({ ...f, inputs: { ...f.inputs, [m.id]: e.target.value } }))} placeholder="1" className="w-20 h-8 bg-cream border-ink-charcoal/20 text-ink-deep" />
-                    )}
-                    {form.split_method === 'custom' && checked && (
-                      <Input type="number" step="0.01" min="0" value={form.inputs[m.id] || ''} onChange={(e) => setForm((f) => ({ ...f, inputs: { ...f.inputs, [m.id]: e.target.value } }))} placeholder="0.00" className="w-24 h-8 bg-cream border-ink-charcoal/20 text-ink-deep" />
-                    )}
-                    {form.split_method === 'equal' && checked && (
-                      <span className="text-sm text-ink-deep/60 w-20 text-right">{formatCurrency(splitAmounts[m.id] || 0, form.currency)}</span>
-                    )}
-                    {(form.split_method === 'by_share' || form.split_method === 'custom') && checked && (
-                      <span className="text-xs text-ink-deep/50 w-20 text-right">{formatCurrency(splitAmounts[m.id] || 0, form.currency)}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <p className={`text-xs ${balanced ? 'text-ink-deep/50' : 'text-terra-deep'}`}>
-              {balanced ? `Splits sum to ${formatCurrency(total, form.currency)}` : `Splits sum to ${formatCurrency(sumSplits, form.currency)} — adjust to match ${formatCurrency(total, form.currency)}`}
-            </p>
+            <Label className="text-ink-deep">Category</Label>
+            <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {EXPENSE_CATEGORIES.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Receipt</Label>
-            <div className="flex flex-wrap items-center gap-2">
-              {form.receipt && (
-                <AttachmentChip url={form.receipt} onRemove={() => setForm((f) => ({ ...f, receipt: '' }))} />
-              )}
-              <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
-                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                {form.receipt ? 'Replace' : 'Upload'}
-                <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadReceipt(e.target.files[0])} />
-              </label>
-            </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-ink-deep">Split method</Label>
+          <SplitMethodTabs value={form.split_method} onChange={(v) => setForm({ ...form, split_method: v })} />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-ink-deep">Split between</Label>
+          <FamilySplitTable
+            participants={participants}
+            selected={form.selected}
+            inputs={form.inputs}
+            splitMethod={form.split_method}
+            splitAmounts={splitAmounts}
+            currency={form.currency}
+            onToggleMember={toggleMember}
+            onSetInput={setInput}
+          />
+          <p className={`text-xs ${balanced ? 'text-ink-deep/50' : 'text-terra-deep'}`}>
+            {balanced ? `Splits sum to ${formatCurrency(total, form.currency)}` : `Splits sum to ${formatCurrency(sumSplits, form.currency)} — adjust to match ${formatCurrency(total, form.currency)}`}
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-ink-deep">Receipt</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            {form.receipt && <AttachmentChip url={form.receipt} onRemove={() => setForm((f) => ({ ...f, receipt: '' }))} />}
+            <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {form.receipt ? 'Replace' : 'Upload'}
+              <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadReceipt(e.target.files[0])} />
+            </label>
           </div>
-          <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="ghost" onClick={onClose} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
-            <Button type="submit" disabled={saving} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {expense ? 'Save changes' : 'Add expense'}
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-cream-pale p-3 border border-ink-charcoal/15">
+          <div>
+            <Label className="text-ink-deep">Mark as settled</Label>
+            <p className="text-xs text-ink-deep/50">Toggle when this cost has been paid back.</p>
+          </div>
+          <Switch checked={form.settled} onCheckedChange={(v) => setForm({ ...form, settled: v })} />
+        </div>
+        <DialogFooter className="pt-2 gap-2">
+          <Button type="button" variant="ghost" onClick={onClose} className="text-ink-deep/60 hover:text-ink-deep">Cancel</Button>
+          <Button type="submit" disabled={saving} className="bg-terra hover:bg-terra-deep text-cream rounded-full">
+            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {expense ? 'Save changes' : 'Add expense'}
+          </Button>
+        </DialogFooter>
+      </form>
     </FormSheet>
   );
 }

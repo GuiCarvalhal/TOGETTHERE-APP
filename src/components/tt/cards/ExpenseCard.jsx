@@ -1,68 +1,71 @@
 import React from 'react';
-import { Receipt as ReceiptIcon, Check, Pencil } from 'lucide-react';
-import { Image } from '@/components/ui/image';
-import AttachmentChip from '@/components/tt/AttachmentChip';
+import { Pencil, Trash2, Paperclip, UtensilsCrossed, Hotel, Car, Compass, Receipt } from 'lucide-react';
 import { formatCurrency, formatDate, EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
+import MemberAvatar from '@/components/tt/MemberAvatar';
 
-const isImg = (u) => /\.(jpe?g|png|webp|gif)(\?|$)/i.test(u || '');
+const CAT_ICON = { food: UtensilsCrossed, lodging: Hotel, transport: Car, activities: Compass, other: Receipt };
 const CAT_LABEL = { food: 'Food', lodging: 'Lodging', transport: 'Transport', activities: 'Activities', other: 'Other' };
 const CAT_COLOR = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.key, c.color]));
 
-// Compact expense card. Hierarchy: category chip, title, payer · date, amount
-// (with optional converted base amount), split participants, settled toggle.
-// Cover: receipt image when the page "images" toggle is on; otherwise a
-// category-tinted placeholder banner (never blank space).
-export default function ExpenseCard({ exp, payer, splits, members, canEdit, onToggleSettled, onEdit, onDelete, showImages, baseCurrency, baseAmount, rate }) {
+// Compact expense card. Hierarchy: category icon (with a small paperclip +
+// count badge below when a receipt is attached), title, payer · date, amount
+// (with converted base amount), category chip, settled badge, and split
+// participants as avatars +N (no names). Edit/delete are the only inline
+// actions; the settled checkmark is gone (settling happens in the edit form).
+export default function ExpenseCard({ exp, payer, splits, members, canEdit, onEdit, onDelete, baseCurrency, baseAmount }) {
   const memberById = Object.fromEntries((members || []).map((m) => [m.id, m]));
   const catLabel = CAT_LABEL[exp.category] || 'Other';
   const catColor = CAT_COLOR[exp.category] || '#7a8290';
-  const receiptImg = showImages && exp.receipt && isImg(exp.receipt);
-  const chipMax = showImages ? 4 : 3;
+  const CatIcon = CAT_ICON[exp.category] || Receipt;
+  const hasReceipt = !!exp.receipt;
+
   return (
-    <div className={`tt-card overflow-hidden ${exp.settled ? 'opacity-60' : ''}`}>
-      {receiptImg ? (
-        <div className="aspect-[16/5] w-full bg-cream-pale">
-          <Image src={exp.receipt} alt="Receipt" className="w-full h-full object-cover" fittingType="fill" />
-        </div>
-      ) : showImages ? (
-        <div className="aspect-[16/5] w-full flex items-center justify-center" style={{ background: `${catColor}12` }}>
-          <ReceiptIcon className="w-8 h-8" style={{ color: catColor, opacity: 0.5 }} strokeWidth={1.5} />
-        </div>
-      ) : null}
-      <div className="p-3">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${catColor}1A`, color: catColor, border: `1px solid ${catColor}33` }}>
-            <ReceiptIcon className="w-4 h-4" />
+    <div className={`tt-card p-3 ${exp.settled ? 'opacity-60' : ''}`}>
+      <div className="flex items-start gap-3">
+        {/* Category icon + compact attachment badge */}
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${catColor}1A`, color: catColor, border: `1px solid ${catColor}33` }}>
+            <CatIcon className="w-4 h-4" />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h3 className="font-display text-base font-bold text-ink-deep leading-tight truncate">{exp.title}</h3>
-                <p className="text-xs text-ink-deep/55 mt-0.5 truncate">{payer?.full_name} · {formatDate(exp.date)}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <span className="font-display text-lg font-bold text-ink-deep whitespace-nowrap">{formatCurrency(exp.amount, exp.currency)}</span>
-                {baseCurrency && exp.currency && baseAmount != null && exp.currency.toUpperCase() !== baseCurrency.toUpperCase() && (
-                  <p className="text-[0.6875rem] text-ink-deep/45 mt-0.5">≈ {formatCurrency(baseAmount, baseCurrency)}{rate != null ? ` · 1 ${exp.currency} = ${rate.toFixed(4)} ${baseCurrency}` : ''}</p>
-                )}
-              </div>
+          {hasReceipt && (
+            <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-cream-pale border border-ink-charcoal/15 text-[0.625rem] text-ink-deep/55">
+              <Paperclip className="w-2.5 h-2.5" />1
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold uppercase tracking-wide" style={{ color: catColor, background: `${catColor}14`, border: `1px solid ${catColor}26` }}>{catLabel}</span>
-              {exp.settled && <span className="px-1.5 py-0.5 rounded-full bg-terra/15 text-[0.625rem] font-semibold uppercase text-terra-deep">Settled</span>}
-              {splits.slice(0, chipMax).map((s) => (
-                <span key={s.member_id} className="text-[0.625rem] text-ink-deep/55 px-1.5 py-0.5 rounded-full bg-cream-pale border border-ink-charcoal/10">
-                  {memberById[s.member_id]?.full_name?.split(' ')[0] || '?'}: {formatCurrency(s.amount, exp.currency)}
-                </span>
-              ))}
-              {splits.length > chipMax && <span className="text-[0.625rem] text-ink-deep/40">+{splits.length - chipMax}</span>}
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-display text-base font-bold text-ink-deep leading-tight truncate">{exp.title}</h3>
+              <p className="text-xs text-ink-deep/55 mt-0.5 truncate">{payer?.full_name || '—'} · {formatDate(exp.date)}</p>
             </div>
-            {exp.receipt && !receiptImg && <div className="mt-2"><AttachmentChip url={exp.receipt} /></div>}
+            <div className="text-right shrink-0">
+              <span className="font-display text-base font-bold text-ink-deep whitespace-nowrap">{formatCurrency(exp.amount, exp.currency)}</span>
+              {baseCurrency && exp.currency && baseAmount != null && exp.currency.toUpperCase() !== baseCurrency.toUpperCase() && (
+                <p className="text-[0.6875rem] text-ink-deep/45 mt-0.5 whitespace-nowrap">≈ {formatCurrency(baseAmount, baseCurrency)}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold uppercase tracking-wide" style={{ color: catColor, background: `${catColor}14`, border: `1px solid ${catColor}26` }}>{catLabel}</span>
+            {exp.settled && <span className="px-1.5 py-0.5 rounded-full bg-terra/15 text-[0.625rem] font-semibold uppercase text-terra-deep">Settled</span>}
+            {splits.length > 0 && (
+              <div className="flex items-center">
+                {splits.slice(0, 4).map((s, i) => (
+                  <div key={s.member_id} className="rounded-full ring-2 ring-card" style={{ marginLeft: i === 0 ? 0 : '-0.5rem' }}>
+                    <MemberAvatar member={memberById[s.member_id]} size="xs" />
+                  </div>
+                ))}
+                {splits.length > 4 && <span className="text-[0.625rem] text-ink-deep/50 ml-1.5">+{splits.length - 4}</span>}
+              </div>
+            )}
             {canEdit && (
-              <div className="flex items-center gap-0.5 mt-2 pt-1.5 border-t border-ink-charcoal/10">
-                <button onClick={onToggleSettled} title={exp.settled ? 'Mark unsettled' : 'Mark settled'} className={`p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg ${exp.settled ? 'text-terra-deep' : 'text-ink-deep/40 hover:text-terra-deep'} hover:bg-cream-pale`}><Check className="w-3.5 h-3.5" /></button>
-                <button onClick={onEdit} className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={onDelete} className="ml-auto p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-deep/40 hover:text-terra-deep hover:bg-cream-pale">✕</button>
+              <div className="ml-auto flex items-center gap-1">
+                <button onClick={onEdit} className="w-11 h-11 flex items-center justify-center rounded-lg text-ink-deep/45 hover:text-terra-deep hover:bg-cream-pale"><Pencil className="w-4 h-4" /></button>
+                <button onClick={onDelete} className="w-11 h-11 flex items-center justify-center rounded-lg text-ink-deep/45 hover:text-terra-deep hover:bg-cream-pale"><Trash2 className="w-4 h-4" /></button>
               </div>
             )}
           </div>
