@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
@@ -7,23 +7,36 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { computeSplitAmounts, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency } from '@/lib/gatheringHelpers';
+import {
+  computeUnitAmounts, expandUnitAmountsToMembers, reconstructEditSelection,
+  buildSplitUnits, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency,
+} from '@/lib/gatheringHelpers';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import SplitMethodTabs from '@/components/expenses/SplitMethodTabs';
 import FamilySplitTable from '@/components/expenses/FamilySplitTable';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import { Loader2, Upload, X, Plus, Check, Trash2 } from 'lucide-react';
 
-const PREFS_KEY = (gid) => `tt-exp-prefs-${gid}`;
-function readPrefs(gid) { try { return JSON.parse(localStorage.getItem(PREFS_KEY(gid)) || 'null'); } catch { return null; } }
-function writePrefs(gid, p) { try { localStorage.setItem(PREFS_KEY(gid), JSON.stringify(p)); } catch {} }
+// Per-user split preferences (last split method + selected split units +
+// currency) so the next expense form is preselected similarly. Scoped to the
+// current user's id — never shared across users on the same browser. Written
+// only after a successful save.
+const PREFS_KEY = (uid) => `tt-exp-prefs-u:${uid}`;
+function readPrefs(uid) {
+  if (!uid) return null;
+  try { return JSON.parse(localStorage.getItem(PREFS_KEY(uid)) || 'null'); } catch { return null; }
+}
+function writePrefs(uid, p) {
+  if (!uid) return;
+  try { localStorage.setItem(PREFS_KEY(uid), JSON.stringify(p)); } catch {}
+}
 
 export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, baseCurrency, onClose, onSaved, onDelete }) {
   const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
-  // Restore the last split method + distribution for this gathering when adding
-  // a new expense (not when editing an existing one). Stored prefs never feed
-  // into the balance/save math — they only pre-fill the form.
-  const prefs = expense ? null : readPrefs(gatheringId);
+  const isEdit = !!expense;
+  const userId = currentMember?.user_id || '';
+  const prefs = useMemo(() => (!isEdit && userId ? readPrefs(userId) : null), [isEdit, userId]);
+
   const [form, setForm] = useState({
     title: expense?.title || '',
     amount: expense?.amount || '',
@@ -34,49 +47,76 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
     date: expense?.date || new Date().toISOString().slice(0, 10),
     receipt: expense?.receipt || '',
     settled: expense?.settled || false,
-    selected: expense ? splits.map((s) => s.member_id) : (prefs?.selected || participants.map((m) => m.id)),
-    inputs: expense ? Object.fromEntries(splits.map((s) => [s.member_id, s.amount])) : (prefs?.inputs || {}),
   });
+  const [selected, setSelected] = useState(null); // unit keys; null = pending init
+  const [inputs, setInputs] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [familyMap, setFamilyMap] = useState({});
+  const [families, setFamilies] = useState([]);
+  const [familiesLoaded, setFamiliesLoaded] = useState(false);
+
   const participantUids = participants.map((m) => m.user_id).filter(Boolean).join('|');
   useEffect(() => {
     const uids = participantUids.split('|').filter(Boolean);
-    if (!uids.length) return;
+    if (!uids.length) { setFamiliesLoaded(true); return; }
     let active = true;
     base44.functions.invoke('getFamiliesForUsers', { user_ids: uids })
       .then((res) => {
         if (!active) return;
         const data = res.data || res;
-        const map = {};
-        (data.families || []).forEach((f) => {
-          (f.member_user_ids || []).forEach((uid) => { map[uid] = f.name; });
-          if (f.owner_user_id) map[f.owner_user_id] = f.name;
-        });
-        setFamilyMap(map);
-      }).catch(() => {});
+        setFamilies((data.families || []).map((f) => ({
+          id: f.id, name: f.name, owner_user_id: f.owner_user_id, memberUserIds: [...(f.member_user_ids || [])],
+        })));
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setFamiliesLoaded(true); });
     return () => { active = false; };
   }, [participantUids]);
 
+  const groupedUnits = useMemo(() => buildSplitUnits(participants, families), [participants, families]);
+  const editRecon = useMemo(
+    () => (isEdit ? reconstructEditSelection(participants, families, splits, expense?.split_method) : null),
+    [isEdit, participants, families, splits, expense]
+  );
+  const units = isEdit ? (editRecon?.units || groupedUnits) : groupedUnits;
+
+  // Initialize the split selection once family info is available (so family unit
+  // keys are known). Runs once — guarded by `selected === null`.
+  useEffect(() => {
+    if (selected !== null) return;
+    if (!familiesLoaded) return;
+    if (isEdit && editRecon) {
+      setSelected(editRecon.selected);
+      setInputs(editRecon.inputs);
+    } else {
+      const validKeys = new Set(groupedUnits.map((u) => u.key));
+      let sel = (prefs?.selected || []).filter((k) => validKeys.has(k));
+      if (!sel.length) sel = groupedUnits.map((u) => u.key);
+      const inp = {};
+      Object.entries(prefs?.inputs || {}).forEach(([k, v]) => { if (validKeys.has(k)) inp[k] = v; });
+      setSelected(sel);
+      setInputs(inp);
+    }
+  }, [familiesLoaded, selected, isEdit, editRecon, groupedUnits, prefs]);
+
   const total = Number(form.amount) || 0;
-  const splitAmounts = computeSplitAmounts(form.split_method, total, form.selected, form.inputs);
-  const sumSplits = Object.values(splitAmounts).reduce((a, b) => a + b, 0);
+  const selectedKeys = selected || [];
+  const unitAmounts = computeUnitAmounts(form.split_method, total, selectedKeys, inputs);
+  const memberAmounts = expandUnitAmountsToMembers(units, unitAmounts);
+  const sumSplits = Object.values(memberAmounts).reduce((a, b) => a + b, 0);
   const balanced = Math.abs(sumSplits - total) < 0.02;
 
-  function toggleMember(id, force) {
-    setForm((f) => {
-      const has = f.selected.includes(id);
+  function toggleUnit(key, force) {
+    setSelected((cur) => {
+      const list = cur || [];
+      const has = list.includes(key);
       const next = force === undefined ? !has : force;
-      return {
-        ...f,
-        selected: next ? (has ? f.selected : [...f.selected, id]) : f.selected.filter((x) => x !== id),
-      };
+      return next ? (has ? list : [...list, key]) : list.filter((x) => x !== key);
     });
   }
-  function setInput(id, val) {
-    setForm((f) => ({ ...f, inputs: { ...f.inputs, [id]: val } }));
+  function setUnitInput(key, val) {
+    setInputs((cur) => ({ ...cur, [key]: val }));
   }
 
   async function uploadReceipt(file) {
@@ -110,23 +150,37 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
         settled: form.settled,
         display_currency: baseCurrency || '',
       };
-      const splitInputs = form.selected.map((mid) => ({
-        member_id: mid,
-        amount: Math.round((splitAmounts[mid] || 0) * 100) / 100,
-        share: form.split_method === 'by_share' ? Number(form.inputs[mid]) || 0 : 1,
-      }));
+      // Expand selected units to per-member splits (one per member). Family
+      // members each receive their equal portion of the family's single unit
+      // share, so the existing per-person balance math is unchanged.
+      const splitInputs = [];
+      selectedKeys.forEach((key) => {
+        const u = units.find((x) => x.key === key);
+        if (!u) return;
+        const share = form.split_method === 'by_share' ? (Number(inputs[key]) || 0) : 1;
+        u.members.forEach((m) => {
+          splitInputs.push({
+            member_id: m.id,
+            amount: Math.round((memberAmounts[m.id] || 0) * 100) / 100,
+            share,
+          });
+        });
+      });
       if (expense) {
         await base44.functions.invoke('updateExpense', { gathering_id: gatheringId, expense_id: expense.id, expense: expensePayload, splits: splitInputs });
       } else {
         await base44.functions.invoke('createExpense', { gathering_id: gatheringId, expense: expensePayload, splits: splitInputs });
       }
-      // Remember the last split method + distribution + currency for next time.
-      writePrefs(gatheringId, {
-        split_method: form.split_method,
-        selected: form.selected,
-        inputs: form.inputs,
-        currency: form.currency,
-      });
+      // Remember the last split method + selected units + currency for the
+      // current user, only after a successful save.
+      if (!isEdit && userId) {
+        writePrefs(userId, {
+          split_method: form.split_method,
+          selected: selectedKeys,
+          inputs,
+          currency: form.currency,
+        });
+      }
       onSaved();
       onClose();
     } catch (err) {
@@ -194,20 +248,28 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
         </div>
         <div className="space-y-2">
           <Label className="text-ink-deep">Split between</Label>
-          <FamilySplitTable
-            participants={participants}
-            selected={form.selected}
-            inputs={form.inputs}
-            splitMethod={form.split_method}
-            splitAmounts={splitAmounts}
-            currency={form.currency}
-            onToggleMember={toggleMember}
-            onSetInput={setInput}
-            familyMap={familyMap}
-          />
-          <p className={`text-xs ${balanced ? 'text-ink-deep/50' : 'text-terra-deep'}`}>
-            {balanced ? `Splits sum to ${formatCurrency(total, form.currency)}` : `Splits sum to ${formatCurrency(sumSplits, form.currency)} — adjust to match ${formatCurrency(total, form.currency)}`}
-          </p>
+          {selected === null ? (
+            <div className="space-y-2">
+              <div className="tt-skeleton h-10 w-full rounded-lg" />
+              <div className="tt-skeleton h-10 w-full rounded-lg" />
+            </div>
+          ) : (
+            <>
+              <FamilySplitTable
+                units={units}
+                selected={selectedKeys}
+                inputs={inputs}
+                splitMethod={form.split_method}
+                unitAmounts={unitAmounts}
+                currency={form.currency}
+                onToggleUnit={toggleUnit}
+                onSetUnitInput={setUnitInput}
+              />
+              <p className={`text-xs ${balanced ? 'text-ink-deep/50' : 'text-terra-deep'}`}>
+                {balanced ? `Splits sum to ${formatCurrency(total, form.currency)}` : `Splits sum to ${formatCurrency(sumSplits, form.currency)} — adjust to match ${formatCurrency(total, form.currency)}`}
+              </p>
+            </>
+          )}
         </div>
         <div className="space-y-2">
           <Label className="text-ink-deep">Receipt</Label>

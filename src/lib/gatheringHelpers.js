@@ -151,6 +151,157 @@ export function computeSplitAmounts(method, total, participants, inputs = {}) {
   return result;
 }
 
+// ---- Split-unit model (a family group counts as ONE split unit) ----
+
+// Build split units from gathering participants + families. A family with
+// >=2 participants becomes ONE unit (key `fam:<id>`); remaining participants
+// are individual units (key = member id). Stable order by the first
+// participant's index. A user appears in exactly one unit (first family wins
+// for the rare duplicate-membership case). No records are merged.
+export function buildSplitUnits(participants, families = []) {
+  const usedUids = new Set();
+  const index = (m) => participants.findIndex((p) => p.id === m.id);
+  const famUnits = families
+    .map((f) => ({
+      f,
+      members: participants.filter(
+        (m) => m.user_id && ((f.memberUserIds || []).includes(m.user_id) || f.owner_user_id === m.user_id)
+      ),
+    }))
+    .filter((u) => u.members.length >= 2)
+    .sort((a, b) => index(a.members[0]) - index(b.members[0]));
+  const units = [];
+  famUnits.forEach((u) => {
+    const members = u.members.filter((m) => !usedUids.has(m.user_id));
+    if (members.length < 2) return; // not enough after dedup
+    members.forEach((m) => usedUids.add(m.user_id));
+    units.push({ key: `fam:${u.f.id}`, type: 'family', name: u.f.name, members });
+  });
+  participants.forEach((m) => {
+    if (m.user_id && usedUids.has(m.user_id)) return;
+    units.push({ key: m.id, type: 'member', members: [m] });
+  });
+  return units;
+}
+
+// Per-unit amounts for the selected unit keys. Equal + custom sum exactly to
+// total (floor + remainder); by_share mirrors the existing weighted approach.
+export function computeUnitAmounts(method, total, selectedKeys, inputs = {}) {
+  const t = Math.round(Number(total || 0) * 100) / 100;
+  const keys = selectedKeys || [];
+  if (method === 'equal') {
+    const n = keys.length || 1;
+    const each = Math.floor(t * 100 / n) / 100;
+    let remainder = Math.round((t - each * n) * 100);
+    const res = {};
+    keys.forEach((k) => {
+      let amt = each;
+      if (remainder > 0) { amt += 0.01; remainder -= 1; }
+      res[k] = Math.round(amt * 100) / 100;
+    });
+    return res;
+  }
+  if (method === 'by_share') {
+    const totalShare = keys.reduce((s, k) => s + (Number(inputs[k]) || 0), 0) || 1;
+    const res = {};
+    keys.forEach((k) => {
+      const w = Number(inputs[k]) || 0;
+      res[k] = Math.round((t * w / totalShare) * 100) / 100;
+    });
+    return res;
+  }
+  const res = {};
+  keys.forEach((k) => { res[k] = Math.round(Number(inputs[k] || 0) * 100) / 100; });
+  return res;
+}
+
+// Distribute an amount equally among n members (floor + remainder) so the
+// parts sum exactly to the amount.
+function distributeEvenly(amount, n) {
+  if (n <= 1) return [Math.round(amount * 100) / 100];
+  const each = Math.floor(amount * 100 / n) / 100;
+  let remainder = Math.round((amount - each * n) * 100);
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    let amt = each;
+    if (remainder > 0) { amt += 0.01; remainder -= 1; }
+    parts.push(Math.round(amt * 100) / 100);
+  }
+  return parts;
+}
+
+// Expand per-unit amounts to per-member amounts. Family units split their unit
+// amount equally among their members; individual units pass through. The
+// per-member amounts are what get saved (one ExpenseSplit per member) so the
+// existing per-person balance math is unchanged.
+export function expandUnitAmountsToMembers(units, unitAmounts) {
+  const res = {};
+  units.forEach((u) => {
+    const ua = Number(unitAmounts[u.key] || 0);
+    const parts = distributeEvenly(ua, u.members.length);
+    u.members.forEach((m, i) => { res[m.id] = parts[i]; });
+  });
+  return res;
+}
+
+// Reconstruct the unit selection for an existing expense from its saved
+// per-member splits. Families are grouped only when cleanly representable
+// (all participant members saved with equal amounts/shares); otherwise the
+// form falls back to individual units so historical splits are preserved
+// exactly and never silently changed.
+export function reconstructEditSelection(participants, families, splits, method) {
+  const savedAmt = {}; const savedShare = {};
+  (splits || []).forEach((s) => {
+    savedAmt[s.member_id] = Number(s.amount) || 0;
+    savedShare[s.member_id] = Number(s.share) || 0;
+  });
+  const savedIds = new Set(Object.keys(savedAmt));
+  const grouped = buildSplitUnits(participants, families);
+  let safe = true;
+  grouped.forEach((u) => {
+    if (u.type !== 'family') return;
+    const ids = u.members.map((m) => m.id);
+    const inCount = ids.filter((id) => savedIds.has(id)).length;
+    if (inCount !== 0 && inCount !== ids.length) { safe = false; return; }
+    if (inCount === ids.length) {
+      const amts = ids.map((id) => savedAmt[id]);
+      const shs = ids.map((id) => savedShare[id]);
+      const eq = method === 'by_share'
+        ? shs.every((s) => Math.abs(s - shs[0]) < 0.005)
+        : amts.every((a) => Math.abs(a - amts[0]) < 0.005);
+      if (!eq) safe = false;
+    }
+  });
+  if (!safe) {
+    const units = participants.map((m) => ({ key: m.id, type: 'member', members: [m] }));
+    const selected = participants.filter((m) => savedIds.has(m.id)).map((m) => m.id);
+    const inputs = {};
+    selected.forEach((id) => { inputs[id] = method === 'by_share' ? savedShare[id] : savedAmt[id]; });
+    return { units, selected, inputs };
+  }
+  const selected = []; const inputs = {};
+  grouped.forEach((u) => {
+    if (u.type === 'family') {
+      const ids = u.members.map((m) => m.id);
+      if (ids.every((id) => savedIds.has(id))) {
+        selected.push(u.key);
+        if (method === 'by_share') inputs[u.key] = savedShare[ids[0]];
+        else if (method === 'custom') inputs[u.key] = Math.round(ids.reduce((a, id) => a + savedAmt[id], 0) * 100) / 100;
+      }
+    }
+  });
+  grouped.forEach((u) => {
+    if (u.type !== 'member') return;
+    const id = u.members[0].id;
+    if (savedIds.has(id)) {
+      selected.push(u.key);
+      if (method === 'by_share') inputs[u.key] = savedShare[id];
+      else if (method === 'custom') inputs[u.key] = savedAmt[id];
+    }
+  });
+  return { units: grouped, selected, inputs };
+}
+
 // Running per-member balances from unsettled expenses + their splits.
 // balance > 0 => is owed money; < 0 => owes money.
 export function computeBalances(expenses, splits, memberIds) {
