@@ -62,7 +62,6 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const mainText = onCover ? 'text-white' : 'text-ink-deep';
   const subText = onCover ? 'text-white/85' : 'text-ink-deep/55';
   const metaText = onCover ? 'text-white/80' : 'text-ink-deep/50';
-  const dividerClass = onCover ? 'border-white/20' : 'border-ink-charcoal/10';
   const legBadgeBase = onCover ? 'bg-white/20 text-white' : 'bg-terra/12 text-terra-deep';
 
   const hasAttachments = (item.attachments || []).length > 0;
@@ -146,7 +145,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           {/* Reserved participant slot (fixed min-height) so card height never
               depends on whether avatars are present. Shows only the actual
               participants of this item; "No one joined yet" honest fallback. */}
-          <div className={`flex items-center gap-2 mt-2 pt-2 border-t min-h-[2.5rem] ${dividerClass}`}>
+          <div className="flex items-center gap-2 mt-2 min-h-[2.5rem]">
             {participants?.length > 0 ? (
               <div className="flex items-center min-w-0">
                 {participants.slice(0, 4).map((m, i) => (

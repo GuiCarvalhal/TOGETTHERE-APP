@@ -119,7 +119,6 @@ export default function GatheringExpenses() {
     : { amount: exp.amount, currency: exp.currency || 'USD' };
 
   async function deleteExpense(exp) {
-    if (!confirm('Delete this expense?')) return;
     await base44.entities.ExpenseSplit.deleteMany({ expense_id: exp.id });
     await base44.entities.Expense.delete(exp.id);
     d.reload();
@@ -225,7 +224,6 @@ export default function GatheringExpenses() {
                         members={members}
                         canEdit={role === 'owner' || (role === 'member' && exp.payer_member_id === currentMember?.id)}
                         onEdit={() => { setEditing(exp); setOpen(true); }}
-                        onDelete={() => deleteExpense(exp)}
                         displayAmount={disp.amount}
                         displayCurrency={disp.currency}
                       />
@@ -248,6 +246,7 @@ export default function GatheringExpenses() {
           splits={editing ? splitsByExpense[editing.id] || [] : []}
           onClose={() => setOpen(false)}
           onSaved={d.reload}
+          onDelete={() => deleteExpense(editing)}
         />
       )}
     </PageToolbar>

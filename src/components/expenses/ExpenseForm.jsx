@@ -12,13 +12,13 @@ import CurrencySelect from '@/components/expenses/CurrencySelect';
 import SplitMethodTabs from '@/components/expenses/SplitMethodTabs';
 import FamilySplitTable from '@/components/expenses/FamilySplitTable';
 import AttachmentChip from '@/components/tt/AttachmentChip';
-import { Loader2, Upload, X, Plus, Check } from 'lucide-react';
+import { Loader2, Upload, X, Plus, Check, Trash2 } from 'lucide-react';
 
 const PREFS_KEY = (gid) => `tt-exp-prefs-${gid}`;
 function readPrefs(gid) { try { return JSON.parse(localStorage.getItem(PREFS_KEY(gid)) || 'null'); } catch { return null; } }
 function writePrefs(gid, p) { try { localStorage.setItem(PREFS_KEY(gid), JSON.stringify(p)); } catch {} }
 
-export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, onClose, onSaved }) {
+export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, onClose, onSaved, onDelete }) {
   const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
   // Restore the last split method + distribution for this gathering when adding
   // a new expense (not when editing an existing one). Stored prefs never feed
@@ -38,6 +38,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
     inputs: expense ? Object.fromEntries(splits.map((s) => [s.member_id, s.amount])) : (prefs?.inputs || {}),
   });
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [familyMap, setFamilyMap] = useState({});
   const participantUids = participants.map((m) => m.user_id).filter(Boolean).join('|');
@@ -134,6 +135,19 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
     }
   }
 
+  async function handleDelete() {
+    if (!confirm('Delete this expense? This cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+      onClose();
+    } catch (err) {
+      alert(err.message || 'Could not delete expense');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const currencyOptions = [...new Set([(form.currency || 'USD').toUpperCase(), ...COMMON_CURRENCIES])];
 
   return (
@@ -213,6 +227,12 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           <Switch checked={form.settled} onCheckedChange={(v) => setForm({ ...form, settled: v })} />
         </div>
         <DialogFooter className="pt-2 gap-2">
+          {expense && onDelete && (
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting} className="mr-auto">
+              {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              Delete
+            </Button>
+          )}
           <Button type="button" variant="outline" onClick={onClose}><X /> Cancel</Button>
           <Button type="submit" disabled={saving}>
             {saving ? <Loader2 className="animate-spin" /> : expense ? <Check /> : <Plus />}
