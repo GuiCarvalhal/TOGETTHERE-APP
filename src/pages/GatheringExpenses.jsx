@@ -10,7 +10,7 @@ import PageToolbar from '@/components/tt/PageToolbar';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { Button } from '@/components/ui/button';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
-import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, ChevronRight, Scale, FileText } from 'lucide-react';
+import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, Scale, FileText } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 
@@ -88,7 +88,7 @@ export default function GatheringExpenses() {
     </div>
   );
 
-  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, expenseInBase, splitInBase, displayFor, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
+  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, expenseInBase, displayFor, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
 
   const visibleExpenses = scope === 'mine'
     ? expenses.filter((e) => e.payer_member_id === currentMember?.id || (splitsByExpense[e.id] || []).some((s) => s.member_id === currentMember?.id))
@@ -97,9 +97,6 @@ export default function GatheringExpenses() {
   const me = currentMember;
   const groupTotal = expenses.reduce((s, e) => s + expenseInBase(e), 0);
   const myBalance = balances[me?.id] || 0;
-  const unsettledIds = new Set(expenses.filter((e) => !e.settled).map((e) => e.id));
-  const myPaid = expenses.filter((e) => !e.settled && e.payer_member_id === me?.id).reduce((s, e) => s + expenseInBase(e), 0);
-  const myShare = splits.filter((s) => unsettledIds.has(s.expense_id) && s.member_id === me?.id).reduce((s, sp) => s + splitInBase(sp), 0);
 
   // Chronological ascending + day grouping, mirroring the Journey timeline.
   // Expense dates are date-only (YYYY-MM-DD), so lexical sort == chronological.
@@ -131,64 +128,41 @@ export default function GatheringExpenses() {
       canAdd={canAddExpense(role)}
     >
       <div className="space-y-5">
-      {/* Compact personal dashboard */}
-      <section className="tt-card p-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-terra-deep" />
-            <span className="text-sm font-semibold text-ink-deep">Your balance</span>
+      {/* Compact summary: group total, your balance, currency, balance + statement */}
+      <section className="tt-card p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="tt-label text-ink-deep/40">Group total</p>
+            <p className="font-display text-xl font-bold text-ink-deep truncate">{formatCurrency(groupTotal, baseCurrency)}</p>
+            <p className="text-xs text-ink-deep/50 mt-0.5">{expenses.length} expense{expenses.length === 1 ? '' : 's'}</p>
           </div>
-          <CurrencySelect value={baseCurrency} onChange={changeBaseCurrency} options={currencyOptions} triggerClass="w-44 h-9" />
+          <CurrencySelect value={baseCurrency} onChange={changeBaseCurrency} options={currencyOptions} triggerClass="w-36 h-9 shrink-0" />
         </div>
-        <p className="text-[0.6875rem] text-ink-deep/45 mt-2 flex items-center gap-1">
+
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-ink-charcoal/10">
+          <div className="flex items-center gap-2 min-w-0">
+            <Wallet className="w-4 h-4 text-terra-deep shrink-0" />
+            <span className="text-sm font-semibold text-ink-deep whitespace-nowrap">Your balance</span>
+          </div>
+          <p className={`font-display text-lg font-bold truncate ${myBalance > 0.01 ? 'text-terra-deep' : myBalance < -0.01 ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
+            {myBalance > 0.01 ? '+' : ''}{formatCurrency(myBalance, baseCurrency)}
+          </p>
+        </div>
+
+        <p className="text-[0.6875rem] text-ink-deep/45 flex items-center gap-1">
           {ratesLoading ? 'Loading live rates…' :
             ratesAvailable ? `Live rates as of ${ratesAsOf ? new Date(ratesAsOf).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'now'}` :
             (<><AlertTriangle className="w-3 h-3" /> Exchange rates unavailable — showing original amounts.</>)}
         </p>
-        <div className="grid grid-cols-3 gap-2.5 mt-3">
-          <div>
-            <p className="tt-label text-ink-deep/40">You paid</p>
-            <p className="font-display text-lg font-bold text-ink-deep truncate">{formatCurrency(myPaid, baseCurrency)}</p>
-          </div>
-          <div>
-            <p className="tt-label text-ink-deep/40">Your share</p>
-            <p className="font-display text-lg font-bold text-ink-deep truncate">{formatCurrency(myShare, baseCurrency)}</p>
-          </div>
-          <div>
-            <p className="tt-label text-ink-deep/40">Net</p>
-            <p className={`font-display text-lg font-bold truncate ${myBalance > 0.01 ? 'text-terra-deep' : myBalance < -0.01 ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
-              {myBalance > 0.01 ? '+' : ''}{formatCurrency(myBalance, baseCurrency)}
-            </p>
-          </div>
-        </div>
-        <p className="text-xs text-ink-deep/55 mt-2">
-          {myBalance > 0.01 ? `You are owed ${formatCurrency(myBalance, baseCurrency)}` : myBalance < -0.01 ? `You owe ${formatCurrency(Math.abs(myBalance), baseCurrency)}` : 'You are settled up.'}
-        </p>
-      </section>
 
-      {/* Group total + navigation to Running Balance / Statement */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40">Group total</p>
-          <p className="font-display text-xl font-bold text-ink-deep mt-1 truncate">{formatCurrency(groupTotal, baseCurrency)}</p>
-          <p className="text-xs text-ink-deep/50 mt-1">{expenses.length} expense{expenses.length === 1 ? '' : 's'}</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link to={`/gathering/${gatheringId}/expenses/balance`}><Scale /> Balance</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link to={`/gathering/${gatheringId}/expenses/statement/${currentMember?.id || ''}`}><FileText /> Individual Statement</Link>
+          </Button>
         </div>
-        <Link to={`/gathering/${gatheringId}/expenses/balance`} className="tt-card p-4 flex items-center gap-3 hover:border-terra/30 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-terra/10 flex items-center justify-center shrink-0"><Scale className="w-5 h-5 text-terra-deep" /></div>
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-ink-deep text-sm">Running balance</p>
-            <p className="text-xs text-ink-deep/50">Who owes whom</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-ink-deep/30 shrink-0" />
-        </Link>
-        <Link to={`/gathering/${gatheringId}/expenses/statement/${currentMember?.id || ''}`} className="tt-card p-4 flex items-center gap-3 hover:border-terra/30 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-terra/10 flex items-center justify-center shrink-0"><FileText className="w-5 h-5 text-terra-deep" /></div>
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-ink-deep text-sm">My statement</p>
-            <p className="text-xs text-ink-deep/50">Your full breakdown</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-ink-deep/30 shrink-0" />
-        </Link>
       </section>
 
       {/* Expense timeline — same rail, day markers and card rhythm as Journey */}
