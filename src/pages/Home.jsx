@@ -118,9 +118,6 @@ export default function Home() {
         <h1 className="font-display text-4xl sm:text-6xl font-bold leading-[1.05] tt-text-balance max-w-3xl">
           Plan together.<br /><span className="italic text-terra-coral">Get there, together.</span>
         </h1>
-        <p className="text-muted-foreground mt-5 max-w-xl text-[0.9375rem] leading-relaxed">
-          A living itinerary for your crew — flights and stays on a shared timeline, expenses split fairly, and an AI concierge that tailors each day to where the group actually is.
-        </p>
       </section>
 
       {/* Gatherings grid */}
