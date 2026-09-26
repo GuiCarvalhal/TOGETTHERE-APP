@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
 import { gatheringDateStatus, formatGatheringRange, gatheringDestinations, destinationMapsUrl } from '@/lib/gatheringDates';
@@ -8,6 +8,7 @@ import TopBar from '@/components/tt/TopBar';
 import NotificationOptInBanner from '@/components/tt/NotificationOptInBanner';
 import { useAuth } from '@/lib/AuthContext';
 import { useOneSignal } from '@/lib/useOneSignal';
+import { readLastSection, writeLastSection, sectionFromPath, sectionAllowedForRole } from '@/lib/gatheringLastPage';
 import { Image } from '@/components/ui/image';
 import { Loader2, CalendarDays, MapPin, Plus, MessageCircle, Music, ExternalLink } from 'lucide-react';
 
@@ -34,6 +35,15 @@ function ShellInner() {
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
 
+  // Remember the last gathering section this user visited for this gathering,
+  // so re-entering the gathering returns them there instead of the default.
+  useEffect(() => {
+    const section = sectionFromPath(location.pathname);
+    if (section && sectionAllowedForRole(section, role)) {
+      writeLastSection(user?.id, id, section);
+    }
+  }, [location.pathname, id, role, user?.id]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -52,7 +62,9 @@ function ShellInner() {
   }
 
   if (location.pathname === `/gathering/${id}`) {
-    return <Navigate to={`/gathering/${id}/journey`} replace />;
+    const saved = readLastSection(user?.id, id);
+    const target = saved && sectionAllowedForRole(saved, role) ? saved : 'journey';
+    return <Navigate to={`/gathering/${id}/${target}`} replace />;
   }
 
   // Date label + range are derived from the gathering's journey items (the
