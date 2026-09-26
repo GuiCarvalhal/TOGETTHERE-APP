@@ -12,7 +12,7 @@ import GoodToKnowCard from '@/components/agent/GoodToKnowCard';
 import TaskChecklist from '@/components/agent/TaskChecklist';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays } from 'lucide-react';
+import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays, Users } from 'lucide-react';
 
 const CATS = [
   { key: 'all', label: 'All' },
@@ -155,7 +155,7 @@ export default function GatheringAgent() {
       <span className="sm:hidden">{data ? 'Redo' : 'Go'}</span>
     </Button>
   );
-  const filterRow = data && phase !== 'ended' ? (
+  const filterRow = data && phase !== 'ended' && phase !== 'no_participants' ? (
     cats.map((c) => (
       <button key={c.key} onClick={() => setCat(c.key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeCat === c.key ? 'bg-terra text-cream' : 'bg-foreground/5 text-foreground/70 hover:text-foreground border border-foreground/10'}`}>
         {c.label}
@@ -210,7 +210,15 @@ export default function GatheringAgent() {
           </div>
         )}
 
-        {data && phase !== 'ended' && (
+        {data && phase === 'no_participants' && (
+          <div className="tt-card p-8 text-center max-w-md mx-auto">
+            <Users className="w-10 h-10 text-terra mx-auto mb-4" />
+            <p className="font-display text-2xl mb-2 text-ink-deep">No participants yet</p>
+            <p className="text-ink-deep/60 text-sm">{data.message || 'Ask an organizer or member to add people to the gathering so the concierge can tailor advice.'}</p>
+          </div>
+        )}
+
+        {data && phase !== 'ended' && phase !== 'no_participants' && (
           <div className="space-y-5">
             {showToday && show('today') && (
               <section>

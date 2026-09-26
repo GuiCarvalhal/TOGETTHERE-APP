@@ -98,6 +98,16 @@ export default async function(req) {
 
     // ---- Context for Gemini ----
     const participants = (members || []).filter((m) => m.role !== 'viewer');
+    // No eligible (non-viewer) participants: do NOT call the AI on viewer data.
+    // Return a neutral message so the UI can ask an eligible member to add/join.
+    if (!participants.length) {
+      return Response.json({
+        phase: 'no_participants',
+        today,
+        generatedAt: new Date().toISOString(),
+        message: 'No participants to tailor advice for yet. Ask an organizer or member to add people to the gathering.',
+      });
+    }
     const profiles = participants.map((m) => {
       const hc = m.user_id === user.id ? (user.home_city || m.home_city) : m.home_city;
       const ints = m.user_id === user.id ? (user.interests || m.interests) : m.interests;
