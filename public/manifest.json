@@ -8,11 +8,7 @@
   "orientation": "portrait-primary",
   "background_color": "#0C131D",
   "theme_color": "#0C131D",
-  "categories": [
-    "travel",
-    "lifestyle",
-    "productivity"
-  ],
+  "categories": ["travel", "lifestyle", "productivity"],
   "icons": [
     {
       "src": "https://media.base44.com/images/public/6aaf0809fb7946eb822b16b4/caf6e18ed_tt-icon-192.png",
