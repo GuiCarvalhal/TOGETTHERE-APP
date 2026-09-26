@@ -8,10 +8,29 @@
   "orientation": "portrait-primary",
   "background_color": "#0C131D",
   "theme_color": "#0C131D",
-  "categories": ["travel", "lifestyle", "productivity"],
+  "categories": [
+    "travel",
+    "lifestyle",
+    "productivity"
+  ],
   "icons": [
-    { "src": "https://base44.app/api/apps/6aaf0809fb7946eb822b16b4/files/mp/public/6aaf0809fb7946eb822b16b4/3a8ac6d5e_tt-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "https://base44.app/api/apps/6aaf0809fb7946eb822b16b4/files/mp/public/6aaf0809fb7946eb822b16b4/b6e1c9a74_tt-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "https://base44.app/api/apps/6aaf0809fb7946eb822b16b4/files/mp/public/6aaf0809fb7946eb822b16b4/d7b89a420_tt-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "https://media.base44.com/images/public/6aaf0809fb7946eb822b16b4/caf6e18ed_tt-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://media.base44.com/images/public/6aaf0809fb7946eb822b16b4/cb2555779_tt-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://media.base44.com/images/public/6aaf0809fb7946eb822b16b4/8d9ec63ea_tt-icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
