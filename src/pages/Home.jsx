@@ -116,7 +116,7 @@ export default function Home() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10">
         <p className="tt-label text-terra-coral mb-3">Group travel & gatherings</p>
         <h1 className="font-display text-4xl sm:text-6xl font-bold leading-[1.05] tt-text-balance max-w-3xl">
-          Plan the journey together.<br /><span className="italic text-terra-coral">Get there, together.</span>
+          Plan together.<br /><span className="italic text-terra-coral">Get there, together.</span>
         </h1>
         <p className="text-muted-foreground mt-5 max-w-xl text-[0.9375rem] leading-relaxed">
           A living itinerary for your crew — flights and stays on a shared timeline, expenses split fairly, and an AI concierge that tailors each day to where the group actually is.
