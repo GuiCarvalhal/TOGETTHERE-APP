@@ -30,7 +30,7 @@ export default function ExpenseStatement() {
     </div>
   );
 
-  const { participantMembers, memberById, expenses, splits, balances, baseCurrency, conv, expCurrency } = d;
+  const { participantMembers, memberById, expenses, splits, balances, baseCurrency, expenseInBase, splitInBase } = d;
   const member = memberById[selectedMember];
   const firstName = member?.full_name?.split(' ')[0] || 'Member';
 
@@ -38,12 +38,12 @@ export default function ExpenseStatement() {
   const shareExpIds = new Set(splits.filter((s) => s.member_id === selectedMember).map((s) => s.expense_id));
   const sharedWith = expenses.filter((e) => shareExpIds.has(e.id));
   const net = balances[selectedMember] || 0;
-  const totalPaid = paid.reduce((s, e) => s + conv(e.amount, e.currency), 0);
-  const totalShare = splits.filter((s) => s.member_id === selectedMember).reduce((s, sp) => s + conv(sp.amount, expCurrency[sp.expense_id]), 0);
+  const totalPaid = paid.reduce((s, e) => s + expenseInBase(e), 0);
+  const totalShare = splits.filter((s) => s.member_id === selectedMember).reduce((s, sp) => s + splitInBase(sp), 0);
 
   const myShareOf = (exp) => {
     const sp = splits.find((s) => s.expense_id === exp.id && s.member_id === selectedMember);
-    return sp ? conv(sp.amount, expCurrency[exp.id]) : 0;
+    return sp ? splitInBase(sp) : 0;
   };
 
   const Row = ({ exp, showShare }) => (
@@ -53,7 +53,7 @@ export default function ExpenseStatement() {
         <p className="text-xs text-ink-deep/50 truncate">{formatDate(exp.date)} · {memberById[exp.payer_member_id]?.full_name || '—'}</p>
       </div>
       <div className="text-right shrink-0">
-        <p className="font-display font-bold text-ink-deep whitespace-nowrap">{formatCurrency(conv(exp.amount, exp.currency), baseCurrency)}</p>
+        <p className="font-display font-bold text-ink-deep whitespace-nowrap">{formatCurrency(expenseInBase(exp), baseCurrency)}</p>
         {showShare && <p className="text-xs text-ink-deep/50 whitespace-nowrap">your share {formatCurrency(myShareOf(exp), baseCurrency)}</p>}
       </div>
     </div>

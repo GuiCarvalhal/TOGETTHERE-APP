@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, participantUserIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
+import { secrets } from 'base44:runtime';
+import { fetchUsdRates, convertViaUsd } from '../../shared/currencyRates.ts';
 
 export default async function(req) {
   try {
@@ -24,12 +26,38 @@ export default async function(req) {
     const parts = participantUserIds(members);
     const payerUid = resolvePayerUid(members, expense.payer_member_id, user.id);
 
+    // Capture the display-currency snapshot ONCE at transaction time so this
+    // expense renders deterministically forever (no later live-rate drift). The
+    // display currency is the creator's current base currency (passed from the
+    // client). Same currency => identity snapshot; cross-currency => convert via
+    // the live USD rate now. If the rate is unavailable, display_amount stays
+    // null and the row falls back to live conversion at render (historical).
+    const displayCurrency = (expense.display_currency || '').toUpperCase();
+    let displayAmount = null;
+    if (displayCurrency) {
+      const payCurrency = (expense.currency || 'USD').toUpperCase();
+      if (displayCurrency === payCurrency) {
+        displayAmount = Number(expense.amount);
+      } else {
+        const appId = secrets.get('OPENEXCHANGERATES_APP_ID');
+        if (appId) {
+          try {
+            const rates = await fetchUsdRates(appId);
+            const conv = convertViaUsd(expense.amount, payCurrency, displayCurrency, rates);
+            if (conv != null) displayAmount = Math.round(conv * 100) / 100;
+          } catch { /* leave null — historical fallback applies at render */ }
+        }
+      }
+    }
+
     const created = await base44.asServiceRole.entities.Expense.create({
       gathering_id,
       payer_member_id: expense.payer_member_id,
       title: expense.title,
       amount: Number(expense.amount),
       currency: expense.currency || 'USD',
+      display_amount: displayAmount,
+      display_currency: displayCurrency,
       split_method: expense.split_method || 'equal',
       category: expense.category || 'other',
       receipt: expense.receipt || '',

@@ -88,18 +88,18 @@ export default function GatheringExpenses() {
     </div>
   );
 
-  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, conv, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
+  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, expenseInBase, splitInBase, displayFor, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
 
   const visibleExpenses = scope === 'mine'
     ? expenses.filter((e) => e.payer_member_id === currentMember?.id || (splitsByExpense[e.id] || []).some((s) => s.member_id === currentMember?.id))
     : expenses;
 
   const me = currentMember;
-  const groupTotal = expenses.reduce((s, e) => s + conv(e.amount, e.currency), 0);
+  const groupTotal = expenses.reduce((s, e) => s + expenseInBase(e), 0);
   const myBalance = balances[me?.id] || 0;
   const unsettledIds = new Set(expenses.filter((e) => !e.settled).map((e) => e.id));
-  const myPaid = expenses.filter((e) => !e.settled && e.payer_member_id === me?.id).reduce((s, e) => s + conv(e.amount, e.currency), 0);
-  const myShare = splits.filter((s) => unsettledIds.has(s.expense_id) && s.member_id === me?.id).reduce((s, sp) => s + conv(sp.amount, d.expCurrency[sp.expense_id]), 0);
+  const myPaid = expenses.filter((e) => !e.settled && e.payer_member_id === me?.id).reduce((s, e) => s + expenseInBase(e), 0);
+  const myShare = splits.filter((s) => unsettledIds.has(s.expense_id) && s.member_id === me?.id).reduce((s, sp) => s + splitInBase(sp), 0);
 
   // Chronological ascending + day grouping, mirroring the Journey timeline.
   // Expense dates are date-only (YYYY-MM-DD), so lexical sort == chronological.
@@ -111,12 +111,10 @@ export default function GatheringExpenses() {
   });
   const days = Object.keys(byDay).sort();
 
-  // Rail display amount/currency: converted to the gathering's display currency
-  // when live rates are available, otherwise the original amount + currency
-  // (matching the dashboard's "showing original amounts" fallback).
-  const railDisplay = (exp) => ratesAvailable
-    ? { amount: conv(exp.amount, exp.currency), currency: baseCurrency }
-    : { amount: exp.amount, currency: exp.currency || 'USD' };
+  // Rail display amount/currency: same-currency => original; snapshot =>
+  // persisted display amount; otherwise live conversion (or original when rates
+  // are unavailable). displayFor always returns the currency matching the amount.
+  const railDisplay = (exp) => displayFor(exp);
 
   async function deleteExpense(exp) {
     await base44.entities.ExpenseSplit.deleteMany({ expense_id: exp.id });
@@ -244,6 +242,7 @@ export default function GatheringExpenses() {
           currentMember={currentMember}
           expense={editing}
           splits={editing ? splitsByExpense[editing.id] || [] : []}
+          baseCurrency={baseCurrency}
           onClose={() => setOpen(false)}
           onSaved={d.reload}
           onDelete={() => deleteExpense(editing)}

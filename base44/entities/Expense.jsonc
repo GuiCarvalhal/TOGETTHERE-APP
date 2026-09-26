@@ -24,11 +24,21 @@
       "type": "string"
     },
     "amount": {
-      "type": "number"
+      "type": "number",
+      "description": "Original entered amount in the payment currency (canonical). Never round-tripped to USD at save."
     },
     "currency": {
       "type": "string",
-      "default": "USD"
+      "default": "USD",
+      "description": "Payment currency (the currency actually used to pay). Canonical, immutable per transaction."
+    },
+    "display_amount": {
+      "type": "number",
+      "description": "Snapshot of the amount converted to display_currency, captured ONCE at save time using the live rate then, so an old expense renders deterministically forever (no later live-rate drift). null/absent on historical rows created before this field existed \u2014 those fall back to live conversion. When payment currency === display_currency this equals amount (identity)."
+    },
+    "display_currency": {
+      "type": "string",
+      "description": "The display currency display_amount was converted to at save time (the creator's current base currency). Used with display_amount to render the snapshot; ignored when display_amount is null."
     },
     "split_method": {
       "type": "string",

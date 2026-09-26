@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, participantUserIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
+import { secrets } from 'base44:runtime';
+import { fetchUsdRates, convertViaUsd } from '../../shared/currencyRates.ts';
 
 export default async function(req) {
   try {
@@ -29,11 +31,34 @@ export default async function(req) {
     const parts = participantUserIds(members);
     const payerUid = resolvePayerUid(members, expense.payer_member_id, existing.payer_user_id || user.id);
 
+    // Re-snapshot the display-currency amount on edit (amount/currency may have
+    // changed). Same rule as createExpense: identity when same currency, else a
+    // fresh live conversion at save time; null when unavailable (fallback render).
+    const displayCurrency = (expense.display_currency || '').toUpperCase();
+    let displayAmount = null;
+    if (displayCurrency) {
+      const payCurrency = (expense.currency || 'USD').toUpperCase();
+      if (displayCurrency === payCurrency) {
+        displayAmount = Number(expense.amount);
+      } else {
+        const appId = secrets.get('OPENEXCHANGERATES_APP_ID');
+        if (appId) {
+          try {
+            const rates = await fetchUsdRates(appId);
+            const conv = convertViaUsd(expense.amount, payCurrency, displayCurrency, rates);
+            if (conv != null) displayAmount = Math.round(conv * 100) / 100;
+          } catch { /* leave null — historical fallback applies at render */ }
+        }
+      }
+    }
+
     await base44.asServiceRole.entities.Expense.update(expense_id, {
       payer_member_id: expense.payer_member_id,
       title: expense.title,
       amount: Number(expense.amount),
       currency: expense.currency || 'USD',
+      display_amount: displayAmount,
+      display_currency: displayCurrency,
       split_method: expense.split_method || 'equal',
       category: expense.category || 'other',
       receipt: expense.receipt || '',

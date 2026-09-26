@@ -18,7 +18,7 @@ const PREFS_KEY = (gid) => `tt-exp-prefs-${gid}`;
 function readPrefs(gid) { try { return JSON.parse(localStorage.getItem(PREFS_KEY(gid)) || 'null'); } catch { return null; } }
 function writePrefs(gid, p) { try { localStorage.setItem(PREFS_KEY(gid), JSON.stringify(p)); } catch {} }
 
-export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, onClose, onSaved, onDelete }) {
+export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, baseCurrency, onClose, onSaved, onDelete }) {
   const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
   // Restore the last split method + distribution for this gathering when adding
   // a new expense (not when editing an existing one). Stored prefs never feed
@@ -108,6 +108,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
         receipt: form.receipt,
         date: form.date,
         settled: form.settled,
+        display_currency: baseCurrency || '',
       };
       const splitInputs = form.selected.map((mid) => ({
         member_id: mid,
