@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,21 @@ export default function Login() {
   // Post-login destination (e.g. the MCP OAuth consent page sends users here
   // with returnTo so the grant flow can resume). Same-origin paths only.
   const returnTo = safeReturnTo();
+
+  // Surface provider/OAuth errors returned in the URL (error / error_description)
+  // after a social-login redirect back to the app, instead of a blank page.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error");
+    if (!err) return;
+    const desc = params.get("error_description") || "";
+    setError(`Sign-in failed: ${err}${desc ? ` — ${desc}` : ""}`);
+    console.error("[auth] provider login error:", err, desc);
+    params.delete("error");
+    params.delete("error_description");
+    const qs = params.toString();
+    window.history.replaceState({}, document.title, `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

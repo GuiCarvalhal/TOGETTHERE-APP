@@ -22,6 +22,9 @@ export function safeReturnTo() {
     }
     const path = url.pathname + url.search;
     if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) return "/";
+    // Never let the post-login destination be an auth page itself — that
+    // would loop the user straight back to login/register after sign-in.
+    if (["/login", "/register", "/forgot-password", "/reset-password"].includes(url.pathname)) return "/";
     return path;
   } catch {
     return "/";

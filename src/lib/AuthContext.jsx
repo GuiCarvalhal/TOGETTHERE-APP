@@ -81,7 +81,21 @@ export const AuthProvider = ({ children }) => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      let currentUser;
+      try {
+        currentUser = await base44.auth.me();
+      } catch (firstErr) {
+        // A single retry for the first me() right after an OAuth redirect:
+        // the session/token can still be propagating on the way back from
+        // the provider, and one transient 401/403 must not bounce the user
+        // to /login before auth has finished.
+        if (firstErr.status === 401 || firstErr.status === 403) {
+          await new Promise((r) => setTimeout(r, 600));
+          currentUser = await base44.auth.me();
+        } else {
+          throw firstErr;
+        }
+      }
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
