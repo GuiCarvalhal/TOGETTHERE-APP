@@ -110,7 +110,7 @@ export default function GatheringJourney() {
                 {[0, 1].map((j) => (
                   <div key={j} className="flex gap-2">
                     <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
-                      <Skeleton className="w-10 h-10 rounded-xl" />
+                      <Skeleton className="w-10 h-10 rounded-full" />
                       <Skeleton className="h-3 w-10 mt-1.5" />
                     </div>
                     <div className="flex-1 tt-card p-3 space-y-2">
