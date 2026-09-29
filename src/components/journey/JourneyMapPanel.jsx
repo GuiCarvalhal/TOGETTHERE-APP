@@ -19,10 +19,11 @@ import { itemWaypoints } from '@/lib/journeyMap';
 export default function JourneyMapPanel({
   items, memberById, scope, gatheringId, open, setOpen,
   suggestions = [], suggestionsWithoutCoords = 0, suggestionsPending = 0, toggleLabel = 'Route',
+  itemsPending = 0,
 }) {
   const mappableCount = items.filter((it) => itemWaypoints(it).length > 0).length;
   const unmappedCount = items.length - mappableCount;
-  const hasAnything = mappableCount > 0 || suggestions.length > 0 || suggestionsPending > 0;
+  const hasAnything = mappableCount > 0 || suggestions.length > 0 || suggestionsPending > 0 || itemsPending > 0;
 
   return (
     <div className="mb-4">
@@ -40,7 +41,7 @@ export default function JourneyMapPanel({
         </Button>
         <span className="text-xs text-ink-deep/55">
           {hasAnything
-            ? `${mappableCount} mapped stop${mappableCount === 1 ? '' : 's'}${suggestions.length ? ` · ${suggestions.length} suggested` : ''}`
+            ? `${mappableCount} mapped stop${mappableCount === 1 ? '' : 's'}${suggestions.length ? ` · ${suggestions.length} suggested` : ''}${itemsPending ? ` · locating ${itemsPending}` : ''}`
             : 'Nothing to map yet'}
         </span>
       </div>
@@ -63,7 +64,13 @@ export default function JourneyMapPanel({
                 suggestions={suggestions}
               />
               <div className="mt-2 space-y-1">
-                {unmappedCount > 0 && (
+                {itemsPending > 0 && (
+                  <p className="text-[11px] text-ink-deep/50 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
+                    Locating {itemsPending} segment{itemsPending === 1 ? '' : 's'}…
+                  </p>
+                )}
+                {itemsPending === 0 && unmappedCount > 0 && (
                   <p className="text-[11px] text-ink-deep/50 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
                     {unmappedCount} segment{unmappedCount === 1 ? '' : 's'} without a mapped location

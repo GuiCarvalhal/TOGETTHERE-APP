@@ -13,6 +13,7 @@ import TaskChecklist from '@/components/agent/TaskChecklist';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import { useAgentPlaceCoords, agentPlaceKey } from '@/lib/useAgentPlaceCoords';
+import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays, Users } from 'lucide-react';
 
@@ -93,6 +94,20 @@ export default function GatheringAgent() {
     })();
     return () => { active = false; };
   }, [mapOpen, gatheringId]);
+
+  // Runtime-only geocoding for journey items that lack native coords (most
+  // legacy items carry only free-text location strings). Same shared engine as
+  // suggestions; resolves lazily, only while the map panel is open, and never
+  // writes a record. Declared before the viewer early-return so hook order is
+  // stable across every render.
+  const uid = currentMember?.user_id;
+  const visibleItems = scope === 'mine'
+    ? journeyItems.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
+    : journeyItems;
+  const destName = gathering?.destination_places?.[0]?.name || gathering?.destinations?.[0] || '';
+  const { coords: itemCoords, pending: itemCoordsPending } = useJourneyItemCoords(
+    mapOpen ? visibleItems : [], destName
+  );
 
   const isViewer = role === 'viewer';
 
@@ -180,10 +195,6 @@ export default function GatheringAgent() {
 
   // Base-map inputs (respect the same mine/group scope as the Journey page).
   const memberById = Object.fromEntries((members || []).map((m) => [m.user_id, m]));
-  const uid = currentMember?.user_id;
-  const visibleItems = scope === 'mine'
-    ? journeyItems.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
-    : journeyItems;
   // Build the suggested-marker layer from resolved coords. Suggestions without
   // coords are counted (quietly) only once resolution has finished.
   const suggMarkers = [];
@@ -200,6 +211,10 @@ export default function GatheringAgent() {
       suggWithoutCoords += 1;
     }
   });
+
+  // Batched: keep the native-only set while resolving (no per-pin flicker),
+  // then swap in the augmented set once resolution finishes — one map re-render.
+  const mapItems = itemCoordsPending > 0 ? visibleItems : augmentItemsWithCoords(visibleItems, itemCoords);
 
   const regenerateAction = (
     <Button onClick={generate} disabled={loading} size="sm" className="shrink-0">
@@ -237,7 +252,7 @@ export default function GatheringAgent() {
 
         {data && phase !== 'ended' && phase !== 'no_participants' && (
           <JourneyMapPanel
-            items={visibleItems}
+            items={mapItems}
             memberById={memberById}
             scope={scope}
             gatheringId={gatheringId}
@@ -246,6 +261,7 @@ export default function GatheringAgent() {
             suggestions={suggPending > 0 ? [] : suggMarkers}
             suggestionsWithoutCoords={suggWithoutCoords}
             suggestionsPending={suggPending}
+            itemsPending={itemCoordsPending}
             toggleLabel="Map"
           />
         )}

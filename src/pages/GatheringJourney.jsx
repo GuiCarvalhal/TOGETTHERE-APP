@@ -10,6 +10,7 @@ import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import PageToolbar from '@/components/tt/PageToolbar';
 import { Button } from '@/components/ui/button';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus } from 'lucide-react';
@@ -68,6 +69,18 @@ export default function GatheringJourney() {
   const visibleItems = scope === 'mine'
     ? items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
     : items;
+  // Runtime-only geocoding for items that lack native coords (most legacy items
+  // carry only free-text location strings). Resolves lazily, only while the map
+  // panel is open, via the shared engine (localStorage cache + dedupe). Never
+  // writes a record — coords live in state + localStorage for the session.
+  const destName = gathering?.destination_places?.[0]?.name || gathering?.destinations?.[0] || '';
+  const { coords: itemCoords, pending: itemCoordsPending } = useJourneyItemCoords(
+    mapOpen ? visibleItems : [], destName
+  );
+  // Batch: keep the native-only item set while resolving (no per-pin flicker),
+  // then swap in the augmented set once resolution finishes — a single map
+  // re-render with all newly-mappable pins.
+  const mapItems = itemCoordsPending > 0 ? visibleItems : augmentItemsWithCoords(visibleItems, itemCoords);
   const tzMap = useItemStartTzMap(visibleItems);
   // Expand stays (hotel) into a check-in entry at the start and a check-out
   // entry at the end — one underlying record, two timeline positions, each on
@@ -153,12 +166,13 @@ export default function GatheringJourney() {
       ) : (
         <>
         <JourneyMapPanel
-          items={visibleItems}
+          items={mapItems}
           memberById={memberById}
           scope={scope}
           gatheringId={gatheringId}
           open={mapOpen}
           setOpen={setMapOpen}
+          itemsPending={itemCoordsPending}
         />
         <Timeline>
           {days.map((day) => (
