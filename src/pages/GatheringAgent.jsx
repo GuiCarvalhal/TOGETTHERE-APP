@@ -11,6 +11,8 @@ import VibeCard from '@/components/agent/VibeCard';
 import GoodToKnowCard from '@/components/agent/GoodToKnowCard';
 import TaskChecklist from '@/components/agent/TaskChecklist';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
+import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import { useAgentPlaceCoords, agentPlaceKey } from '@/lib/useAgentPlaceCoords';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays, Users } from 'lucide-react';
 
@@ -55,7 +57,7 @@ function AgentSkeleton() {
 
 export default function GatheringAgent() {
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
-  const { scope, setScope } = useViewPrefs(gatheringId);
+  const { scope, setScope, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,6 +65,34 @@ export default function GatheringAgent() {
   const [tasks, setTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [journeyInitial, setJourneyInitial] = useState(null);
+  const [journeyItems, setJourneyItems] = useState([]);
+
+  // All AI-suggested places on the page (today + eat + do), tagged with their
+  // section label, for layering on the route map. Empty until a brief exists.
+  const allSuggestions = [];
+  if (data) {
+    (data.todaysPicks || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: 'Today' }));
+    (data.whereToEat || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: 'Eat' }));
+    (data.whatToDo || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: 'Do' }));
+  }
+  // Resolve suggestion coords only while the map panel is open (lazy), via the
+  // existing getPlaceInfo path — cached + deduped in the hook.
+  const { coords: suggCoords, pending: suggPending } = useAgentPlaceCoords(
+    mapOpen ? allSuggestions.map((s) => s.place) : []
+  );
+
+  // Journey items for the base route map — fetched only when the panel opens.
+  useEffect(() => {
+    if (!mapOpen) return;
+    let active = true;
+    (async () => {
+      try {
+        const list = await base44.entities.JourneyItem.filter({ gathering_id: gatheringId });
+        if (active) setJourneyItems(list);
+      } catch { /* ignore — base map just won't draw */ }
+    })();
+    return () => { active = false; };
+  }, [mapOpen, gatheringId]);
 
   const isViewer = role === 'viewer';
 
@@ -148,6 +178,29 @@ export default function GatheringAgent() {
   const addPlace = (p) => setJourneyInitial({ type: 'activity', title: p.name, location_name: p.address });
   const placePath = `/gathering/${gatheringId}/agent/place`;
 
+  // Base-map inputs (respect the same mine/group scope as the Journey page).
+  const memberById = Object.fromEntries((members || []).map((m) => [m.user_id, m]));
+  const uid = currentMember?.user_id;
+  const visibleItems = scope === 'mine'
+    ? journeyItems.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
+    : journeyItems;
+  // Build the suggested-marker layer from resolved coords. Suggestions without
+  // coords are counted (quietly) only once resolution has finished.
+  const suggMarkers = [];
+  let suggWithoutCoords = 0;
+  allSuggestions.forEach((s) => {
+    const c = suggCoords[agentPlaceKey(s.place)];
+    if (c && c.lat != null && c.lng != null) {
+      suggMarkers.push({
+        lat: c.lat, lng: c.lng, name: s.place.name,
+        categoryLabel: s.categoryLabel, rating: s.place.rating,
+        to: placePath, place: s.place,
+      });
+    } else if (!suggPending) {
+      suggWithoutCoords += 1;
+    }
+  });
+
   const regenerateAction = (
     <Button onClick={generate} disabled={loading} size="sm" className="shrink-0">
       {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
@@ -181,6 +234,21 @@ export default function GatheringAgent() {
             </div>
           </div>
         </div>
+
+        {data && phase !== 'ended' && phase !== 'no_participants' && (
+          <JourneyMapPanel
+            items={visibleItems}
+            memberById={memberById}
+            scope={scope}
+            gatheringId={gatheringId}
+            open={mapOpen}
+            setOpen={setMapOpen}
+            suggestions={suggPending > 0 ? [] : suggMarkers}
+            suggestionsWithoutCoords={suggWithoutCoords}
+            suggestionsPending={suggPending}
+            toggleLabel="Map"
+          />
+        )}
 
         {loading && !data && <AgentSkeleton />}
 
