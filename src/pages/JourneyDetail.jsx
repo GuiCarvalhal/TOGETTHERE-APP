@@ -5,6 +5,7 @@ import { useGathering } from '@/lib/gatheringContext';
 import { JOURNEY_TYPES, canEditJourneyItem, canDeleteJourneyItem } from '@/lib/gatheringHelpers';
 import { formatFullDateTz, formatTimeWithCountry, startLocation, endLocation } from '@/lib/formatPlaceTime';
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
+import { itemMapPoints } from '@/lib/journeyMap';
 import { Image } from '@/components/ui/image';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import AvatarStack from '@/components/tt/AvatarStack';
@@ -129,10 +130,7 @@ export default function JourneyDetail() {
   const typeStyle = TYPE_STYLE[item.type] || TYPE_STYLE.other;
   const typeColor = TYPE_COLOR[item.type] || TYPE_COLOR.other;
   const q = mapsQuery(item);
-  const isRoute = ['flight', 'car', 'train', 'cruise'].includes(item.type);
-  const origin = isRoute ? item.from_place : null;
-  const destination = isRoute ? item.to_place : null;
-  const point = !isRoute ? item.place : null;
+  const { origin, destination, point } = itemMapPoints(item);
   const images = (item.attachments || []).filter(isImg);
   const docs = (item.attachments || []).filter((u) => !isImg(u));
 

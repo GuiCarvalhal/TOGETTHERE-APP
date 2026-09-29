@@ -7,6 +7,18 @@ export function hasCoord(p) {
     && isFinite(p.lat) && isFinite(p.lng);
 }
 
+// The single source of truth for which stored place object(s) a journey item
+// maps to. Both the item detail page (SegmentMap) and the route map consume
+// this so the two can never read different fields for the same record.
+export function itemMapPoints(item) {
+  const isRoute = ['flight', 'car', 'train', 'cruise'].includes(item?.type);
+  return {
+    origin: isRoute ? item?.from_place : null,
+    destination: isRoute ? item?.to_place : null,
+    point: !isRoute ? item?.place : null,
+  };
+}
+
 // Ordered list of { lat, lng, name } waypoints for an item:
 //  - route items (flight/car/train/cruise) with both from_place & to_place:
 //    origin then destination (two stops)
@@ -14,7 +26,7 @@ export function hasCoord(p) {
 //  - a route item with only one resolved end: a single stop
 // Empty array when the item has no usable coordinates (not mappable).
 export function itemWaypoints(item) {
-  const o = item?.from_place, d = item?.to_place, p = item?.place;
+  const { origin: o, destination: d, point: p } = itemMapPoints(item);
   if (hasCoord(o) && hasCoord(d)) {
     return [
       { lat: o.lat, lng: o.lng, name: o.name || item.location_from || 'Origin' },
