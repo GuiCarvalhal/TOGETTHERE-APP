@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { UserPlus, Loader2, Users, X, Handshake, Heart, User } from 'lucide-react';
+import { UserPlus, Loader2, Users, X, Handshake, HeartHandshake, User } from 'lucide-react';
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 import Skeleton from '@/components/tt/Skeleton';
@@ -50,18 +50,6 @@ function MemberSection({ title, count, icon, children }) {
       </div>
       <div className="space-y-3">{children}</div>
     </section>
-  );
-}
-
-// Close Friendship header icon: a Handshake with a small solid Heart overlay
-// (HandshakeHeart is not in this lucide version, so we compose it from
-// Handshake + Heart — no dependency install).
-function CloseFriendshipIcon() {
-  return (
-    <span className="relative inline-flex items-center">
-      <Handshake className="w-3.5 h-3.5 text-terra-deep" />
-      <Heart className="w-2 h-2 text-terra fill-terra absolute -bottom-0.5 -right-1" />
-    </span>
   );
 }
 
@@ -185,7 +173,7 @@ export default function GatheringMembers() {
               <MemberRow key={selfMember.id} member={selfMember} gatheringId={gatheringId} isSelf onOpen={() => { setActiveMember(selfMember); setSheetOpen(true); }} />
             </MemberSection>
           )}
-          <MemberSection title="Close Friendship" count={closeMembers.length} icon={<CloseFriendshipIcon />}>
+          <MemberSection title="Close Friendship" count={closeMembers.length} icon={<HeartHandshake className="w-3.5 h-3.5 text-terra-deep" />}>
             {closeMembers.map((m) => (
               <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
             ))}

@@ -143,7 +143,7 @@ function ShellInner() {
 
       <NotificationOptInBanner onesignal={onesignal} gatheringId={id} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 pb-36">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-2.5 pb-36">
         <Outlet context={{ openMore: () => setMoreOpen(true) }} />
       </main>
 
