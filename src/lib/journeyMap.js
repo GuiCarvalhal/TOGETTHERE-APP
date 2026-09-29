@@ -79,3 +79,29 @@ export function placeLabel(item) {
   if (p?.name) return p.name;
   return item?.location_name || item?.location_to || item?.location_from || item?.title || '';
 }
+
+// Stable cache key for a suggestion marker/card, so the map pin and the card
+// rail marker read the SAME number for the SAME suggestion. A suggestion is
+// identified by its category label + place (name + address): the same place can
+// appear under two categories, so categoryLabel disambiguates. Used by both
+// suggestionRouteNumbers (below) and the Agent page's card lookup.
+export const suggestionKey = (s) =>
+  `${s?.categoryLabel || ''}::${s?.place?.name || ''}::${s?.place?.address || ''}`;
+
+// Single source of truth for suggestion pin numbers, shared by the Agent route
+// map (pin labels) and the Agent place cards (left-rail reference marker).
+// Returns a Map<suggestionKey, number> where number is the 1-based index of the
+// suggestion among those that have resolved coordinates, in the order the
+// caller passes them in (page order: Today, Eat, Do). Suggestions without
+// coords are absent (→ no number on the card, no pin). Both consumers MUST use
+// this (and the same resolved list) so a card marker and its pin can never drift.
+export function suggestionRouteNumbers(suggestions) {
+  const numbers = new Map();
+  let n = 0;
+  (suggestions || []).forEach((s) => {
+    if (s.lat == null || s.lng == null) return;
+    n += 1;
+    numbers.set(suggestionKey(s), n);
+  });
+  return numbers;
+}

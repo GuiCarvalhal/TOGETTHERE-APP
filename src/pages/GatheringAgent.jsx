@@ -12,6 +12,8 @@ import GoodToKnowCard from '@/components/agent/GoodToKnowCard';
 import TaskChecklist from '@/components/agent/TaskChecklist';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import { Timeline } from '@/components/tt/Timeline';
+import { suggestionRouteNumbers, suggestionKey } from '@/lib/journeyMap';
 import { useAgentPlaceCoords, agentPlaceKey } from '@/lib/useAgentPlaceCoords';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import { Button } from '@/components/ui/button';
@@ -58,7 +60,7 @@ function AgentSkeleton() {
 
 export default function GatheringAgent() {
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
-  const { scope, setScope, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
+  const { scope, setScope, images, setImages, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

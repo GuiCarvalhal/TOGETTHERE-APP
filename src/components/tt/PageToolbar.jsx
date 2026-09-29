@@ -38,7 +38,7 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
               <Map />
             </Button>
           )}
-          {action == null && showImagesToggle && (
+          {showImagesToggle && (
             <Button
               variant={images ? 'default' : 'outline'}
               size="sm"
