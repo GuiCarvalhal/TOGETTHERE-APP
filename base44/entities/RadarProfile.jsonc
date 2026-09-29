@@ -1,0 +1,98 @@
+{
+  "name": "RadarProfile",
+  "type": "object",
+  "properties": {
+    "gathering_id": {
+      "type": "string",
+      "description": "Target gathering this radar profile is linked to."
+    },
+    "source_gathering_id": {
+      "type": "string",
+      "description": "Beta gathering id this profile was migrated from. Data-only."
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Owner email. RLS key \u2014 all access is gated on this matching the authenticated user's email."
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Owner user id when known (optional). Not used for RLS; email is the gate."
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "sharing_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "precision": {
+      "type": "string",
+      "default": "exact"
+    },
+    "update_frequency_foreground": {
+      "type": "number",
+      "default": 30
+    },
+    "update_frequency_background": {
+      "type": "number",
+      "default": 1800
+    },
+    "sharing_start_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "sharing_end_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "ghost_mode_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_location_lat": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Last known latitude. Nullable. Owner-only access."
+    },
+    "last_location_lng": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Last known longitude. Nullable. Owner-only access."
+    },
+    "last_updated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "gathering_id",
+    "user_email"
+  ],
+  "rls": {
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}

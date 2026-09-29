@@ -91,6 +91,58 @@
       "items": {
         "type": "string"
       }
+    },
+    "source_beta_trip_id": {
+      "type": "string",
+      "description": "Beta app trip ID this gathering was migrated from. Data-only; used for idempotency/dedup. No UI reads it."
+    },
+    "source_trip_type": {
+      "type": "string",
+      "description": "Original beta trip_type (e.g. trip/event). Data-only; no current equivalent field exists."
+    },
+    "timezone": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Beta gathering-level timezone. Data-only; nullable. No current equivalent field exists."
+    },
+    "location_buffer_days": {
+      "type": "number",
+      "description": "Beta location buffer days. Data-only; no current equivalent field exists."
+    },
+    "source_start_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Exact original beta start ISO timestamp. Data-only; preserved for fidelity alongside the date-only start_date."
+    },
+    "source_end_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Exact original beta end ISO timestamp. Data-only; preserved for fidelity alongside the date-only end_date."
+    },
+    "source_cover_photographer": {
+      "type": "string",
+      "description": "Beta cover attribution. Data-only; no current equivalent field exists."
+    },
+    "source_cover_photographer_url": {
+      "type": "string",
+      "description": "Beta cover photographer profile URL. Data-only."
+    },
+    "source_cover_pexels_url": {
+      "type": "string",
+      "description": "Beta cover Pexels photo page URL. Data-only."
+    },
+    "source_main_event_owner_item_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Beta main-event owner item id. Data-only; nullable."
+    },
+    "source_main_event_was_created": {
+      "type": "boolean",
+      "description": "Beta main-event creation flag. Data-only."
     }
   },
   "required": [
