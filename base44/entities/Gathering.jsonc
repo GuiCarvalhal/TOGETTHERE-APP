@@ -106,6 +106,12 @@
           "data.member_user_ids": "{{user.id}}"
         },
         {
+          "data.member_user_ids": "{{user.email}}"
+        },
+        {
+          "data.owner_user_id": "{{user.email}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
           }
