@@ -10,6 +10,7 @@ import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import { itemRouteNumbers } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import PageToolbar from '@/components/tt/PageToolbar';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,14 @@ export default function GatheringJourney() {
   });
   const days = Object.keys(byDay).sort();
   const canAdd = canAddJourney(role);
+  const routeNumbers = itemRouteNumbers(mapItems);
+  const mapRow = (
+    <JourneyMapPanel
+      items={mapItems}
+      gatheringId={gatheringId}
+      itemsPending={itemCoordsPending}
+    />
+  );
 
   if (loading) return (
     <div className="space-y-5">
@@ -151,7 +160,7 @@ export default function GatheringJourney() {
   );
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd}>
+    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd}>
       {visibleItems.length === 0 ? (
         <EmptyState
           icon={Compass}
@@ -164,16 +173,6 @@ export default function GatheringJourney() {
           ) : undefined}
         />
       ) : (
-        <>
-        <JourneyMapPanel
-          items={mapItems}
-          memberById={memberById}
-          scope={scope}
-          gatheringId={gatheringId}
-          open={mapOpen}
-          setOpen={setMapOpen}
-          itemsPending={itemCoordsPending}
-        />
         <Timeline>
           {days.map((day) => (
             <div key={day} className="space-y-3">
@@ -188,6 +187,7 @@ export default function GatheringJourney() {
                     icon={ICONS[entry.item.type] || MapPin}
                     participants={itemParticipants(entry.item, memberById)}
                     showImages={images}
+                    routeNumber={mapOpen ? routeNumbers.get(entry.item.id) : undefined}
                     to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
                   />
                 ))}
@@ -195,7 +195,6 @@ export default function GatheringJourney() {
             </div>
           ))}
         </Timeline>
-        </>
       )}
 
       {open && (

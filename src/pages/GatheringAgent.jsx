@@ -193,8 +193,6 @@ export default function GatheringAgent() {
   const addPlace = (p) => setJourneyInitial({ type: 'activity', title: p.name, location_name: p.address });
   const placePath = `/gathering/${gatheringId}/agent/place`;
 
-  // Base-map inputs (respect the same mine/group scope as the Journey page).
-  const memberById = Object.fromEntries((members || []).map((m) => [m.user_id, m]));
   // Build the suggested-marker layer from resolved coords. Suggestions without
   // coords are counted (quietly) only once resolution has finished.
   const suggMarkers = [];
@@ -216,6 +214,17 @@ export default function GatheringAgent() {
   // then swap in the augmented set once resolution finishes — one map re-render.
   const mapItems = itemCoordsPending > 0 ? visibleItems : augmentItemsWithCoords(visibleItems, itemCoords);
 
+  const mapRow = (
+    <JourneyMapPanel
+      items={mapItems}
+      gatheringId={gatheringId}
+      suggestions={suggPending > 0 ? [] : suggMarkers}
+      suggestionsWithoutCoords={suggWithoutCoords}
+      suggestionsPending={suggPending}
+      itemsPending={itemCoordsPending}
+    />
+  );
+
   const regenerateAction = (
     <Button onClick={generate} disabled={loading} size="sm" className="shrink-0">
       {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
@@ -232,7 +241,7 @@ export default function GatheringAgent() {
   ) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} action={regenerateAction} filterRow={filterRow}>
+    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
       <div className="space-y-5">
         {/* Brief header */}
         <div className="tt-card p-4">
@@ -249,22 +258,6 @@ export default function GatheringAgent() {
             </div>
           </div>
         </div>
-
-        {data && phase !== 'ended' && phase !== 'no_participants' && (
-          <JourneyMapPanel
-            items={mapItems}
-            memberById={memberById}
-            scope={scope}
-            gatheringId={gatheringId}
-            open={mapOpen}
-            setOpen={setMapOpen}
-            suggestions={suggPending > 0 ? [] : suggMarkers}
-            suggestionsWithoutCoords={suggWithoutCoords}
-            suggestionsPending={suggPending}
-            itemsPending={itemCoordsPending}
-            toggleLabel="Map"
-          />
-        )}
 
         {loading && !data && <AgentSkeleton />}
 

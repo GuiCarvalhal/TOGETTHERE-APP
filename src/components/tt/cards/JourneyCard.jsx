@@ -28,7 +28,7 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // Card height is stable: identical content box whether Images is ON or OFF
 // (same border + padding), and a reserved min-height participant slot so the
 // height never depends on whether avatars are present.
-export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to }) {
+export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber }) {
   const navigate = useNavigate();
   const startTz = useItemStartTz(item);
   const endTz = useItemEndTz(item);
@@ -93,6 +93,11 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
             {railAbbr && <p className="text-[0.625rem] text-foreground/45 mt-0.5">{railAbbr}</p>}
           </div>
         ) : null}
+        {routeNumber != null && (
+          <span className="mt-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-terra/35 bg-background text-terra-deep text-[0.625rem] font-bold">
+            {routeNumber}
+          </span>
+        )}
       </div>
 
       {/* Card — identical content box whether Images is ON or OFF (same border,

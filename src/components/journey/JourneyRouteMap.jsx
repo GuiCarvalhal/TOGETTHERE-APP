@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { loadMapsApi } from '@/lib/loadMapsApi';
 import { itemStartTz } from '@/lib/useItemPlace';
 import { formatFullDateTz, formatTimeTz } from '@/lib/formatPlaceTime';
-import { itemWaypoints, itemParticipantIds, placeLabel } from '@/lib/journeyMap';
+import { itemWaypoints, itemRouteNumbers, placeLabel } from '@/lib/journeyMap';
 import { MapPin, Loader2 } from 'lucide-react';
 
 const TERRA = '#E05A47';
@@ -12,9 +12,6 @@ const TERRA = '#E05A47';
 // (terra numbered circles) vs suggestion is unmistakable.
 const SUGGESTED_COLOR = '#4F46E5';
 const PIN_PATH = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z';
-// Distinct, readable per-person route colours (group scope). Cycles if there
-// are more people than colours.
-const ROUTE_COLORS = ['#E05A47', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1'];
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -23,33 +20,44 @@ function escapeHtml(s) {
 }
 
 // Whole-journey route map with an optional "suggested" layer.
-//  - Confirmed journey waypoints: numbered terra-circle pins in chronological
-//    order, connected by the route polyline (mine: one line; group: one per
-//    person). Unchanged when `suggestions` is absent (Journey page).
-//  - `suggestions` (optional): { lat, lng, name, categoryLabel, rating, to,
-//    place } — rendered as distinct indigo teardrop pins ON TOP, never part of
-//    the polyline. Clicking opens a compact info card (name, category, rating)
-//    with a link to the suggestion's detail page (router state carries the
-//    place + category, matching the AgentPlaceCard navigation).
+//  - ONE route for everything visible on the page: numbered terra-circle pins
+//    in chronological order, connected by a single terra polyline. No
+//    per-person splitting — the mine/group switch just changes which items are
+//    on the page; the map maps whatever it's given.
+//  - Pin numbers come from the shared `itemRouteNumbers` source (same source
+//    the journey cards use for their left-column marker), so a card and its pin
+//    can never show different numbers.
+//  - `suggestions` (optional, Agent page): { lat, lng, name, categoryLabel,
+//    rating, to, place } — rendered as distinct indigo teardrop pins ON TOP,
+//    never part of the polyline. A compact in-map legend distinguishes
+//    "Your itinerary" (terra) from "Suggested" (indigo). The Journey page passes
+//    no suggestions, so no legend renders there.
 // Reuses the shared maps loader + getMapsConfig — no second integration.
 // Fails gracefully (never crashes the page).
-export default function JourneyRouteMap({ items, memberById, scope, gatheringId, suggestions }) {
+export default function JourneyRouteMap({ items, gatheringId, suggestions }) {
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'fallback'
   const [legend, setLegend] = useState([]);
   const [showLegend, setShowLegend] = useState(false);
 
-  // Chronological order + flatten to numbered waypoints (one pin per stop).
+  // Single numbering source — shared with the journey cards. Each mappable
+  // item's first waypoint takes the next number; its remaining waypoints
+  // (e.g. a flight's destination) carry number+1, number+2… so the map's pin
+  // labels are derived from the same Map the cards read.
+  const itemNumbers = itemRouteNumbers(items);
   const sorted = [...items].sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0));
-  const mappable = sorted.filter((it) => itemWaypoints(it).length > 0);
   const waypoints = [];
-  mappable.forEach((it) => itemWaypoints(it).forEach((w) => waypoints.push({ ...w, item: it })));
-  waypoints.forEach((w, i) => { w.number = i + 1; });
+  sorted.forEach((it) => {
+    const wps = itemWaypoints(it);
+    if (wps.length === 0) return;
+    const base = itemNumbers.get(it.id);
+    wps.forEach((w, i) => waypoints.push({ ...w, item: it, number: base + i }));
+  });
 
   const suggList = suggestions || [];
-  // Stable fingerprints so the map re-renders only when the pinned set, scope,
-  // members, or suggestions actually change (not on every polling refresh).
+  // Stable fingerprints so the map re-renders only when the pinned set or
+  // suggestions actually change (not on every polling refresh).
   const mapKey = items.map((i) => {
     const o = i.from_place, d = i.to_place, p = i.place;
     const c = [o?.lat, o?.lng, d?.lat, d?.lng, p?.lat, p?.lng]
@@ -57,10 +65,9 @@ export default function JourneyRouteMap({ items, memberById, scope, gatheringId,
     return `${i.id}:${c}`;
   }).join('|');
   const suggKey = suggList.map((s) => `${s.name}::${s.lat},${s.lng}`).join('|');
-  const membersKey = Object.keys(memberById || {}).join('|');
 
   useEffect(() => {
-    if (mappable.length === 0 && suggList.length === 0) return;
+    if (waypoints.length === 0 && suggList.length === 0) return;
     let cancelled = false;
     const overlays = [];
     let infoWindow = null;
@@ -83,8 +90,8 @@ export default function JourneyRouteMap({ items, memberById, scope, gatheringId,
           zoom: 2,
         });
         const bounds = new maps.LatLngBounds();
-        const pinIcon = (color) => ({
-          path: maps.SymbolPath.CIRCLE, scale: 13, fillColor: color, fillOpacity: 1,
+        const pinIcon = () => ({
+          path: maps.SymbolPath.CIRCLE, scale: 13, fillColor: TERRA, fillOpacity: 1,
           strokeColor: '#fff', strokeWeight: 2,
         });
         const suggestedIcon = () => ({
@@ -98,7 +105,7 @@ export default function JourneyRouteMap({ items, memberById, scope, gatheringId,
           const marker = new maps.Marker({
             position: pos, map,
             label: { text: String(w.number), color: '#fff', fontSize: '11px', fontWeight: '700' },
-            icon: pinIcon(TERRA),
+            icon: pinIcon(),
           });
           bounds.extend(pos);
           marker.addListener('click', () => {
@@ -124,43 +131,12 @@ export default function JourneyRouteMap({ items, memberById, scope, gatheringId,
           overlays.push(marker);
         });
 
-        // Polylines — draw the confirmed journey route.
-        let personLegend = [];
-        if (scope === 'mine') {
-          const path = waypoints.map((w) => ({ lat: w.lat, lng: w.lng }));
-          if (path.length >= 2) {
-            overlays.push(new maps.Polyline({
-              path, map, geodesic: true, strokeColor: TERRA, strokeOpacity: 0.85, strokeWeight: 3,
-            }));
-          }
-        } else {
-          const memberColor = {};
-          const order = [];
-          mappable.forEach((it) => {
-            itemParticipantIds(it).forEach((mid) => {
-              if (!memberColor[mid]) {
-                memberColor[mid] = ROUTE_COLORS[order.length % ROUTE_COLORS.length];
-                order.push(mid);
-              }
-            });
-          });
-          personLegend = order.map((mid) => ({
-            color: memberColor[mid],
-            name: memberById?.[mid]?.full_name || memberById?.[mid]?.email || 'Member',
+        // Single route polyline through every confirmed waypoint, in order.
+        const path = waypoints.map((w) => ({ lat: w.lat, lng: w.lng }));
+        if (path.length >= 2) {
+          overlays.push(new maps.Polyline({
+            path, map, geodesic: true, strokeColor: TERRA, strokeOpacity: 0.85, strokeWeight: 3,
           }));
-          order.forEach((mid) => {
-            const path = [];
-            mappable.forEach((it) => {
-              if (itemParticipantIds(it).includes(mid)) {
-                itemWaypoints(it).forEach((wp) => path.push({ lat: wp.lat, lng: wp.lng }));
-              }
-            });
-            if (path.length >= 2) {
-              overlays.push(new maps.Polyline({
-                path, map, geodesic: true, strokeColor: memberColor[mid], strokeOpacity: 0.8, strokeWeight: 3,
-              }));
-            }
-          });
         }
 
         // Suggested places — distinct indigo pins, never part of the route.
@@ -193,17 +169,15 @@ export default function JourneyRouteMap({ items, memberById, scope, gatheringId,
           overlays.push(marker);
         });
 
-        // Legend: layer legend when suggestions are present; else per-person
-        // (group, >1 person) — preserving the Journey page's exact behaviour.
+        // Compact in-map legend — ONLY when suggestions are present (Agent
+        // page), to keep "Your itinerary" vs "Suggested" clear. No legend on the
+        // Journey page (no suggestions → nothing to distinguish).
         if (suggList.length > 0) {
           const layerLegend = [];
-          if (mappable.length > 0) layerLegend.push({ color: TERRA, name: 'Your itinerary' });
+          if (waypoints.length > 0) layerLegend.push({ color: TERRA, name: 'Your itinerary' });
           layerLegend.push({ color: SUGGESTED_COLOR, name: 'Suggested' });
           setLegend(layerLegend);
           setShowLegend(layerLegend.length > 0);
-        } else if (scope === 'group' && personLegend.length > 1) {
-          setLegend(personLegend);
-          setShowLegend(true);
         } else {
           setLegend([]);
           setShowLegend(false);
@@ -223,10 +197,10 @@ export default function JourneyRouteMap({ items, memberById, scope, gatheringId,
       setShowLegend(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapKey, suggKey, scope, gatheringId, membersKey, navigate]);
+  }, [mapKey, suggKey, gatheringId, navigate]);
 
   return (
-    <div className="relative w-full h-64 sm:h-80 rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale">
+    <div className="relative w-full h-48 sm:h-56 lg:h-64 rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale">
       <div ref={mapRef} className="absolute inset-0" />
       {status === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-cream-pale">

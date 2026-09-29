@@ -48,6 +48,28 @@ export function itemParticipantIds(item) {
   return item?.owner_id ? [item.owner_id] : [];
 }
 
+// Single source of truth for the route numbering shared by the route map
+// (pin labels) and the journey cards (left-column reference marker). Returns a
+// Map<itemId, number> where number is the 1-based chronological index of the
+// item's FIRST mapped waypoint; items with no mapped waypoint are absent
+// (→ no number on the card, no pin on the map). Both consumers MUST use this
+// so the card marker and the pin label can never drift.
+export function itemRouteNumbers(items) {
+  const sorted = [...items].sort(
+    (a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0)
+  );
+  const numbers = new Map();
+  let n = 0;
+  sorted.forEach((it) => {
+    const wps = itemWaypoints(it);
+    if (wps.length === 0) return;
+    n += 1; // first waypoint of this item takes the next number
+    numbers.set(it.id, n);
+    n += wps.length - 1; // advance past the item's remaining waypoints
+  });
+  return numbers;
+}
+
 // A single human label for an item's location (origin → destination, or place).
 export function placeLabel(item) {
   const o = item?.from_place, d = item?.to_place, p = item?.place;
