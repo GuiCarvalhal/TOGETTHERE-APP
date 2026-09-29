@@ -7,6 +7,7 @@ export function useViewPrefs(gatheringId) {
   const key = `tt-view-${gatheringId}`;
   const [scope, setScope] = useState('group');
   const [images, setImages] = useState(true);
+  const [mapOpen, setMapOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -15,13 +16,14 @@ export function useViewPrefs(gatheringId) {
         const p = JSON.parse(raw);
         if (p.scope === 'mine' || p.scope === 'group') setScope(p.scope);
         if (typeof p.images === 'boolean') setImages(p.images);
+        if (typeof p.mapOpen === 'boolean') setMapOpen(p.mapOpen);
       }
     } catch { /* ignore */ }
   }, [key]);
 
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify({ scope, images })); } catch { /* ignore */ }
+    try { localStorage.setItem(key, JSON.stringify({ scope, images, mapOpen })); } catch { /* ignore */ }
   }, [key, scope, images]);
 
-  return { scope, setScope, images, setImages };
+  return { scope, setScope, images, setImages, mapOpen, setMapOpen };
 }

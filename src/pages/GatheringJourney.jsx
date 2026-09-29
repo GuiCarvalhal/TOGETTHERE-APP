@@ -9,6 +9,7 @@ import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
+import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import PageToolbar from '@/components/tt/PageToolbar';
 import { Button } from '@/components/ui/button';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus } from 'lucide-react';
@@ -33,7 +34,7 @@ function itemParticipants(item, memberById) {
 
 export default function GatheringJourney() {
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
-  const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
+  const { scope, setScope, images, setImages, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -150,6 +151,15 @@ export default function GatheringJourney() {
           ) : undefined}
         />
       ) : (
+        <>
+        <JourneyMapPanel
+          items={visibleItems}
+          memberById={memberById}
+          scope={scope}
+          gatheringId={gatheringId}
+          open={mapOpen}
+          setOpen={setMapOpen}
+        />
         <Timeline>
           {days.map((day) => (
             <div key={day} className="space-y-3">
@@ -171,6 +181,7 @@ export default function GatheringJourney() {
             </div>
           ))}
         </Timeline>
+        </>
       )}
 
       {open && (

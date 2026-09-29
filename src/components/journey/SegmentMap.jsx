@@ -1,27 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Navigation } from 'lucide-react';
+import { loadMapsApi } from '@/lib/loadMapsApi';
 
-// Loads the Google Maps JS API once (cached globally). Uses the SAME key the
-// backend already uses (GOOGLEMAPS_TOGETTHERE), exposed via getMapsConfig — no
-// new provider, no second key, no npm dependency (just a script tag). Resolves
-// with the google.maps namespace or rejects so callers can fall back.
-let mapsPromise = null;
-function loadMapsApi(key) {
-  if (mapsPromise) return mapsPromise;
-  mapsPromise = new Promise((resolve, reject) => {
-    if (window.google?.maps) { resolve(window.google.maps); return; }
-    const cb = `__ttMapsCb_${Math.random().toString(36).slice(2)}`;
-    window[cb] = () => { delete window[cb]; resolve(window.google.maps); };
-    const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&callback=${cb}`;
-    s.async = true;
-    s.defer = true;
-    s.onerror = () => { delete window[cb]; mapsPromise = null; reject(new Error('maps-load-failed')); };
-    document.head.appendChild(s);
-  });
-  return mapsPromise;
-}
+// The Google Maps JS API loader lives in src/lib/loadMapsApi.js and is shared
+// with the journey route map so the <script> tag + google.maps namespace are
+// initialized exactly once across the whole app — no second integration or
+// key. Uses the SAME key the backend already uses (GOOGLEMAPS_TOGETTHERE),
+// exposed via getMapsConfig.
 
 const TERRA = '#E05A47';
 
