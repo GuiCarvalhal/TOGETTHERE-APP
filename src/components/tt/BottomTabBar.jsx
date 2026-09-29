@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Route, Receipt, Users, MoreHorizontal } from 'lucide-react';
+import { Sparkles, Route, Receipt, Users } from 'lucide-react';
 import { canSeeExpenses, canSeeAgent } from '@/lib/gatheringHelpers';
 
 // Floating translucent dock — primary navigation for gathering pages.
@@ -13,7 +13,7 @@ const TABS = [
   { key: 'members', label: 'Members', icon: Users, path: 'members', show: () => true },
 ];
 
-export default function BottomTabBar({ gatheringId, role, onMore }) {
+export default function BottomTabBar({ gatheringId, role }) {
   const location = useLocation();
   const tabs = TABS.filter((t) => t.show(role));
   // Active section = the 3rd path segment of /gathering/:id/:section (and
@@ -44,14 +44,6 @@ export default function BottomTabBar({ gatheringId, role, onMore }) {
             </Link>
           );
         })}
-        <button
-          onClick={onMore}
-          aria-label="More options"
-          className="relative flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] px-3 rounded-full text-foreground/55 hover:text-foreground hover:bg-foreground/5 transition-colors"
-        >
-          <MoreHorizontal className="w-5 h-5" />
-          <span className="text-[0.625rem] font-semibold tracking-tight">More</span>
-        </button>
       </div>
     </nav>
   );

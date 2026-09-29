@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MemberAvatar from '@/components/tt/MemberAvatar';
-import { timeAgo, canManageGathering } from '@/lib/gatheringHelpers';
+import { timeAgo } from '@/lib/gatheringHelpers';
 import {
   Sun, Moon, Monitor, Bell, BellRing, BellOff, Check, Loader2, Send, Users, Heart,
   Settings as SettingsIcon, LogOut, ChevronRight, Receipt, Route, UserPlus,
@@ -236,13 +236,6 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
                 })}
               </div>
             </Section>
-          )}
-
-          {/* Gathering settings (owner) — gathering-scoped */}
-          {canManageGathering(role) && (
-            <button onClick={() => { onOpenChange(false); navigate(`/gathering/${gatheringId}/settings`); }} className="w-full px-4 py-3.5 border-t border-foreground/8 flex items-center gap-2 text-sm font-medium text-foreground hover:bg-foreground/5">
-              <SettingsIcon className="w-4 h-4 text-terra-deep" /> Gathering settings <ChevronRight className="w-4 h-4 ml-auto text-foreground/40" />
-            </button>
           )}
 
           {/* Sign out — universal */}

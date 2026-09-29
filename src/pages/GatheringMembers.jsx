@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { canManageMembers } from '@/lib/gatheringHelpers';
+import { canManageMembers, ROLES } from '@/lib/gatheringHelpers';
 import MemberRow from '@/components/members/MemberRow';
 import MemberDetailSheet from '@/components/members/MemberDetailSheet';
 import PageToolbar from '@/components/tt/PageToolbar';
+import FilterChips from '@/components/tt/FilterChips';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
@@ -38,10 +39,29 @@ function MembersSkeleton() {
   );
 }
 
+function MemberSection({ title, count, children }) {
+  if (!children || (Array.isArray(children) && children.length === 0)) return null;
+  return (
+    <section className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <h3 className="tt-label text-ink-deep/55">{title}</h3>
+        <span className="text-xs text-ink-deep/40">· {count}</span>
+      </div>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+const ROLE_FILTER_OPTIONS = [
+  { key: 'all', label: 'All' },
+  ...['owner', 'admin', 'member', 'viewer'].map((r) => ({ key: r, label: ROLES[r] })),
+];
+
 export default function GatheringMembers() {
   const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh, loading } = useGathering();
   const { scope, setScope } = useViewPrefs(gatheringId);
   const [addOpen, setAddOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState('all');
   const [addForm, setAddForm] = useState({ full_name: '', role: 'member', home_city: '' });
   const [adding, setAdding] = useState(false);
   const [activeMember, setActiveMember] = useState(null);
@@ -107,36 +127,48 @@ export default function GatheringMembers() {
   }
 
   const visibleMembers = scope === 'mine' ? members.filter((m) => m.id === currentMember?.id) : members;
+  // Role filter composes with scope: narrows the visible members by gathering
+  // role (owner/admin/member/viewer) — never inferred from friendship. Feeds
+  // the Close/Casual friendship sections below.
+  const roleFiltered = roleFilter === 'all' ? visibleMembers : visibleMembers.filter((m) => m.role === roleFilter);
+  // Friendship split uses myRelationship (close | casual). The app's
+  // documented default is 'casual' (set in getGatheringContext for any member
+  // with no explicit Relationship record), so null — only the current user's
+  // own row — is treated as casual. No member disappears; no Uncategorized
+  // section is needed.
+  const closeMembers = roleFiltered.filter((m) => m.myRelationship === 'close');
+  const casualMembers = roleFiltered.filter((m) => m.myRelationship !== 'close');
   // Re-derive the open sheet's member from fresh data so role/relationship
   // edits reflect immediately; falls back to the stored object if it's gone.
   const active = activeMember ? (members.find((m) => m.id === activeMember.id) || activeMember) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} onAdd={() => setAddOpen(true)} canAdd={canManage} addLabel="member">
+    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} onAdd={() => setAddOpen(true)} canAdd={canManage} addLabel="member" filterRow={<FilterChips options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={setRoleFilter} />}>
       {loading ? (
         <MembersSkeleton />
-      ) : visibleMembers.length === 0 ? (
+      ) : roleFiltered.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={scope === 'mine' ? 'Nothing to show' : 'No members yet'}
-          body={scope === 'mine' ? 'Switch to Group to see everyone in this gathering.' : 'Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only.'}
-          action={canManage && scope !== 'mine' ? (
+          title={roleFilter !== 'all' ? 'No members with this role' : (scope === 'mine' ? 'Nothing to show' : 'No members yet')}
+          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : (scope === 'mine' ? 'Switch to Group to see everyone in this gathering.' : 'Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only.')}
+          action={canManage && scope !== 'mine' && roleFilter === 'all' ? (
             <Button onClick={() => setAddOpen(true)}>
               <UserPlus /> Add the first member
             </Button>
           ) : undefined}
         />
       ) : (
-        <div className="space-y-3">
-          {visibleMembers.map((m) => (
-            <MemberRow
-              key={m.id}
-              member={m}
-              gatheringId={gatheringId}
-              isSelf={m.id === currentMember?.id}
-              onOpen={() => { setActiveMember(m); setSheetOpen(true); }}
-            />
-          ))}
+        <div className="space-y-6">
+          <MemberSection title="Close" count={closeMembers.length}>
+            {closeMembers.map((m) => (
+              <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
+            ))}
+          </MemberSection>
+          <MemberSection title="Casual" count={casualMembers.length}>
+            {casualMembers.map((m) => (
+              <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
+            ))}
+          </MemberSection>
         </div>
       )}
 

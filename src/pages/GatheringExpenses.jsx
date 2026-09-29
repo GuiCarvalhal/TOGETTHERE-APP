@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
-import { canSeeExpenses, canAddExpense, formatCurrency } from '@/lib/gatheringHelpers';
+import { canSeeExpenses, canAddExpense, formatCurrency, EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseTimelineCard from '@/components/tt/cards/ExpenseTimelineCard';
 import PageToolbar from '@/components/tt/PageToolbar';
+import FilterChips from '@/components/tt/FilterChips';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { Button } from '@/components/ui/button';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
@@ -58,12 +59,15 @@ function ExpenseTimelineSkeleton() {
   );
 }
 
+const CAT_FILTER_OPTIONS = [{ key: 'all', label: 'All' }, ...EXPENSE_CATEGORIES.map((c) => ({ key: c.key, label: c.label }))];
+
 export default function GatheringExpenses() {
   const d = useExpensesData();
   const { gatheringId, setFab, role, currentMember } = d;
   const { scope, setScope } = useViewPrefs(gatheringId);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [catFilter, setCatFilter] = useState('all');
 
   // No floating Add button — the sticky PageToolbar Add button is the single
   // entry point, matching the Journey page.
@@ -93,6 +97,10 @@ export default function GatheringExpenses() {
   const visibleExpenses = scope === 'mine'
     ? expenses.filter((e) => e.payer_member_id === currentMember?.id || (splitsByExpense[e.id] || []).some((s) => s.member_id === currentMember?.id))
     : expenses;
+  // Category filter composes with scope + currency/settlement behavior: it
+  // narrows only the timeline list. The summary (group total, your balance,
+  // rates) stays on the full visible set so the financial picture is unchanged.
+  const filteredExpenses = catFilter === 'all' ? visibleExpenses : visibleExpenses.filter((e) => e.category === catFilter);
 
   const me = currentMember;
   const groupTotal = expenses.reduce((s, e) => s + expenseInBase(e), 0);
@@ -100,7 +108,7 @@ export default function GatheringExpenses() {
 
   // Chronological ascending + day grouping, mirroring the Journey timeline.
   // Expense dates are date-only (YYYY-MM-DD), so lexical sort == chronological.
-  const sorted = [...visibleExpenses].sort((a, b) => new Date(a.date || a.created_date) - new Date(b.date || b.created_date));
+  const sorted = [...filteredExpenses].sort((a, b) => new Date(a.date || a.created_date) - new Date(b.date || b.created_date));
   const byDay = {};
   sorted.forEach((e) => {
     const k = e.date || 'unscheduled';
@@ -126,6 +134,7 @@ export default function GatheringExpenses() {
       showImagesToggle={false}
       onAdd={() => { setEditing(null); setOpen(true); }}
       canAdd={canAddExpense(role)}
+      filterRow={<FilterChips options={CAT_FILTER_OPTIONS} value={catFilter} onChange={setCatFilter} />}
     >
       <div className="space-y-5">
       {/* Compact summary: group total, your balance, currency, balance + statement */}
@@ -168,12 +177,12 @@ export default function GatheringExpenses() {
       {/* Expense timeline — same rail, day markers and card rhythm as Journey */}
       <section>
         <h3 className="tt-label text-foreground/50 mb-2.5">{scope === 'mine' ? 'Your expenses' : 'All expenses'}</h3>
-        {visibleExpenses.length === 0 ? (
+        {filteredExpenses.length === 0 ? (
           <EmptyState
             icon={ReceiptIcon}
-            title={scope === 'mine' ? 'None involving you yet' : 'No expenses yet'}
-            body={scope === 'mine' ? 'Expenses you pay or are split on will appear here.' : 'Add the first shared cost — dinner, gas, a rental — and TOGETTHERE splits it fairly and tracks who owes whom.'}
-            action={canAddExpense(role) ? (
+            title={catFilter !== 'all' ? 'No expenses of this type' : (scope === 'mine' ? 'None involving you yet' : 'No expenses yet')}
+            body={catFilter !== 'all' ? 'Switch to All to see every expense, or pick another category.' : (scope === 'mine' ? 'Expenses you pay or are split on will appear here.' : 'Add the first shared cost — dinner, gas, a rental — and TOGETTHERE splits it fairly and tracks who owes whom.')}
+            action={canAddExpense(role) && catFilter === 'all' ? (
               <Button onClick={() => { setEditing(null); setOpen(true); }}>
                 <Plus /> Add expense
               </Button>

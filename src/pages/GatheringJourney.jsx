@@ -13,6 +13,7 @@ import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import { itemRouteNumbers } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import PageToolbar from '@/components/tt/PageToolbar';
+import FilterChips from '@/components/tt/FilterChips';
 import { Button } from '@/components/ui/button';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
@@ -21,6 +22,7 @@ import EmptyState from '@/components/tt/EmptyState';
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
 const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
+const TYPE_FILTER_OPTIONS = [{ key: 'all', label: 'All' }, ...JOURNEY_TYPES.map((t) => ({ key: t.key, label: t.label }))];
 
 function dayKey(d, tz) { return d ? tzDateKey(d, tz) : 'unscheduled'; }
 
@@ -42,6 +44,7 @@ export default function GatheringJourney() {
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [typeFilter, setTypeFilter] = useState('all');
 
   async function load(silent) {
     if (!silent) { setLoading(true); setError(null); }
@@ -70,6 +73,10 @@ export default function GatheringJourney() {
   const visibleItems = scope === 'mine'
     ? items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
     : items;
+  // Type filter composes with scope: narrows the visible set to a single
+  // journey type (or all). Feeds both the timeline entries and the route map
+  // so pins and card numbers reflect exactly the filtered visible list.
+  const filteredItems = typeFilter === 'all' ? visibleItems : visibleItems.filter((it) => it.type === typeFilter);
   // Runtime-only geocoding for items that lack native coords (most legacy items
   // carry only free-text location strings). Resolves lazily, only while the map
   // panel is open, via the shared engine (localStorage cache + dedupe). Never
@@ -82,12 +89,13 @@ export default function GatheringJourney() {
   // then swap in the augmented set once resolution finishes — a single map
   // re-render with all newly-mappable pins.
   const mapItems = itemCoordsPending > 0 ? visibleItems : augmentItemsWithCoords(visibleItems, itemCoords);
+  const filteredMapItems = typeFilter === 'all' ? mapItems : mapItems.filter((it) => it.type === typeFilter);
   const tzMap = useItemStartTzMap(visibleItems);
   // Expand stays (hotel) into a check-in entry at the start and a check-out
   // entry at the end — one underlying record, two timeline positions, each on
   // its correct day in chronological order. Other types stay single.
   const entries = [];
-  visibleItems.forEach((it) => {
+  filteredItems.forEach((it) => {
     if (it.type === 'hotel' && it.start_datetime && it.end_datetime && it.start_datetime !== it.end_datetime) {
       entries.push({ key: `${it.id}-in`, leg: 'check-in', at: it.start_datetime, item: it });
       entries.push({ key: `${it.id}-out`, leg: 'check-out', at: it.end_datetime, item: it });
@@ -103,10 +111,10 @@ export default function GatheringJourney() {
   });
   const days = Object.keys(byDay).sort();
   const canAdd = canAddJourney(role);
-  const routeNumbers = itemRouteNumbers(mapItems);
+  const routeNumbers = itemRouteNumbers(filteredMapItems);
   const mapRow = (
     <JourneyMapPanel
-      items={mapItems}
+      items={filteredMapItems}
       gatheringId={gatheringId}
       itemsPending={itemCoordsPending}
     />
@@ -160,13 +168,13 @@ export default function GatheringJourney() {
   );
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd}>
-      {visibleItems.length === 0 ? (
+    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+      {filteredItems.length === 0 ? (
         <EmptyState
           icon={Compass}
-          title={scope === 'mine' ? 'No segments from you yet' : 'No segments yet'}
-          body={scope === 'mine' ? 'Add your own flights, stays and activities to see them here.' : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together."}
-          action={canAdd ? (
+          title={typeFilter !== 'all' ? 'No segments of this type' : (scope === 'mine' ? 'No segments from you yet' : 'No segments yet')}
+          body={typeFilter !== 'all' ? 'Switch to All to see every segment, or pick another type.' : (scope === 'mine' ? 'Add your own flights, stays and activities to see them here.' : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together.")}
+          action={canAdd && typeFilter === 'all' ? (
             <Button onClick={() => { setEditing(null); setOpen(true); }}>
               <Plus /> Add the first segment
             </Button>
