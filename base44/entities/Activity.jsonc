@@ -51,6 +51,9 @@
           "data.participant_user_ids": "{{user.id}}"
         },
         {
+          "data.participant_user_ids": "{{user.email}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
           }
