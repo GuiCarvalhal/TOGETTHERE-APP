@@ -139,7 +139,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
                 {startFull && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{startFull}</span>}
                 {endFull && <><span className="opacity-50">→</span><span>{endFull}</span></>}
                 {duration && (
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold ${onCover ? 'bg-white/20 text-white' : 'bg-cream-pale text-ink-deep/60 border border-ink-charcoal/10'}`}>
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold border ${onCover ? 'border-transparent bg-white/20 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/60'}`}>
                     {duration}
                   </span>
                 )}
@@ -164,7 +164,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
               <span className={`text-xs italic ${subText}`}>No one joined yet</span>
             )}
             {hasAttachments && (
-              <span className={`inline-flex items-center gap-1 text-[0.625rem] px-1.5 py-0.5 rounded-full ml-auto ${onCover ? 'bg-white/15 text-white' : 'bg-cream-pale text-ink-deep/50 border border-ink-charcoal/10'}`}>
+              <span className={`inline-flex items-center gap-1 text-[0.625rem] px-1.5 py-0.5 rounded-full ml-auto border ${onCover ? 'border-transparent bg-white/15 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/50'}`}>
                 <Paperclip className="w-3 h-3" />{item.attachments.length}
               </span>
             )}
