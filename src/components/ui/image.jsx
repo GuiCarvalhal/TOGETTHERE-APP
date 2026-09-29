@@ -1,5 +1,6 @@
 import * as React from "react"
 import { ResponsiveImage } from "./responsive-image"
+import { cn } from "../../lib/utils"
 import {
   getOriginalImageUrl,
   IMAGE_LOAD_MODE,
@@ -33,6 +34,13 @@ const Image = React.forwardRef(
     },
     ref
   ) => {
+    // Non-Wix image URLs (Pexels covers, Google Places place photos, external
+    // attachments) fall through to a plain <img> below. That branch must honor
+    // fittingType just like the optimized ResponsiveImage branch does —
+    // otherwise an <img> sized only by w-full/h-full stretches to fill the box
+    // and distorts the aspect ratio (visible on wide/tablet viewports where the
+    // card box is wider/shorter than the image's natural aspect).
+    const objectFitClass = fittingType === "fit" ? "object-contain" : "object-cover"
     const [previewSource, setPreviewSource] = React.useState(null)
     const preview = previewSource?.source === source ? previewSource : null
     const src = preview ? preview.value : source
@@ -67,7 +75,7 @@ const Image = React.forwardRef(
       // click-to-edit toolbar keys its "Replace Image" action off the DOM
       // tag being `img`, so a placeholder div would be unrecoverable in the
       // editor. FALLBACK_IMAGE_URL doubles as the "no image chosen" graphic.
-      return <img ref={ref} src={FALLBACK_IMAGE_URL} {...imageProps} data-empty-image />
+      return <img ref={ref} src={FALLBACK_IMAGE_URL} {...imageProps} className={cn(imageProps.className, objectFitClass)} data-empty-image />
     }
 
     // A failed transform retries the underlying original as a plain image.
@@ -78,7 +86,7 @@ const Image = React.forwardRef(
       const isErrorMode = mode === IMAGE_LOAD_MODE.FALLBACK
       const imageSrc = isErrorMode ? FALLBACK_IMAGE_URL : getOriginalImageUrl(src, parsedSource)
       return (
-        <img ref={ref} src={imageSrc} {...imageProps} data-error-image={isErrorMode || undefined} />
+        <img ref={ref} src={imageSrc} {...imageProps} className={cn(imageProps.className, objectFitClass)} data-error-image={isErrorMode || undefined} />
       )
     }
 
