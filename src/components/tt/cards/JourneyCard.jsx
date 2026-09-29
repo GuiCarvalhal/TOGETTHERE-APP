@@ -84,17 +84,17 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           <Icon className="w-5 h-5 text-white" strokeWidth={2} />
         </div>
         {allDay ? (
-          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded">
+          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded relative z-10">
             <p className="text-[0.625rem] font-bold text-foreground/70 whitespace-nowrap">All day</p>
           </div>
         ) : railTime ? (
-          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded">
+          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded relative z-10">
             <p className="text-xs font-bold text-foreground whitespace-nowrap">{railTime}</p>
             {railAbbr && <p className="text-[0.625rem] text-foreground/45 mt-0.5">{railAbbr}</p>}
           </div>
         ) : null}
         {routeNumber != null && (
-          <span className="mt-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-terra/35 bg-background text-terra-deep text-[0.625rem] font-bold">
+          <span className="mt-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-terra/35 bg-background text-terra-deep text-[0.625rem] font-bold relative z-10">
             {routeNumber}
           </span>
         )}

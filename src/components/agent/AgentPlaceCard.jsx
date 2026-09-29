@@ -60,7 +60,7 @@ export default function AgentPlaceCard({ place, categoryLabel, gatheringId, onAd
           <Icon className="w-5 h-5 text-white" strokeWidth={2} />
         </div>
         {place.rating != null && (
-          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded">
+          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded relative z-10">
             <p className="text-xs font-bold text-foreground whitespace-nowrap inline-flex items-center gap-0.5 justify-center">
               <Star className="w-2.5 h-2.5 fill-current" />{place.rating.toFixed(1)}
             </p>
@@ -70,7 +70,7 @@ export default function AgentPlaceCard({ place, categoryLabel, gatheringId, onAd
           </div>
         )}
         {routeNumber != null && (
-          <span className="mt-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-terra/35 bg-background text-terra-deep text-[0.625rem] font-bold">
+          <span className="mt-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-terra/35 bg-background text-terra-deep text-[0.625rem] font-bold relative z-10">
             {routeNumber}
           </span>
         )}

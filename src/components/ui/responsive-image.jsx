@@ -13,7 +13,7 @@ export const ResponsiveImage = React.forwardRef(
     return (
       <span
         ref={wrapperRef}
-        className={cn("inline-block relative", className)}
+        className={cn("inline-block", className)}
         style={{ aspectRatio, ...style }}
         {...wrapperProps}
         data-base44-image=""
