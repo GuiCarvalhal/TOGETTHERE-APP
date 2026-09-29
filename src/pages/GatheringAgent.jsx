@@ -243,7 +243,7 @@ export default function GatheringAgent() {
   );
   const filterRow = data && phase !== 'ended' && phase !== 'no_participants' ? (
     cats.map((c) => (
-      <button key={c.key} onClick={() => setCat(c.key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeCat === c.key ? 'bg-terra text-cream' : 'bg-foreground/5 text-foreground/70 hover:text-foreground border border-foreground/10'}`}>
+      <button key={c.key} onClick={() => setCat(c.key)} className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeCat === c.key ? 'bg-terra text-cream' : 'bg-foreground/5 text-foreground/70 hover:text-foreground border border-foreground/10'}`}>
         {c.label}
       </button>
     ))

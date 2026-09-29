@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { UserPlus, Loader2, Users, X } from 'lucide-react';
+import { UserPlus, Loader2, Users, X, Handshake, Heart, User } from 'lucide-react';
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 import Skeleton from '@/components/tt/Skeleton';
@@ -39,16 +39,29 @@ function MembersSkeleton() {
   );
 }
 
-function MemberSection({ title, count, children }) {
+function MemberSection({ title, count, icon, children }) {
   if (!children || (Array.isArray(children) && children.length === 0)) return null;
   return (
     <section className="space-y-2.5">
       <div className="flex items-center gap-2">
+        {icon}
         <h3 className="tt-label text-ink-deep/55">{title}</h3>
         <span className="text-xs text-ink-deep/40">· {count}</span>
       </div>
       <div className="space-y-3">{children}</div>
     </section>
+  );
+}
+
+// Close Friendship header icon: a Handshake with a small solid Heart overlay
+// (HandshakeHeart is not in this lucide version, so we compose it from
+// Handshake + Heart — no dependency install).
+function CloseFriendshipIcon() {
+  return (
+    <span className="relative inline-flex items-center">
+      <Handshake className="w-3.5 h-3.5 text-terra-deep" />
+      <Heart className="w-2 h-2 text-terra fill-terra absolute -bottom-0.5 -right-1" />
+    </span>
   );
 }
 
@@ -136,8 +149,16 @@ export default function GatheringMembers() {
   // with no explicit Relationship record), so null — only the current user's
   // own row — is treated as casual. No member disappears; no Uncategorized
   // section is needed.
-  const closeMembers = roleFiltered.filter((m) => m.myRelationship === 'close');
-  const casualMembers = roleFiltered.filter((m) => m.myRelationship !== 'close');
+  // The signed-in user is always pulled out into their own "You" section,
+  // above and outside both friendship lists — never counted in Close/Casual,
+  // regardless of their relationship field. When an active role filter
+  // excludes the current user, their card is omitted entirely (never
+  // misclassified into a friendship list). Uncategorized relationships keep
+  // the documented default (Casual) unless the row is the current user.
+  const others = roleFiltered.filter((m) => m.id !== currentMember?.id);
+  const selfMember = roleFiltered.find((m) => m.id === currentMember?.id) || null;
+  const closeMembers = others.filter((m) => m.myRelationship === 'close');
+  const casualMembers = others.filter((m) => m.myRelationship !== 'close');
   // Re-derive the open sheet's member from fresh data so role/relationship
   // edits reflect immediately; falls back to the stored object if it's gone.
   const active = activeMember ? (members.find((m) => m.id === activeMember.id) || activeMember) : null;
@@ -159,12 +180,17 @@ export default function GatheringMembers() {
         />
       ) : (
         <div className="space-y-6">
-          <MemberSection title="Close" count={closeMembers.length}>
+          {selfMember && (
+            <MemberSection title="You" count={1} icon={<User className="w-3.5 h-3.5 text-terra-deep" />}>
+              <MemberRow key={selfMember.id} member={selfMember} gatheringId={gatheringId} isSelf onOpen={() => { setActiveMember(selfMember); setSheetOpen(true); }} />
+            </MemberSection>
+          )}
+          <MemberSection title="Close Friendship" count={closeMembers.length} icon={<CloseFriendshipIcon />}>
             {closeMembers.map((m) => (
               <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
             ))}
           </MemberSection>
-          <MemberSection title="Casual" count={casualMembers.length}>
+          <MemberSection title="Casual Friendship" count={casualMembers.length} icon={<Handshake className="w-3.5 h-3.5 text-ink-deep/45" />}>
             {casualMembers.map((m) => (
               <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
             ))}

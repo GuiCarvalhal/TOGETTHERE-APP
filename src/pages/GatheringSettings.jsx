@@ -8,8 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Image } from '@/components/ui/image';
-import { Loader2, Save, Link2, Copy, Check, UserCheck, UserX, Lock, Globe, ShieldCheck, Eye, Search } from 'lucide-react';
+import { Loader2, Save, Link2, Copy, Check, UserCheck, UserX, Lock, Globe, ShieldCheck, Eye, Search, Trash2, AlertTriangle } from 'lucide-react';
 import DestinationPicker from '@/components/tt/DestinationPicker';
+import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -29,6 +34,9 @@ export default function GatheringSettings() {
   const [photoQuery, setPhotoQuery] = useState('');
   const [photoResults, setPhotoResults] = useState([]);
   const [photoLoading, setPhotoLoading] = useState(false);
+  const navigate = useNavigate();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (gathering) {
@@ -128,6 +136,17 @@ export default function GatheringSettings() {
       alert(err.response?.data?.error || err.message || 'Photo search failed');
     } finally {
       setPhotoLoading(false);
+    }
+  }
+
+  async function handleDeleteGathering() {
+    setDeleting(true);
+    try {
+      await base44.functions.invoke('deleteGathering', { gathering_id: gatheringId });
+      navigate('/');
+    } catch (err) {
+      setDeleting(false);
+      alert(err.response?.data?.error || err.message || 'Could not delete gathering');
     }
   }
 
@@ -285,6 +304,42 @@ export default function GatheringSettings() {
           {saved && <span className="inline-flex items-center gap-1 text-sm text-terra-deep font-semibold"><Check className="w-4 h-4" /> Saved</span>}
         </div>
       </form>
+
+      {/* Danger zone — owner only (the whole page is owner-gated). Cascading
+          delete of the gathering and all its records, behind an explicit
+          confirmation dialog that names the gathering being deleted. */}
+      <section className="tt-card p-6 border-destructive/30">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle className="w-5 h-5 text-destructive" />
+          <h3 className="font-display text-xl font-bold text-ink-deep">Danger zone</h3>
+        </div>
+        <p className="text-sm text-ink-deep/60 mb-4">Permanently delete this gathering and everything in it — journey segments, expenses, splits, members, tasks, activity, and join requests. This cannot be undone.</p>
+        <Button variant="destructive" onClick={() => setDeleteOpen(true)} className="rounded-full">
+          <Trash2 /> Delete gathering
+        </Button>
+      </section>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent className="bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete “{gathering.name}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes “{gathering.name}” and all of its journey segments, expenses, splits, members, tasks, activity, and join requests. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteGathering}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              Delete gathering
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -22,7 +22,7 @@ export default function StickyBar({ children, footer, mapRow, className = '' }) 
       className={`-mx-4 sm:-mx-6 sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 bg-background border-b border-foreground/8 ${className}`}
     >
       <div className="px-4 sm:px-6 py-2.5 flex items-center gap-3">{children}</div>
-      {footer && <div className="px-4 sm:px-6 pb-2.5 flex items-center gap-2 overflow-x-auto tt-no-scrollbar">{footer}</div>}
+      {footer && <div className="px-4 sm:px-6 pb-2.5 flex items-center gap-2 overflow-x-auto overflow-y-hidden touch-pan-x tt-no-scrollbar">{footer}</div>}
       {mapRow && <div className="px-4 sm:px-6 pb-3 animate-tt-fade-up">{mapRow}</div>}
     </div>
   );
