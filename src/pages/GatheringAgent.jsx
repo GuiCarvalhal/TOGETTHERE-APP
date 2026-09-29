@@ -212,6 +212,13 @@ export default function GatheringAgent() {
     }
   });
 
+  // Shared numbering source for suggestion pins (map) and card rail markers.
+  // Only resolved suggestions carry a number; while coords are pending the map
+  // shows no suggestion pins, so cards show no numbers either — the two can
+  // never drift. Both the map and the cards derive from this same pure function
+  // over the same resolved list (suggMarkers).
+  const suggNumbers = suggPending > 0 ? new Map() : suggestionRouteNumbers(suggMarkers);
+
   // Batched: keep the native-only set while resolving (no per-pin flicker),
   // then swap in the augmented set once resolution finishes — one map re-render.
   const mapItems = itemCoordsPending > 0 ? visibleItems : augmentItemsWithCoords(visibleItems, itemCoords);
@@ -243,7 +250,7 @@ export default function GatheringAgent() {
   ) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
+    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
       <div className="space-y-5">
         {/* Brief header */}
         <div className="tt-card p-4">
@@ -305,9 +312,11 @@ export default function GatheringAgent() {
                 <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
                   Fits the gaps in today's plan{data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : ''}.
                 </p>
-                <div className="space-y-3">
-                  {data.todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Today" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} />)}
-                </div>
+                <Timeline>
+                  <div className="space-y-3">
+                    {data.todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Today" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Today', place: p })) : undefined} />)}
+                  </div>
+                </Timeline>
               </section>
             )}
 
@@ -316,18 +325,22 @@ export default function GatheringAgent() {
             {show('eat') && data.whereToEat?.length > 0 && (
               <section>
                 <SectionHeader icon={UtensilsCrossed} title="Where to eat" count={data.whereToEat.length} />
-                <div className="space-y-3">
-                  {data.whereToEat.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Eat" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} />)}
-                </div>
+                <Timeline>
+                  <div className="space-y-3">
+                    {data.whereToEat.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Eat" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Eat', place: p })) : undefined} />)}
+                  </div>
+                </Timeline>
               </section>
             )}
 
             {show('do') && data.whatToDo?.length > 0 && (
               <section>
                 <SectionHeader icon={Compass} title="What to do" count={data.whatToDo.length} />
-                <div className="space-y-3">
-                  {data.whatToDo.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Do" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} />)}
-                </div>
+                <Timeline>
+                  <div className="space-y-3">
+                    {data.whatToDo.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Do" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Do', place: p })) : undefined} />)}
+                  </div>
+                </Timeline>
               </section>
             )}
 
