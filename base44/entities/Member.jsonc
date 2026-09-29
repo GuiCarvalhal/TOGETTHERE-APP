@@ -94,6 +94,14 @@
     "notify_ai": {
       "type": "boolean",
       "default": true
+    },
+    "source_membership_status": {
+      "type": "string",
+      "description": "Beta TripMember status (e.g. active). Data-only; preserved for migration fidelity. No UI reads it."
+    },
+    "source_location_sharing": {
+      "type": "string",
+      "description": "Beta TripMember location_sharing value (e.g. on). Data-only; preserved for migration fidelity. No UI reads it."
     }
   },
   "required": [
