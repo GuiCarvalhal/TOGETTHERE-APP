@@ -21,8 +21,24 @@ export function Timeline({ children }) {
 // the day label + full date header to its right. `day` is a YYYY-MM-DD string
 // (or 'unscheduled'); formatDayHeader parses the calendar date directly so it
 // never shifts across timezones.
+// Relative day caption for the day marker: "Today", "Tomorrow", "Yesterday",
+// "in 2 days", "3 days ago", etc. — replaces the generic "Day" label which
+// carried no useful information. `day` is a YYYY-MM-DD string parsed as local
+// midnight so it never shifts across timezones; 'unscheduled' stays as-is.
+function relativeDayLabel(day) {
+  if (day === 'unscheduled') return 'Unscheduled';
+  const target = new Date(`${day}T00:00:00`);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const delta = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (delta === 0) return 'Today';
+  if (delta === 1) return 'Tomorrow';
+  if (delta === -1) return 'Yesterday';
+  if (delta > 1) return `in ${delta} days`;
+  return `${-delta} days ago`;
+}
+
 export function TimelineDay({ day, icon: Icon = Calendar, label }) {
-  const cap = label ?? (day === 'unscheduled' ? 'Unscheduled' : 'Day');
+  const cap = label ?? relativeDayLabel(day);
   return (
     <div className="flex items-center gap-3">
       <div className="w-12 flex justify-center shrink-0">
