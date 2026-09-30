@@ -126,13 +126,12 @@ export default function GatheringJourney() {
     // Scroll so the day header (calendar icon + date) sits just below the
     // sticky toolbar, not the first journey card. The sticky bar height is
     // measured live so it stays correct whether the route map is open or not.
-    const sticky = document.querySelector('[data-sticky-toolbar]');
-    // sticky.bottom is the viewport offset of the sticky bar's bottom edge
-    // (TopBar + scope row + filter row + open map row, live-measured), so the
-    // day header lands flush below whatever chrome is currently pinned.
-    const stickyBottom = sticky ? sticky.getBoundingClientRect().bottom : 0;
-    const top = targetDayRef.current.getBoundingClientRect().top + window.scrollY - stickyBottom - 8;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+    // scrollIntoView + scroll-mt on the target day lets the browser compute the
+    // correct offset from the PINNED sticky bar (which a manual getBoundingClientRect
+    // can't read reliably on first load, since the bar sits below the cover header
+    // until the user scrolls). The day then flows down from just under the toolbar;
+    // when it fits in the viewport it lands fully above the floating bottom nav.
+    targetDayRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
     didAutoScrollRef.current = true;
   }, [loading, targetDay]);
   const canAdd = canAddJourney(role);
