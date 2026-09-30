@@ -123,14 +123,16 @@ export default function GatheringJourney() {
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
     if (loading || didAutoScrollRef.current || !targetDayRef.current) return;
-    // Scroll so the day header (calendar icon + date) sits just below the
-    // sticky toolbar, not the first journey card. The sticky bar height is
-    // measured live so it stays correct whether the route map is open or not.
-    // scrollIntoView + scroll-mt on the target day lets the browser compute the
-    // correct offset from the PINNED sticky bar (which a manual getBoundingClientRect
-    // can't read reliably on first load, since the bar sits below the cover header
-    // until the user scrolls). The day then flows down from just under the toolbar;
-    // when it fits in the viewport it lands fully above the floating bottom nav.
+    // Anchor the target day's HEADER (calendar icon + date) flush below the
+    // pinned sticky toolbar. The pinned bottom = TopBar(48px) + safe-area-inset-top
+    // + the sticky bar's live content height (scope row + filter row + open map
+    // row). We measure the sticky element's offsetHeight and fold in
+    // env(safe-area-inset-top) via a CSS calc so it resolves per-device (notch
+    // vs desktop) — a static scroll-mt-36 can't, which is why the header was
+    // hidden behind the bar on notched phones and the first card showed instead.
+    const stickyEl = document.querySelector('[data-sticky-toolbar]');
+    const stickyH = stickyEl ? stickyEl.offsetHeight : 0;
+    targetDayRef.current.style.scrollMarginTop = `calc(${48 + stickyH + 8}px + env(safe-area-inset-top))`;
     targetDayRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
     didAutoScrollRef.current = true;
   }, [loading, targetDay]);
@@ -210,7 +212,7 @@ export default function GatheringJourney() {
             <div
               key={day}
               ref={day === targetDay ? targetDayRef : undefined}
-              className={`space-y-3 ${day === targetDay ? 'scroll-mt-36' : ''}`}
+              className="space-y-3"
             >
               <TimelineDay day={day} />
               <div className="space-y-3">
