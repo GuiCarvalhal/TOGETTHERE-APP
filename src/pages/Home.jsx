@@ -124,7 +124,9 @@ export default function Home() {
         {nextUpcoming ? (
           <div>
             <p className="tt-label text-terra-coral mb-3">
-              Up next · {gatherings.find((g) => g.id === nextUpcoming.gatheringId)?.name || 'Your trip'}
+              {nextUpcoming.ongoing
+                ? `Now · ${gatherings.find((g) => g.id === nextUpcoming.gatheringId)?.name || 'Your trip'}`
+                : `Up next · ${gatherings.find((g) => g.id === nextUpcoming.gatheringId)?.name || 'Your trip'}`}
             </p>
             <JourneyCard
               item={nextUpcoming.item}

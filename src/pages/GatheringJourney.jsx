@@ -122,11 +122,15 @@ export default function GatheringJourney() {
   const targetDayRef = useRef(null);
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
-    if (loading || didAutoScrollRef.current) return;
-    if (targetDayRef.current) {
-      targetDayRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
-      didAutoScrollRef.current = true;
-    }
+    if (loading || didAutoScrollRef.current || !targetDayRef.current) return;
+    // Scroll so the day header (calendar icon + date) sits just below the
+    // sticky toolbar, not the first journey card. The sticky bar height is
+    // measured live so it stays correct whether the route map is open or not.
+    const sticky = document.querySelector('[data-sticky-toolbar]');
+    const stickyH = sticky ? sticky.getBoundingClientRect().height : 0;
+    const top = targetDayRef.current.getBoundingClientRect().top + window.scrollY - stickyH - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+    didAutoScrollRef.current = true;
   }, [loading, targetDay]);
   const canAdd = canAddJourney(role);
   const routeNumbers = itemRouteNumbers(filteredMapItems);
