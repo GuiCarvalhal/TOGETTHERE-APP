@@ -127,8 +127,11 @@ export default function GatheringJourney() {
     // sticky toolbar, not the first journey card. The sticky bar height is
     // measured live so it stays correct whether the route map is open or not.
     const sticky = document.querySelector('[data-sticky-toolbar]');
-    const stickyH = sticky ? sticky.getBoundingClientRect().height : 0;
-    const top = targetDayRef.current.getBoundingClientRect().top + window.scrollY - stickyH - 8;
+    // sticky.bottom is the viewport offset of the sticky bar's bottom edge
+    // (TopBar + scope row + filter row + open map row, live-measured), so the
+    // day header lands flush below whatever chrome is currently pinned.
+    const stickyBottom = sticky ? sticky.getBoundingClientRect().bottom : 0;
+    const top = targetDayRef.current.getBoundingClientRect().top + window.scrollY - stickyBottom - 8;
     window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
     didAutoScrollRef.current = true;
   }, [loading, targetDay]);
