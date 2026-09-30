@@ -91,7 +91,13 @@ export default function JourneyDetail() {
   const canEdit = item && canEditJourneyItem(role, item, currentMember);
   const canDelete = item && canDeleteJourneyItem(role, item, currentMember);
 
-  const back = () => navigate(`/gathering/${gatheringId}/journey`);
+  const back = () => {
+    // Return to the previous page when there's browser history (e.g. coming
+    // from Home's "Up next" card or the Journey list). Fall back to the
+    // journey list on a direct deep-link/refresh with no prior entry.
+    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    else navigate(`/gathering/${gatheringId}/journey`);
+  };
 
   if (loading) {
     return (

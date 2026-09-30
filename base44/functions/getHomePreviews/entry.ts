@@ -22,6 +22,15 @@ export default async function(req) {
 
     const previews = {};
     const itemsByGathering = {};
+    // Next upcoming journey item the signed-in user is a participant of, across
+    // all their gatherings — surfaced on Home as the "Up next" card. Participant
+    // = item creator (owner_id) or explicit attendee (attendee_user_ids),
+    // matching the Journey page's MINE scope. "Upcoming" = start_datetime >= now
+    // (strictly future or starting now); the earliest-start such item wins.
+    // Participants are the item's actual attendees (or the creator fallback)
+    // resolved to minimal member previews so the card avatars match the Journey.
+    const now = Date.now();
+    let nextUpcoming = null;
     await Promise.all(gids.map(async (gid) => {
       const [ms, its] = await Promise.all([
         base44.asServiceRole.entities.Member.filter({ gathering_id: gid }),
@@ -36,6 +45,22 @@ export default async function(req) {
         owner_id: it.owner_id || null,
         attendee_user_ids: it.attendee_user_ids || [],
       }));
+      const memberByUid = {};
+      (ms || []).forEach((m) => { if (m.user_id) memberByUid[m.user_id] = m; });
+      for (const it of (its || [])) {
+        const isParticipant = it.owner_id === user.id || (it.attendee_user_ids || []).includes(user.id);
+        if (!isParticipant || !it.start_datetime) continue;
+        const startMs = new Date(it.start_datetime).getTime();
+        if (startMs < now) continue;
+        if (!nextUpcoming || startMs < nextUpcoming.startMs) {
+          const pids = (it.attendee_user_ids || []).length ? it.attendee_user_ids : (it.owner_id ? [it.owner_id] : []);
+          const participants = pids
+            .map((uid) => memberByUid[uid])
+            .filter(Boolean)
+            .map((m) => ({ id: m.id, photo: m.photo, full_name: m.full_name }));
+          nextUpcoming = { item: it, gatheringId: gid, participants, startMs };
+        }
+      }
     }));
 
     return Response.json({
@@ -44,6 +69,9 @@ export default async function(req) {
       previews,
       itemsByGathering,
       userId: user.id,
+      nextUpcoming: nextUpcoming
+        ? { item: nextUpcoming.item, gatheringId: nextUpcoming.gatheringId, participants: nextUpcoming.participants }
+        : null,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

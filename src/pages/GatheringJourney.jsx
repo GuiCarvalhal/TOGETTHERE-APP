@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
@@ -110,6 +110,24 @@ export default function GatheringJourney() {
     (byDay[k] = byDay[k] || []).push(e);
   });
   const days = Object.keys(byDay).sort();
+  // Auto-scroll target: the day of the first entry at or after the start of
+  // today (viewer-local). If today has an activity, that day; if not, the next
+  // upcoming day; if everything is in the past, the most recent day. Computed
+  // from the sorted entries so it respects the active scope/type filters.
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const withAt = entries.filter((e) => e.at);
+  const upcomingEntry = withAt.find((e) => new Date(e.at).getTime() >= startOfToday.getTime());
+  const targetEntry = upcomingEntry || withAt[withAt.length - 1];
+  const targetDay = targetEntry ? dayKey(targetEntry.at, tzMap[targetEntry.item.id]) : null;
+  const targetDayRef = useRef(null);
+  const didAutoScrollRef = useRef(false);
+  useEffect(() => {
+    if (loading || didAutoScrollRef.current) return;
+    if (targetDayRef.current) {
+      targetDayRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
+      didAutoScrollRef.current = true;
+    }
+  }, [loading, targetDay]);
   const canAdd = canAddJourney(role);
   const routeNumbers = itemRouteNumbers(filteredMapItems);
   const mapRow = (
@@ -183,7 +201,11 @@ export default function GatheringJourney() {
       ) : (
         <Timeline>
           {days.map((day) => (
-            <div key={day} className="space-y-3">
+            <div
+              key={day}
+              ref={day === targetDay ? targetDayRef : undefined}
+              className={`space-y-3 ${day === targetDay ? 'scroll-mt-36' : ''}`}
+            >
               <TimelineDay day={day} />
               <div className="space-y-3">
                 {byDay[day].map((entry) => (

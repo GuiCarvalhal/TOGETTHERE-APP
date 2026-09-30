@@ -9,12 +9,14 @@ import { Image } from '@/components/ui/image';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, X } from 'lucide-react';
+import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, X, Plane, Car, Train, Hotel, Ship, MapPin } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, formatGatheringRange } from '@/lib/gatheringDates';
 import EmptyState from '@/components/tt/EmptyState';
 import AppHeader from '@/components/tt/AppHeader';
 import Skeleton from '@/components/tt/Skeleton';
 import GatheringCard from '@/components/tt/cards/GatheringCard';
+import JourneyCard from '@/components/tt/cards/JourneyCard';
+import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import DestinationPicker from '@/components/tt/DestinationPicker';
 
 const SAMPLE_COVERS = [
@@ -31,6 +33,9 @@ const FILTERS = [
 
 const EMPTY_FORM = { name: '', description: '', destination_places: [], cover_image: SAMPLE_COVERS[0] };
 
+const JOURNEY_ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
+const JOURNEY_TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
+
 export default function Home() {
   const [memberships, setMemberships] = useState([]);
   const [gatherings, setGatherings] = useState([]);
@@ -42,6 +47,7 @@ export default function Home() {
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [nextUpcoming, setNextUpcoming] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -53,6 +59,7 @@ export default function Home() {
       setPreviews(data.previews || {});
       setItemsByGathering(data.itemsByGathering || {});
       setUserId(data.userId || null);
+      setNextUpcoming(data.nextUpcoming || null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -112,12 +119,31 @@ export default function Home() {
       {/* Universal header */}
       <AppHeader />
 
-      {/* Hero intro */}
+      {/* Hero intro — or the user's next upcoming journey segment when one exists */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10">
-        <p className="tt-label text-terra-coral mb-3">Group travel & gatherings</p>
-        <h1 className="font-display text-4xl sm:text-6xl font-bold leading-[1.05] tt-text-balance max-w-3xl">
-          Plan together.<br /><span className="italic text-terra-coral">Get there, together.</span>
-        </h1>
+        {nextUpcoming ? (
+          <div>
+            <p className="tt-label text-terra-coral mb-3">
+              Up next · {gatherings.find((g) => g.id === nextUpcoming.gatheringId)?.name || 'Your trip'}
+            </p>
+            <JourneyCard
+              item={nextUpcoming.item}
+              leg={nextUpcoming.item.type === 'hotel' ? 'check-in' : undefined}
+              typeColor={JOURNEY_TYPE_COLOR[nextUpcoming.item.type] || JOURNEY_TYPE_COLOR.other}
+              icon={JOURNEY_ICONS[nextUpcoming.item.type] || MapPin}
+              participants={nextUpcoming.participants}
+              showImages
+              to={`/gathering/${nextUpcoming.gatheringId}/journey/${nextUpcoming.item.id}`}
+            />
+          </div>
+        ) : (
+          <>
+            <p className="tt-label text-terra-coral mb-3">Group travel & gatherings</p>
+            <h1 className="font-display text-4xl sm:text-6xl font-bold leading-[1.05] tt-text-balance max-w-3xl">
+              Plan together.<br /><span className="italic text-terra-coral">Get there, together.</span>
+            </h1>
+          </>
+        )}
       </section>
 
       {/* Gatherings grid */}
