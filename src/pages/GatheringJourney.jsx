@@ -30,6 +30,12 @@ function dayKey(d, tz) { return d ? tzDateKey(d, tz) : 'unscheduled'; }
 // opted in (e.g. legacy items with empty attendee lists) — just the creator.
 // Never falls back to member_user_ids (the ACL list of all gathering members).
 function itemParticipants(item, memberById) {
+  // Flights never fall back to the creator for avatar display — an empty
+  // attendee list means "no one joined yet", not the owner. Other types keep
+  // the existing creator fallback.
+  if (item.type === 'flight') {
+    return (item.attendee_user_ids || []).map((uid) => memberById[uid]).filter(Boolean);
+  }
   const ids = (item.attendee_user_ids || []).length
     ? item.attendee_user_ids
     : (item.owner_id ? [item.owner_id] : []);

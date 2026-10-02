@@ -52,6 +52,22 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const endFull = (allDay || !item.end_datetime) ? '' : formatTimeWithCountry(item.end_datetime, endTz, endCc);
   const duration = (!allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
   const meta = journeyMeta(item);
+  // Flight-only content for the four card rows (geometry unchanged):
+  //  row1 meta  = number · airline · '8h 30m duration' (duration kept here, not
+  //              duplicated in the timing row);
+  //  row2 title = 'Origin City - CC → Destination City - CC' using the real city
+  //              from Google address components (never the airport name/IATA),
+  //              falling back to just the country code for legacy rows.
+  const isFlight = item.type === 'flight';
+  const flightDur = (isFlight && !allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
+  const metaLine = isFlight ? [meta, flightDur && `${flightDur} duration`].filter(Boolean).join(' · ') : meta;
+  const fromCity = item.from_place?.city || '';
+  const toCity = item.to_place?.city || '';
+  const fromCc = item.from_place?.country || startCc || '';
+  const toCc = item.to_place?.country || endCc || '';
+  const fromLabel = [fromCity, fromCc].filter(Boolean).join(' - ');
+  const toLabel = [toCity, toCc].filter(Boolean).join(' - ');
+  const flightRoute = (fromLabel || toLabel) ? `${fromLabel} > ${toLabel}` : '';
 
   // Rail time block uses the primary instant's wall clock + abbreviation.
   const railTime = leg === 'check-out' ? endTime : startTime;
@@ -114,9 +130,9 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           <ChevronRight className="absolute top-3 right-3 w-4 h-4 shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
 
           {/* Metadata line — the first line of the card (no item-type label) */}
-          {meta && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{meta}</p>}
+          {metaLine && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{metaLine}</p>}
 
-          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{item.title}</h3>
+          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? <span className="block truncate">{flightRoute}</span> : item.title}</h3>
 
           {/* Timing: stay legs show a Check-in/Check-out pill + the single
               primary time; other items show start → end · duration. */}
@@ -138,7 +154,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
               <>
                 {startFull && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{startFull}</span>}
                 {endFull && <><span className="opacity-50">→</span><span>{endFull}</span></>}
-                {duration && (
+                {duration && !isFlight && (
                   <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold border ${onCover ? 'border-transparent bg-white/20 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/60'}`}>
                     {duration}
                   </span>

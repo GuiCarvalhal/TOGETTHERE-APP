@@ -308,9 +308,11 @@ export function journeyMeta(item) {
   if (!item) return '';
   if (item.type === 'flight') {
     const num = (item.confirmation_number || '').trim();
-    let carrier = '';
-    const m = (item.title || '').match(/^[Ff]light\s+\S+\s+[—–-]\s+(.+)$/);
-    if (m) carrier = m[1].trim();
+    let carrier = item.airline || '';
+    if (!carrier) {
+      const m = (item.title || '').match(/^[Ff]light\s+\S+\s+[—–-]\s+(.+)$/);
+      if (m) carrier = m[1].trim();
+    }
     return [num && `Flight ${num}`, carrier].filter(Boolean).join(' · ');
   }
   if (item.type === 'car') return item.location_to || item.location_name || '';

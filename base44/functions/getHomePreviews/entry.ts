@@ -51,7 +51,12 @@ export default async function(req) {
       const memberByUid = {};
       (ms || []).forEach((m) => { if (m.user_id) memberByUid[m.user_id] = m; });
       const resolveParticipants = (it) => {
-        const pids = (it.attendee_user_ids || []).length ? it.attendee_user_ids : (it.owner_id ? [it.owner_id] : []);
+        // Flights never fall back to the creator for avatar display — an empty
+        // attendee list means "no one joined yet", not the owner. Other types
+        // keep the existing creator fallback.
+        const pids = (it.attendee_user_ids || []).length
+          ? it.attendee_user_ids
+          : (it.type === 'flight' ? [] : (it.owner_id ? [it.owner_id] : []));
         return pids
           .map((uid) => memberByUid[uid])
           .filter(Boolean)

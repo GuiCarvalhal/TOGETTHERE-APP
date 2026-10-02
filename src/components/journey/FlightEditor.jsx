@@ -31,10 +31,14 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
+  // "Search another flight" (edit): exposes the search panel again without
+  // clearing the existing flight from the form, so the original is preserved
+  // until a replacement is selected and explicitly saved.
+  const [searchAgain, setSearchAgain] = useState(false);
 
   const hasFlight = !!(form.confirmation_number && form.from_place && form.to_place && form.start_datetime);
-  const showSummary = (hasFlight || selected) && !manual;
-  const showSearch = !showSummary && !manual;
+  const showSummary = (hasFlight || selected) && !manual && !searchAgain;
+  const showSearch = !manual && (!showSummary || searchAgain);
 
   function onFromText(v) { setForm((f) => ({ ...f, location_from: v, from_place: null })); setSelected(null); }
   function onFromSelect(p) { setForm((f) => ({ ...f, from_place: p })); setSelected(null); }
@@ -103,6 +107,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
     setForm((s) => ({
       ...s,
       confirmation_number: normalizeNumber(r.number),
+      airline: r.airline_name || s.airline || '',
       title: s.title || `Flight ${r.number}${r.airline_name ? ' — ' + r.airline_name : ''}`,
       location_from: fromPlace.name || r.dep_iata,
       from_place: fromPlace,
@@ -113,6 +118,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
     }));
     setSelected(r);
     setResults([]);
+    setSearchAgain(false);
   }
 
   // Summary display: prefer a just-selected result; fall back to existing
@@ -204,9 +210,16 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
               <FlightResultList results={results} selectedId={selected?.id} onSelect={applyFlight} />
             </div>
           )}
-          <button type="button" onClick={() => setManual(true)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
-            <Pencil className="w-3 h-3" /> Enter manually instead
-          </button>
+          <div className="flex flex-wrap gap-3">
+            {searchAgain && (hasFlight || selected) && (
+              <button type="button" onClick={() => setSearchAgain(false)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
+                <X className="w-3 h-3" /> Back to current flight
+              </button>
+            )}
+            <button type="button" onClick={() => setManual(true)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
+              <Pencil className="w-3 h-3" /> Enter manually instead
+            </button>
+          </div>
         </>
       )}
 
@@ -247,9 +260,14 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
             />
           </div>
           {optionalFields}
-          <button type="button" onClick={() => setManual(true)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
-            <Pencil className="w-3 h-3" /> Edit flight details manually
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => { setSearchAgain(true); setResults([]); setError(null); }} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
+              <Search className="w-3 h-3" /> Search another flight
+            </button>
+            <button type="button" onClick={() => setManual(true)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
+              <Pencil className="w-3 h-3" /> Edit flight details manually
+            </button>
+          </div>
         </>
       )}
 

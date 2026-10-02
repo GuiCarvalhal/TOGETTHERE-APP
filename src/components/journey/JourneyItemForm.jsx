@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
 import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
-import { isoToWallInput, isoToLocalInput, wallTimeToUtcIso, startLocation, endLocation, arrowFirst } from '@/lib/formatPlaceTime';
+import { isoToWallInput, isoToLocalInput, startLocation, endLocation, arrowFirst } from '@/lib/formatPlaceTime';
 import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
-import AttachmentChip from '@/components/tt/AttachmentChip';
-import ParticipantPicker from '@/components/journey/ParticipantPicker';
+import JourneyOptionalFields from '@/components/journey/JourneyOptionalFields';
 import FlightEditor from '@/components/journey/FlightEditor';
-import { Loader2, Upload, X, Plus, Check } from 'lucide-react';
+import { buildJourneyPayload, submitJourneyItem } from '@/lib/journeyItemSave';
+import { Loader2, X, Plus, Check } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 const TYPE_META = {
@@ -30,6 +29,7 @@ const TYPE_META = {
 };
 
 export default function JourneyItemForm({ gatheringId, gatheringStartDate, currentMember, members, item, initial, onClose, onSaved }) {
+  const navigate = useNavigate();
   // Participant selection (attendee_user_ids). For a new item the creator is
   // included by default; for an edit we preselect the existing list, or the
   // creator for legacy items with an empty attendee list.
@@ -52,11 +52,11 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     to_place: item?.to_place || null,
     confirmation_number: item?.confirmation_number || initial?.confirmation_number || '',
     booking_reference: item?.booking_reference || '',
+    airline: item?.airline || '',
     notes: item?.notes || initial?.notes || '',
     attachments: item?.attachments || initial?.attachments || [],
   });
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   // Flight editor mode is lifted to the parent so the submit handler can
   // validate it. A new flight starts in search; an existing flight opens on
   // its stored values — summary when it has full provider data, manual/
@@ -117,16 +117,16 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     setAttendeeIds((ids) => (ids.includes(uid) ? ids.filter((x) => x !== uid) : [...ids, uid]));
   }
 
-  async function uploadFile(file) {
-    setUploading(true);
-    try {
-      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
-      setForm((f) => ({ ...f, attachments: [...f.attachments, file_url] }));
-    } catch (e) {
-      toast({ title: 'Upload failed', description: e.message || 'Could not upload the file.', variant: 'destructive' });
-    } finally {
-      setUploading(false);
+  // Flights live on the full-page flight surface, not this sheet. Selecting
+  // "Flight" here redirects there (add vs edit) and closes the sheet; other
+  // types stay in the sheet unchanged.
+  function onTypeChange(v) {
+    if (v === 'flight') {
+      onClose();
+      navigate(item ? `/gathering/${gatheringId}/journey/${item.id}/edit` : `/gathering/${gatheringId}/journey/new`);
+      return;
     }
+    setForm({ ...form, type: v });
   }
 
   async function handleSave(e) {
@@ -153,29 +153,8 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     }
     setSaving(true);
     try {
-      const payload = {
-        gathering_id: gatheringId,
-        owner_id: item?.owner_id || currentMember?.user_id,
-        type: form.type,
-        title: form.title.trim(),
-        start_datetime: form.start_datetime ? wallTimeToUtcIso(form.start_datetime, startTz) : undefined,
-        end_datetime: form.end_datetime ? wallTimeToUtcIso(form.end_datetime, endTz) : undefined,
-        location_from: meta.fromTo ? form.location_from : undefined,
-        location_to: meta.fromTo ? form.location_to : undefined,
-        location_name: meta.place ? form.location_name : undefined,
-        ...(meta.fromTo ? { from_place: form.from_place || null, to_place: form.to_place || null } : {}),
-        ...(meta.place ? { place: form.place || null } : {}),
-        confirmation_number: form.confirmation_number,
-        booking_reference: form.booking_reference,
-        notes: form.notes,
-        attachments: form.attachments,
-        attendee_user_ids: attendeeIds,
-      };
-      if (item) {
-        await base44.functions.invoke('updateJourneyItem', { gathering_id: gatheringId, item_id: item.id, payload });
-      } else {
-        await base44.functions.invoke('createJourneyItem', { gathering_id: gatheringId, payload });
-      }
+      const payload = buildJourneyPayload({ form, attendeeIds, startTz, endTz, meta, currentMember, item, gatheringId });
+      await submitJourneyItem({ isEdit: !!item, gatheringId, itemId: item?.id, payload });
       onSaved();
       onClose();
     } catch (err) {
@@ -186,30 +165,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
   }
 
   const optionalFields = (
-    <>
-      <div className="space-y-2">
-        <Label className="text-ink-deep">Notes</Label>
-        <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-ink-deep">Attachments</Label>
-        <div className="flex flex-wrap gap-2">
-          {form.attachments.map((url, i) => (
-            <AttachmentChip key={url + i} url={url} onRemove={() => setForm((f) => ({ ...f, attachments: f.attachments.filter((_, idx) => idx !== i) }))} />
-          ))}
-          <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            Upload
-            <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])} />
-          </label>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-ink-deep">Who's joining</Label>
-        <ParticipantPicker members={members} selected={attendeeIds} onToggle={toggleAttendee} currentUserId={currentMember?.user_id} />
-        <p className="text-xs text-ink-deep/50">Only gathering members can be added. You're included by default.</p>
-      </div>
-    </>
+    <JourneyOptionalFields form={form} setForm={setForm} attendeeIds={attendeeIds} toggleAttendee={toggleAttendee} members={members} currentMember={currentMember} />
   );
 
   return (
@@ -217,7 +173,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
       <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-2">
             <Label className="text-ink-deep">Type</Label>
-            <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+            <Select value={form.type} onValueChange={onTypeChange}>
               <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {JOURNEY_TYPES.map((t) => (

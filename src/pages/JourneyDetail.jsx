@@ -90,6 +90,11 @@ export default function JourneyDetail() {
   const attendees = (item?.attendee_user_ids || []).map((uid) => memberById[uid]).filter(Boolean);
   const canEdit = item && canEditJourneyItem(role, item, currentMember);
   const canDelete = item && canDeleteJourneyItem(role, item, currentMember);
+  // Flights edit on the full-page flight surface, not the sheet form.
+  const onEdit = () => {
+    if (item?.type === 'flight') navigate(`/gathering/${gatheringId}/journey/${item.id}/edit`);
+    else setEditing(true);
+  };
 
   const back = () => {
     // Return to the previous page when there's browser history (e.g. coming
@@ -149,7 +154,7 @@ export default function JourneyDetail() {
         onBack={back}
         canEdit={canEdit}
         canDelete={canDelete}
-        onEdit={() => setEditing(true)}
+        onEdit={onEdit}
         onDelete={handleDelete}
         deleting={deleting}
       />

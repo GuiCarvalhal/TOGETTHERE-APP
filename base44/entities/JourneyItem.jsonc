@@ -66,6 +66,10 @@
       "type": "string",
       "description": "Optional airline booking reference / PNR for flight segments. User-entered; not used for rendering."
     },
+    "airline": {
+      "type": "string",
+      "description": "Operating airline name for flight segments (e.g. 'American Airlines'), captured from the flight search result at save time so flight cards render the carrier without parsing the title. Absent on legacy rows; fall back to the title."
+    },
     "notes": {
       "type": "string"
     },
@@ -85,7 +89,7 @@
     },
     "place": {
       "type": "object",
-      "description": "Resolved Google Place for STAY/ACTIVITY items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz, iata }",
+      "description": "Resolved Google Place for STAY/ACTIVITY items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz, iata, city }",
       "properties": {
         "place_id": {
           "type": "string"
@@ -104,6 +108,10 @@
         },
         "country": {
           "type": "string"
+        },
+        "city": {
+          "type": "string",
+          "description": "City/locality from Google address_components (locality/postal_town/administrative fallback). Absent on legacy rows."
         },
         "tz": {
           "type": "string"
@@ -136,6 +144,10 @@
         "country": {
           "type": "string"
         },
+        "city": {
+          "type": "string",
+          "description": "Origin city/locality from Google address_components. Absent on legacy rows."
+        },
         "tz": {
           "type": "string"
         },
@@ -166,6 +178,10 @@
         },
         "country": {
           "type": "string"
+        },
+        "city": {
+          "type": "string",
+          "description": "Destination city/locality from Google address_components. Absent on legacy rows."
         },
         "tz": {
           "type": "string"

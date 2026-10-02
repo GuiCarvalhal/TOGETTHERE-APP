@@ -128,9 +128,23 @@ export async function autocompletePlaces(key, text, types) {
   }).filter((p) => p.place_id);
 }
 
+// Extract the best-fit city name from Google Places addressComponents, using
+// the most specific administrative division available. Used by getPlaceDetails
+// and resolveAirportPlace so flight cards show the real city (not the airport
+// name or IATA code). Returns '' when no suitable component exists.
+function cityFromComponents(components: any[]): string {
+  if (!Array.isArray(components)) return '';
+  const preferred = ['locality', 'postal_town', 'administrative_area_level_1', 'administrative_area_level_2', 'sublocality', 'neighborhood'];
+  for (const t of preferred) {
+    const c = components.find((c) => (c.types || []).includes(t));
+    if (c) return c.shortText || c.longText || '';
+  }
+  return '';
+}
+
 // Place Details (New Places API v1) — resolve a place_id to full data.
-// Returns { place_id, name, address, lat, lng, country } or null. Used by the
-// resolvePlace backend function after the user selects an autocomplete
+// Returns { place_id, name, address, lat, lng, country, city } or null. Used by
+// the resolvePlace backend function after the user selects an autocomplete
 // prediction; the caller appends the IANA tz from the Time Zone API.
 export async function getPlaceDetails(key, placeId) {
   const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=en`;
@@ -143,6 +157,7 @@ export async function getPlaceDetails(key, placeId) {
   if (!res.ok) return null;
   const p = await res.json();
   const country = (p.addressComponents || []).find((c) => (c.types || []).includes('country'))?.shortText || '';
+  const city = cityFromComponents(p.addressComponents);
   return {
     place_id: p.id || placeId,
     name: p.displayName?.text || '',
@@ -150,6 +165,7 @@ export async function getPlaceDetails(key, placeId) {
     lat: p.location?.latitude ?? null,
     lng: p.location?.longitude ?? null,
     country,
+    city,
   };
 }
 
@@ -171,11 +187,12 @@ export async function resolveAirportPlace(key, iata) {
     const tzData = await tzRes.json();
     if (tzData.status === 'OK') tz = tzData.timeZoneId;
   }
+  const city = cityFromComponents(p.addressComponents);
   return {
     place_id: p.id || '',
     name: p.displayName?.text || iata,
     address: p.formattedAddress || '',
-    lat, lng, country, tz,
+    lat, lng, country, tz, city,
   };
 }
 
