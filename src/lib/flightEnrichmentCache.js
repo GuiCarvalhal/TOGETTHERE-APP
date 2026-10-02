@@ -4,7 +4,7 @@ import { FLIGHT_ENRICHMENT_VERSION } from '@/lib/flightEnrichmentInput';
 export default function createFlightEnrichmentCache(invoke, now = Date.now) {
   const entries = new Map();
   const inflight = new Map();
-  const valueFields = ['airline', 'from_city', 'to_city'];
+  const valueFields = ['airline', 'from_city', 'to_city', 'from_country', 'to_country'];
   const successTtl = 600000;
   return async function load(key, payload) {
     if (inflight.has(key)) return inflight.get(key);

@@ -2,13 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import createFlightEnrichmentCache from '@/lib/flightEnrichmentCache';
 import flightEnrichmentInput, { FLIGHT_ENRICHMENT_VERSION } from '@/lib/flightEnrichmentInput';
 
-const response = (fields = {}, errors = [], warnings = []) => ({ data: { airline: '', from_city: '', to_city: '', ...fields, errors, warnings, version: FLIGHT_ENRICHMENT_VERSION } });
+const response = (fields = {}, errors = [], warnings = []) => ({ data: { airline: '', from_city: '', to_city: '', from_country: '', to_country: '', ...fields, errors, warnings, version: FLIGHT_ENRICHMENT_VERSION } });
 const transient = { field: 'to_city', source: 'google.places', code: 'RATE_LIMITED', message: 'Rate limited.', retryable: true };
 
 describe('flight enrichment client cache', () => {
   it('retains known fields, dedupes, and retries transient failures at most twice later', async () => {
     let time = 1000;
-    const invoke = vi.fn().mockResolvedValueOnce(response({ airline: 'American Airlines', from_city: 'São Paulo' }, [transient])).mockRejectedValue(new Error('offline'));
+    const invoke = vi.fn().mockResolvedValueOnce(response({ airline: 'American Airlines', from_city: 'São Paulo', from_country: 'BR' }, [transient])).mockRejectedValue(new Error('offline'));
     const load = createFlightEnrichmentCache(invoke, () => time);
     const [first, duplicate] = await Promise.all([load('key', {}), load('key', {})]);
     expect(first).toEqual(duplicate);
@@ -18,7 +18,7 @@ describe('flight enrichment client cache', () => {
     expect(invoke).toHaveBeenCalledTimes(1);
     time = first.retryAt;
     const second = await load('key', {});
-    expect(second).toMatchObject({ airline: 'American Airlines', from_city: 'São Paulo', retryAt: 91000 });
+    expect(second).toMatchObject({ airline: 'American Airlines', from_city: 'São Paulo', from_country: 'BR', retryAt: 91000 });
     time = second.retryAt;
     const third = await load('key', {});
     expect(third.retryAt).toBe(0);
@@ -31,11 +31,11 @@ describe('flight enrichment client cache', () => {
   });
   it('fills partial values on recovery and never loses previous successful values', async () => {
     let time = 1000;
-    const invoke = vi.fn().mockResolvedValueOnce(response({ from_city: 'São Paulo' }, [transient])).mockResolvedValueOnce(response({ airline: 'American Airlines', to_city: 'Miami' }));
+    const invoke = vi.fn().mockResolvedValueOnce(response({ from_city: 'São Paulo', from_country: 'BR' }, [transient])).mockResolvedValueOnce(response({ airline: 'American Airlines', to_city: 'Miami', to_country: 'US' }));
     const load = createFlightEnrichmentCache(invoke, () => time);
     const first = await load('key', {});
     time = first.retryAt;
-    expect(await load('key', {})).toMatchObject({ airline: 'American Airlines', from_city: 'São Paulo', to_city: 'Miami', errors: [], retryAt: 0 });
+    expect(await load('key', {})).toMatchObject({ airline: 'American Airlines', from_city: 'São Paulo', from_country: 'BR', to_city: 'Miami', to_country: 'US', errors: [], retryAt: 0 });
   });
   it('missing results have a short cooldown rather than permanent suppression', async () => {
     let time = 1000;
@@ -59,6 +59,8 @@ describe('flight enrichment client cache', () => {
   it('the normal exact legacy key is versioned and no-place flights still request route resolution', () => {
     const normal = flightEnrichmentInput({ type: 'flight', title: 'GRU → MIA', confirmation_number: 'AA906', start_datetime: '2026-06-27T22:15:00-04:00', from_place: { place_id: 'from', country: 'BR' }, to_place: { place_id: 'to', country: 'US' } });
     expect(normal.payload).toEqual({ flight_number: 'AA906', date: '2026-06-27', from_iata: 'GRU', to_iata: 'MIA', from_place_id: 'from', to_place_id: 'to' });
+    expect(normal.fromCountry).toBe('BR');
+    expect(normal.toCountry).toBe('US');
     expect(normal.key.startsWith(`${FLIGHT_ENRICHMENT_VERSION}:`)).toBe(true);
     const missingPlaces = flightEnrichmentInput({ type: 'flight', title: 'Air Canada AC095', confirmation_number: 'AC095', start_datetime: '2026-07-08T10:00:00-04:00' });
     expect(missingPlaces.needsFetch).toBe(true);

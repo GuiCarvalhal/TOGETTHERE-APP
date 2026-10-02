@@ -17,8 +17,8 @@ function tracked(handler) {
 function setup(overrides = {}) {
   const providers = {
     lookupFlight: tracked(async () => ({ airline: 'American Airlines', dep_iata: 'GRU', arr_iata: 'MIA' })),
-    lookupAirport: tracked(async iata => ({ municipality: iata === 'GRU' ? 'São Paulo' : 'Miami' })),
-    lookupPlace: tracked(async id => ({ city: id === 'from' ? 'São Paulo' : 'Miami' })),
+    lookupAirport: tracked(async iata => ({ municipality: iata === 'GRU' ? 'São Paulo' : 'Miami', country: iata === 'GRU' ? 'BR' : 'US' })),
+    lookupPlace: tracked(async id => ({ city: id === 'from' ? 'São Paulo' : 'Miami', country: id === 'from' ? 'BR' : 'US' })),
     helperVersion: AERO_DATA_VERSION, ...overrides,
   };
   return { providers, resolve: createFlightEnrichmentResolver(providers) };
@@ -56,11 +56,13 @@ for (const mode of ['not_found', 'missing', 'failure']) {
   test(`Google fallback after IATA ${mode}`, async () => {
     const { resolve, providers } = setup({ lookupAirport: tracked(async () => {
       if (mode === 'failure') throw failure('aerodatabox.airport');
-      return mode === 'not_found' ? null : { municipality: '' };
+      return mode === 'not_found' ? null : { municipality: '', country: '' };
     }) });
     const result = await resolve(input);
     assert.equal(result.from_city, 'São Paulo');
+    assert.equal(result.from_country, 'BR');
     assert.equal(result.to_city, 'Miami');
+    assert.equal(result.to_country, 'US');
     assert.equal(providers.lookupPlace.calls.length, 2);
     assert.equal((mode === 'failure' ? result.errors : result.warnings).length, 2);
     assert.equal(result.cache.hit, false);
@@ -74,17 +76,20 @@ test('partial successes retained; transient flight/Google failures not cached', 
   let placeCalls = 0;
   const { resolve, providers } = setup({
     lookupFlight: tracked(async () => { if (!flightCalls++) throw failure('aerodatabox.flight'); return { airline: 'American Airlines' }; }),
-    lookupAirport: tracked(async iata => { if (iata === 'GRU') return { municipality: 'São Paulo' }; throw failure('aerodatabox.airport'); }),
-    lookupPlace: tracked(async () => { if (!placeCalls++) throw failure('google.places'); return { city: 'Miami' }; }),
+    lookupAirport: tracked(async iata => { if (iata === 'GRU') return { municipality: 'São Paulo', country: 'BR' }; throw failure('aerodatabox.airport'); }),
+    lookupPlace: tracked(async () => { if (!placeCalls++) throw failure('google.places'); return { city: 'Miami', country: 'US' }; }),
   });
   const first = await resolve(input);
   assert.equal(first.from_city, 'São Paulo');
+  assert.equal(first.from_country, 'BR');
   assert.equal(first.to_city, '');
+  assert.equal(first.to_country, '');
   assert.equal(first.airline, '');
   assert.ok(first.errors.some(error => error.source === 'google.places'));
   const second = await resolve(input);
   assert.equal(second.airline, 'American Airlines');
   assert.equal(second.to_city, 'Miami');
+  assert.equal(second.to_country, 'US');
   assert.equal(second.cache.hit, false);
   assert.equal(providers.lookupFlight.calls.length, 2);
   assert.equal(providers.lookupAirport.calls.filter(([iata]) => iata === 'GRU').length, 1);
@@ -103,7 +108,7 @@ test('only complete verified results cache for ten minutes; dedupe and expiry', 
 });
 
 test('blank fields and genuine missing records never become cached success', async () => {
-  const { resolve, providers } = setup({ lookupFlight: tracked(async () => null), lookupAirport: tracked(async () => ({ municipality: '' })), lookupPlace: tracked(async () => ({ city: '' })) });
+  const { resolve, providers } = setup({ lookupFlight: tracked(async () => null), lookupAirport: tracked(async () => ({ municipality: '', country: '' })), lookupPlace: tracked(async () => ({ city: '', country: '' })) });
   const first = await resolve(input);
   const second = await resolve(input);
   assert.equal(first.errors.length, 0);
@@ -112,4 +117,19 @@ test('blank fields and genuine missing records never become cached success', asy
   assert.equal(providers.lookupFlight.calls.length, 2);
   assert.equal(providers.lookupAirport.calls.length, 4);
   assert.equal(providers.lookupPlace.calls.length, 4);
+});
+
+test('Bogotá->CO, Toronto->CA: country pairs with city from same authoritative source', async () => {
+  const { resolve } = setup({
+    lookupFlight: tracked(async () => ({ airline: 'Air Canada', dep_iata: 'BOG', arr_iata: 'YYZ' })),
+    lookupAirport: tracked(async iata => ({
+      municipality: iata === 'BOG' ? 'Bogotá' : 'Toronto',
+      country: iata === 'BOG' ? 'CO' : 'CA',
+    })),
+  });
+  const result = await resolve({ flight_number: 'AC095', date: '2026-07-08', from_iata: 'BOG', to_iata: 'YYZ', from_place_id: '', to_place_id: '' });
+  assert.equal(result.from_city, 'Bogotá');
+  assert.equal(result.from_country, 'CO');
+  assert.equal(result.to_city, 'Toronto');
+  assert.equal(result.to_country, 'CA');
 });

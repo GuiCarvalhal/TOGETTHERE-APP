@@ -26,10 +26,17 @@ export function useFlightEnrichment(item) {
   const current = state?.key === key ? state : null;
   const data = current?.data;
   const errors = data?.errors || [];
+  // Country pairs with the city source: enriched country when enriched city is
+  // used, stored country when stored city is used (or as fallback when the
+  // authoritative source returned a city but no country).
+  const fromCountry = input.fromCity ? input.fromCountry : (data?.from_country || input.fromCountry || '');
+  const toCountry = input.toCity ? input.toCountry : (data?.to_country || input.toCountry || '');
   return {
     airline: input.airline || data?.airline || '',
     fromCity: input.fromCity || data?.from_city || '',
     toCity: input.toCity || data?.to_city || '',
+    fromCountry,
+    toCountry,
     loading: needsFetch && (current?.loading ?? true),
     errors, warnings: data?.warnings || [],
     error: errors.map(issue => `${issue.source}: ${issue.message}`).join(' '),

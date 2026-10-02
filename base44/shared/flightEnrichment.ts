@@ -1,7 +1,7 @@
 // Positive-only, versioned caches. No DB access; errors and missing fields are never cached.
 export const ENRICHMENT_VERSION = 'flight-enrichment-v2';
 const TTL = 600000;
-const fields = ['airline', 'from_city', 'to_city'];
+const fields = ['airline', 'from_city', 'to_city', 'from_country', 'to_country'];
 
 export function createFlightEnrichmentResolver({ lookupFlight, lookupAirport, lookupPlace, helperVersion, now = Date.now }) {
   const positive = new Map();
@@ -30,7 +30,7 @@ export function createFlightEnrichmentResolver({ lookupFlight, lookupAirport, lo
     return sourceInflight.get(key);
   }
   async function resolve(input) {
-    const result = { airline: '', from_city: '', to_city: '', warnings: [], errors: [], sources: {}, version: ENRICHMENT_VERSION, helper_version: helperVersion, cache: { hit: false, version: ENRICHMENT_VERSION } };
+    const result = { airline: '', from_city: '', to_city: '', from_country: '', to_country: '', warnings: [], errors: [], sources: {}, version: ENRICHMENT_VERSION, helper_version: helperVersion, cache: { hit: false, version: ENRICHMENT_VERSION } };
     function warning(field, source, code, message) {
       const issue = { field, source, code, message, retryable: false };
       result.warnings.push(issue);
@@ -63,25 +63,31 @@ export function createFlightEnrichmentResolver({ lookupFlight, lookupAirport, lo
         if (!result.airline) warning('airline', 'aerodatabox.flight', 'MISSING_FIELD', 'Flight record has no airline name.');
       }
     } else warning('airline', 'input', 'MISSING_INPUT', 'No flight number and date available for airline lookup.');
-    async function city(field, iata, placeId) {
+    // Resolves city AND country from the SAME authoritative source so the pair
+    // is always consistent (never a stale stored country with an enriched city).
+    async function resolveCity(field, iata, placeId) {
       result.sources[field] = [];
       if (iata) {
         const airport = await attempt(field, 'aerodatabox.airport', `airport:${iata}`, () => lookupAirport(iata), value => !!value.municipality);
-        if (airport?.municipality) return airport.municipality;
+        if (airport?.municipality) return { city: airport.municipality, country: airport.country || '' };
         if (airport) warning(field, 'aerodatabox.airport', 'MISSING_FIELD', 'Airport record has no municipality.');
       }
       // Also runs when IATA exists but is missing, incomplete, or failed.
       if (placeId) {
         const place = await attempt(field, 'google.places', `place:${placeId}`, () => lookupPlace(placeId), value => !!value.city);
-        if (place?.city) return place.city;
+        if (place?.city) return { city: place.city, country: place.country || '' };
         if (place) warning(field, 'google.places', 'MISSING_FIELD', 'Place record has no city/locality.');
       }
       if (!iata && !placeId) warning(field, 'input', 'MISSING_INPUT', 'No airport code or Place ID available for city lookup.');
-      return '';
+      return { city: '', country: '' };
     }
-    [result.from_city, result.to_city] = await Promise.all([
-      city('from_city', fromIata, input.from_place_id), city('to_city', toIata, input.to_place_id),
+    const [from, to] = await Promise.all([
+      resolveCity('from_city', fromIata, input.from_place_id), resolveCity('to_city', toIata, input.to_place_id),
     ]);
+    result.from_city = from.city;
+    result.from_country = from.country;
+    result.to_city = to.city;
+    result.to_country = to.country;
     return result;
   }
   return async function enrich(input) {

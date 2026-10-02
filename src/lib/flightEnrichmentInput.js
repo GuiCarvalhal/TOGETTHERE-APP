@@ -19,5 +19,7 @@ export default function flightEnrichmentInput(item) {
   const toCity = isCodeLike(item?.to_place?.city) ? '' : item?.to_place?.city || '';
   const lookupFlight = !!payload.flight_number && !!payload.date;
   const needsFetch = flight && ((!airline && lookupFlight) || (!fromCity && (lookupFlight || payload.from_iata || payload.from_place_id)) || (!toCity && (lookupFlight || payload.to_iata || payload.to_place_id)));
-  return { payload, airline, fromCity, toCity, flight, needsFetch: !!needsFetch, key: `${FLIGHT_ENRICHMENT_VERSION}:${JSON.stringify(payload)}` };
+  const fromCountry = item?.from_place?.country || '';
+  const toCountry = item?.to_place?.country || '';
+  return { payload, airline, fromCity, toCity, fromCountry, toCountry, flight, needsFetch: !!needsFetch, key: `${FLIGHT_ENRICHMENT_VERSION}:${JSON.stringify(payload)}` };
 }

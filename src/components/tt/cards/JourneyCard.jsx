@@ -52,7 +52,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const startFull = allDay ? '' : formatTimeWithCountry(item.start_datetime, startTz, startCc);
   const endFull = (allDay || !item.end_datetime) ? '' : formatTimeWithCountry(item.end_datetime, endTz, endCc);
   const duration = (!allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
-  const { fromCity, toCity, airline: enrichedAirline, loading: enrichmentLoading, errors: enrichmentErrors, warnings: enrichmentWarnings } = useFlightEnrichment(item);
+  const { fromCity, toCity, fromCountry, toCountry, airline: enrichedAirline, loading: enrichmentLoading, errors: enrichmentErrors, warnings: enrichmentWarnings } = useFlightEnrichment(item);
   const meta = journeyMeta(item, enrichedAirline);
   // Flight-only content for the four card rows (geometry unchanged):
   //  row1 meta  = number · airline · '8h 30m duration' (duration kept here, not
@@ -63,8 +63,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const isFlight = item.type === 'flight';
   const flightDur = (isFlight && !allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
   const metaLine = isFlight ? [meta, flightDur && `${flightDur} duration`].filter(Boolean).join(' · ') : meta;
-  const fromCc = item.from_place?.country || startCc || '';
-  const toCc = item.to_place?.country || endCc || '';
+  const fromCc = fromCountry || item.from_place?.country || startCc || '';
+  const toCc = toCountry || item.to_place?.country || endCc || '';
   const fromLabel = [fromCity, fromCc].filter(Boolean).join(' - ');
   const toLabel = [toCity, toCc].filter(Boolean).join(' - ');
   const flightRoute = (fromLabel || toLabel) ? `${fromLabel} > ${toLabel}` : '';
