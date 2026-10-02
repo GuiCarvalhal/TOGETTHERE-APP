@@ -1,72 +1,57 @@
-// Shared AeroDataBox (RapidAPI) helpers — airport-by-IATA and flight-by-number.
-// Pure fetches with a single 429 retry; callers cache as needed. Server-side
-// only; RAPIDAPI_KEY never reaches the client. Used by searchFlights and
-// resolveFlightEnrichment so the airport-fetch logic lives in one place.
+import { providerJson, ProviderFailure, invalidProviderShape } from './providerJson.ts';
 
+export const AERO_DATA_VERSION = 'aerodatabox-v2-strict-municipalityName';
 const RAPID_HOST = 'aerodatabox.p.rapidapi.com';
+let queue = Promise.resolve();
+let nextRequestAt = 0;
 
-function headers(key: string) {
-  return { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': RAPID_HOST };
+// The provider's per-second limit applies to both endpoints. Serialize starts,
+// including retries; each lookup still has at most two HTTP attempts.
+function pacedFetch(url, options) {
+  const request = queue.then(async () => {
+    const wait = nextRequestAt - Date.now();
+    if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
+    nextRequestAt = Date.now() + 1300;
+    return fetch(url, options);
+  });
+  queue = request.then(() => undefined, () => undefined);
+  return request;
 }
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+async function request(key, path, source) {
+  if (!key) throw new ProviderFailure(source, 'NOT_CONFIGURED', 'Flight provider is not configured.', false);
+  return providerJson(`https://${RAPID_HOST}${path}`, {
+    headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': RAPID_HOST },
+  }, source, pacedFetch);
+}
+const text = value => typeof value === 'string' ? value.trim() : '';
+
+// Only an explicit 404/204 means NOT_FOUND. Transport/parse/shape failures throw.
+export async function fetchAirportByIata(key, iata) {
+  const source = 'aerodatabox.airport';
+  const data = await request(key, `/airports/iata/${encodeURIComponent(iata)}`, source);
+  if (data === null) return null;
+  if (!data || Array.isArray(data) || text(data.iata).toUpperCase() !== iata.toUpperCase() ||
+      (data.municipalityName != null && typeof data.municipalityName !== 'string')) throw invalidProviderShape(source);
+  return {
+    iata: text(data.iata), municipality: text(data.municipalityName),
+    country: text(data.country?.code).toUpperCase(), tz: text(data.timeZone),
+    name: text(data.shortName || data.fullName || data.name),
+    lat: data.location?.lat ?? null, lon: data.location?.lon ?? null,
+  };
 }
 
-// Resolve an IATA code to AeroDataBox airport metadata, including the
-// authoritative `municipality` (the metro city the airport serves) — the
-// preferred city source for flight cards. Returns null on any failure.
-export async function fetchAirportByIata(key: string, iata: string): Promise<{
-  iata: string; municipality: string; country: string; tz: string; name: string; lat: number | null; lon: number | null;
-} | null> {
-  const url = `https://${RAPID_HOST}/airports/iata/${encodeURIComponent(iata)}`;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch(url, { headers: headers(key) });
-      if (res.status === 429 && attempt === 0) { await sleep(1200); continue; }
-      if (!res.ok) return null;
-      const d = await res.json();
-      if (!d?.iata) return null;
-      return {
-        iata: d.iata,
-        municipality: d.municipalityName || '',
-        country: (d.country?.code || '').toUpperCase(),
-        tz: d.timeZone || '',
-        name: d.shortName || d.fullName || d.name || '',
-        lat: d.location?.lat ?? null,
-        lon: d.location?.lon ?? null,
-      };
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-// Resolve a flight number + date to airline + origin/destination IATA via
-// AeroDataBox. Prefers a non-codeshare entry. Returns null on any failure
-// (including no data for past dates — caller surfaces an honest missing).
-export async function fetchFlightByNumber(key: string, flightNumber: string, date: string): Promise<{
-  airline: string; dep_iata: string; arr_iata: string; dep_name: string; arr_name: string;
-} | null> {
-  try {
-    const url = `https://${RAPID_HOST}/flights/number/${encodeURIComponent(flightNumber)}/${encodeURIComponent(date)}`;
-    const res = await fetch(url, { headers: headers(key) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : [];
-    if (!list.length) return null;
-    const f = list.find((x: any) => !x.isCodeshare) || list[0];
-    const dep = f.departure || {};
-    const arr = f.arrival || {};
-    return {
-      airline: f.airline?.name || '',
-      dep_iata: dep.airport?.iata || '',
-      arr_iata: arr.airport?.iata || '',
-      dep_name: dep.airport?.name || '',
-      arr_name: arr.airport?.name || '',
-    };
-  } catch {
-    return null;
-  }
+export async function fetchFlightByNumber(key, flightNumber, date) {
+  const source = 'aerodatabox.flight';
+  const data = await request(key, `/flights/number/${encodeURIComponent(flightNumber)}/${encodeURIComponent(date)}`, source);
+  if (data === null) return null;
+  if (!Array.isArray(data) || data.some(flight => !flight || typeof flight.number !== 'string' ||
+      !flight.departure || !flight.arrival || (flight.airline?.name != null && typeof flight.airline.name !== 'string'))) throw invalidProviderShape(source);
+  if (!data.length) return null;
+  const flight = data.find(value => !value.isCodeshare) || data[0];
+  return {
+    airline: text(flight.airline?.name), dep_iata: text(flight.departure.airport?.iata),
+    arr_iata: text(flight.arrival.airport?.iata), dep_name: text(flight.departure.airport?.name),
+    arr_name: text(flight.arrival.airport?.name),
+  };
 }

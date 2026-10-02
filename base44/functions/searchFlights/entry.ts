@@ -22,7 +22,7 @@ import { secrets } from 'base44:runtime';
 // queries are cached briefly (especially route searches, which cost 2 calls)
 // to protect quota.
 
-import { fetchAirportByIata } from '../../shared/aeroDataBox.ts';
+import { fetchAirportByIata, AERO_DATA_VERSION } from '../../shared/aeroDataBox.ts';
 
 const RAPID_HOST = 'aerodatabox.p.rapidapi.com';
 const CACHE_TTL_MS = 60_000; // 1 minute — protects against double-clicks / re-edits
@@ -174,12 +174,12 @@ async function fetchJson(key: string, url: string, label: string): Promise<any> 
 // tz, coordinates) via the airport-by-IATA endpoint. Cached by IATA. Returns
 // null on any failure (caller falls back to nearest-airport).
 async function airportByIata(key: string, iata: string): Promise<any | null> {
-  const ck = `iata:${iata}`;
+  const ck = `${AERO_DATA_VERSION}:iata:${iata}`;
   const cached = airportCached(ck);
   if (cached !== undefined) return cached;
   const a = await fetchAirportByIata(key, iata);
   const val = a ? { iata: a.iata, name: a.name, country: a.country, tz: a.tz, lat: a.lat, lon: a.lon } : null;
-  setAirportCache(ck, val);
+  if (val) setAirportCache(ck, val);
   return val;
 }
 
@@ -372,6 +372,7 @@ export default async function (req) {
     setCache(cacheKey, val);
     return Response.json(val);
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    const status = error.source ? (error.http_status === 429 ? 429 : 502) : 500;
+    return Response.json({ error: error.message, ...(error.source ? { source: error.source, code: error.code, retryable: error.retryable } : {}) }, { status });
   }
 }

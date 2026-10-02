@@ -52,7 +52,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const startFull = allDay ? '' : formatTimeWithCountry(item.start_datetime, startTz, startCc);
   const endFull = (allDay || !item.end_datetime) ? '' : formatTimeWithCountry(item.end_datetime, endTz, endCc);
   const duration = (!allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
-  const { fromCity, toCity, airline: enrichedAirline } = useFlightEnrichment(item);
+  const { fromCity, toCity, airline: enrichedAirline, loading: enrichmentLoading, errors: enrichmentErrors, warnings: enrichmentWarnings } = useFlightEnrichment(item);
   const meta = journeyMeta(item, enrichedAirline);
   // Flight-only content for the four card rows (geometry unchanged):
   //  row1 meta  = number · airline · '8h 30m duration' (duration kept here, not
@@ -68,6 +68,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const fromLabel = [fromCity, fromCc].filter(Boolean).join(' - ');
   const toLabel = [toCity, toCc].filter(Boolean).join(' - ');
   const flightRoute = (fromLabel || toLabel) ? `${fromLabel} > ${toLabel}` : '';
+  const flightTooltip = [flightRoute || item.title, enrichmentLoading ? 'Resolving flight details…' : '',
+    ...[...enrichmentErrors, ...enrichmentWarnings].map(issue => `${issue.field} · ${issue.source}: ${issue.message}`)].filter(Boolean).join('\n');
 
   // Rail time block uses the primary instant's wall clock + abbreviation.
   const railTime = leg === 'check-out' ? endTime : startTime;
@@ -132,7 +134,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           {/* Metadata line — the first line of the card (no item-type label) */}
           {metaLine && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{metaLine}</p>}
 
-          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? <span className="block truncate">{flightRoute || item.title}</span> : item.title}</h3>
+          <h3 title={isFlight ? flightTooltip : undefined} aria-busy={isFlight && enrichmentLoading ? true : undefined} className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? <span className="block truncate">{flightRoute || item.title}</span> : item.title}</h3>
 
           {/* Timing: stay legs show a Check-in/Check-out pill + the single
               primary time; other items show start → end · duration. */}

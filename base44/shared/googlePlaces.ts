@@ -1,3 +1,5 @@
+import { providerJson, ProviderFailure, invalidProviderShape } from './providerJson.ts';
+
 // Shared Google Places (New Places API v1) + Geocoding helpers.
 // Used by getPlaceInfo and generateRecommendations so the Places fetch logic
 // lives in one place.
@@ -151,15 +153,17 @@ function cityFromComponents(components: any[]): string {
 // the resolvePlace backend function after the user selects an autocomplete
 // prediction; the caller appends the IANA tz from the Time Zone API.
 export async function getPlaceDetails(key, placeId) {
+  const source = 'google.places';
+  if (!key) throw new ProviderFailure(source, 'NOT_CONFIGURED', 'Place provider is not configured.', false);
   const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=en`;
-  const res = await fetch(url, {
+  const p = await providerJson(url, {
     headers: {
       'X-Goog-Api-Key': key,
       'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,addressComponents',
     },
-  });
-  if (!res.ok) return null;
-  const p = await res.json();
+  }, source);
+  if (p === null) return null;
+  if (!p || p.id !== placeId || (p.addressComponents != null && !Array.isArray(p.addressComponents))) throw invalidProviderShape(source);
   const country = (p.addressComponents || []).find((c) => (c.types || []).includes('country'))?.shortText || '';
   const city = cityFromComponents(p.addressComponents);
   return {
