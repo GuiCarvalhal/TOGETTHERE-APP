@@ -58,6 +58,7 @@ export default function FlightPage() {
     attachments: [],
   });
   const [manual, setManual] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [startTouched, setStartTouched] = useState(false);
   const [endTouched, setEndTouched] = useState(false);
 
@@ -66,13 +67,20 @@ export default function FlightPage() {
   // search date derived from them is the origin-local date, and a saved time
   // round-trips in the place's own wall clock.
   useEffect(() => {
+    // Reset all form/search state on every route param change so switching
+    // between add/edit or different items never leaks the previous flight.
+    setItem(null); setError(null); setAttendeeIds([]); setManual(false); setResolving(false);
+    setForm({ type: 'flight', title: '', start_datetime: '', end_datetime: '', location_from: '', location_to: '', from_place: null, to_place: null, confirmation_number: '', booking_reference: '', airline: '', notes: '', attachments: [] });
     if (!isEdit) { setLoading(false); return; }
     let alive = true;
     (async () => {
-      setLoading(true); setError(null);
+      setLoading(true);
       try {
         const data = await base44.entities.JourneyItem.get(itemId);
         if (!alive) return;
+        // Guard: the routed item must belong to THIS gathering and be a flight.
+        if (data.gathering_id !== gatheringId) { setError(new Error('This flight belongs to a different gathering.')); return; }
+        if (data.type !== 'flight') { setError(new Error('This journey item is not a flight.')); return; }
         setItem(data);
         const sTz = data.from_place?.tz || null;
         const eTz = data.to_place?.tz || null;
@@ -101,7 +109,7 @@ export default function FlightPage() {
       }
     })();
     return () => { alive = false; };
-  }, [itemId, isEdit]);
+  }, [itemId, isEdit, gatheringId]);
 
   useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
@@ -223,13 +231,14 @@ export default function FlightPage() {
             optionalFields={<JourneyOptionalFields form={form} setForm={setForm} attendeeIds={attendeeIds} toggleAttendee={toggleAttendee} members={members} currentMember={currentMember} />}
             manual={manual}
             setManual={setManual}
+            onResolvingChange={setResolving}
           />
           {flightNeedsSelection && (
             <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap “Enter manually instead”.</p>
           )}
           <div className="flex items-center gap-2 pt-2">
             <Button type="button" variant="outline" onClick={back}><X /> Cancel</Button>
-            <Button type="submit" disabled={saving || flightNeedsSelection} className="ml-auto">
+            <Button type="submit" disabled={saving || resolving || flightNeedsSelection} className="ml-auto">
               {saving ? <Loader2 className="animate-spin" /> : isEdit ? <Check /> : <Plus />}
               {isEdit ? 'Save changes' : 'Add flight'}
             </Button>

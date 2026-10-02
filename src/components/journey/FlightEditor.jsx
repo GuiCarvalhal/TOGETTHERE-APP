@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,21 +7,29 @@ import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import FlightResultList from '@/components/journey/FlightResultList';
 import { isoToWallInput } from '@/lib/formatPlaceTime';
 import { parseUtcIso, normalizeNumber, extractIata } from '@/lib/flightSearch';
-import { Loader2, Plane, Search, X, Pencil } from 'lucide-react';
+import { Loader2, Plane, Search, X, Pencil, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 // Flight segment editor — the single owner of flight identity, airports,
 // dates and times when type === 'flight'. Three views:
-//  • search  — initial add: departure date, number/route mode, inputs, Search.
+//  • search  — initial add / "Search another flight": departure date,
+//              number/route mode, inputs, Search.
 //  • summary — after a result is selected, or on edit with existing data:
 //              compact confirmation + optional fields (booking ref, notes,
-//              participants, attachments via the `optionalFields` prop). No
-//              redundant Flight # field; no forced lookup on edit.
+//              participants, attachments via the `optionalFields` prop).
 //  • manual  — entered via "Enter manually instead" / "Edit manually":
 //              Title, Departure/Arrival, From/To, Flight #, Booking ref.
-// All state lives on the parent form, so the parent submit still receives
-// every required value and validation is unchanged.
-export default function FlightEditor({ form, setForm, setStartTouched, setEndTouched, gatheringStartDate, optionalFields, manual, setManual }) {
+//
+// ROUTE-SEARCH STATE IS SEPARATE FROM THE FORM. The search panel's From/To
+// inputs mutate ONLY searchFrom/searchTo state, never the saved form — so
+// "Back to current flight" and saving without selecting a replacement leave
+// the original flight unchanged. The manual-edit view edits the form
+// directly (that IS editing the flight). A selected result is the only thing
+// that writes to the form (via applyFlight).
+//
+// `onResolvingChange(boolean)` lifts the resolving flag to the parent so the
+// Save button can be disabled while airport metadata is being resolved.
+export default function FlightEditor({ form, setForm, setStartTouched, setEndTouched, gatheringStartDate, optionalFields, manual, setManual, onResolvingChange }) {
   const today = new Date().toISOString().slice(0, 10);
   const [mode, setMode] = useState('number');
   const [searchDate, setSearchDate] = useState(gatheringStartDate || (form.start_datetime ? form.start_datetime.slice(0, 10) : today));
@@ -30,41 +38,67 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
   const [resolving, setResolving] = useState(false);
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
+  const [resolveWarning, setResolveWarning] = useState(null);
   const [selected, setSelected] = useState(null);
   // "Search another flight" (edit): exposes the search panel again without
   // clearing the existing flight from the form, so the original is preserved
   // until a replacement is selected and explicitly saved.
   const [searchAgain, setSearchAgain] = useState(false);
 
+  // Separate route-SEARCH airport state (text + resolved place). Seeded from
+  // the form on mount so edit shows the current airports as a starting point,
+  // but editing these never touches the saved flight.
+  const [searchFromText, setSearchFromText] = useState(form.location_from || '');
+  const [searchFromPlace, setSearchFromPlace] = useState(form.from_place || null);
+  const [searchToText, setSearchToText] = useState(form.location_to || '');
+  const [searchToPlace, setSearchToPlace] = useState(form.to_place || null);
+
+  // Monotonic request token: a stale search/resolve response (from an earlier
+  // selection or search) can never overwrite a newer one.
+  const reqSeq = useRef(0);
+
+  // Lift resolving to the parent so Save disables mid-resolve.
+  useEffect(() => { onResolvingChange?.(resolving); }, [resolving, onResolvingChange]);
+
   const hasFlight = !!(form.confirmation_number && form.from_place && form.to_place && form.start_datetime);
   const showSummary = (hasFlight || selected) && !manual && !searchAgain;
   const showSearch = !manual && (!showSummary || searchAgain);
 
-  function onFromText(v) { setForm((f) => ({ ...f, location_from: v, from_place: null })); setSelected(null); }
-  function onFromSelect(p) { setForm((f) => ({ ...f, from_place: p })); setSelected(null); }
-  function onToText(v) { setForm((f) => ({ ...f, location_to: v, to_place: null })); setSelected(null); }
-  function onToSelect(p) { setForm((f) => ({ ...f, to_place: p })); setSelected(null); }
+  // Manual-edit handlers mutate the FORM (manual edit IS editing the flight).
+  function onFromText(v) { setForm((f) => ({ ...f, location_from: v, from_place: null })); }
+  function onFromSelect(p) { setForm((f) => ({ ...f, from_place: p })); }
+  function onToText(v) { setForm((f) => ({ ...f, location_to: v, to_place: null })); }
+  function onToSelect(p) { setForm((f) => ({ ...f, to_place: p })); }
+
+  // Route-search handlers mutate ONLY search state — never the form.
+  function onSearchFromText(v) { setSearchFromText(v); setSearchFromPlace(null); }
+  function onSearchFromSelect(p) { setSearchFromText(p?.name || searchFromText); setSearchFromPlace(p); }
+  function onSearchToText(v) { setSearchToText(v); setSearchToPlace(null); }
+  function onSearchToSelect(p) { setSearchToText(p?.name || searchToText); setSearchToPlace(p); }
 
   async function runSearch() {
-    setError(null);
-    setResults([]);
-    setSelected(null);
+    setError(null); setResolveWarning(null); setResults([]); setSelected(null);
     if (!searchDate) { toast({ title: 'Pick a departure date', variant: 'destructive' }); return; }
+    const seq = ++reqSeq.current;
     if (mode === 'number') {
       const fn = flightNumber.trim();
       if (!fn) { toast({ title: 'Enter a flight number', description: 'e.g. AA123', variant: 'destructive' }); return; }
       setSearching(true);
       try {
         const res = await base44.functions.invoke('searchFlights', { flight_number: fn, date: searchDate });
+        if (seq !== reqSeq.current) return; // a newer search/apply started
         const data = res.data || res;
         if (data.error) { setError(data.error); return; }
         setResults(data.results || []);
         if (!data.results?.length) setError(`No flights found for ${fn.toUpperCase()} on ${searchDate}. Check the number and date, or try searching by route.`);
       } catch (e) {
+        if (seq !== reqSeq.current) return;
         setError(e.response?.data?.error || e.message || 'Search failed. You can still enter the details manually.');
-      } finally { setSearching(false); }
+      } finally {
+        if (seq === reqSeq.current) setSearching(false);
+      }
     } else {
-      const o = form.from_place, d = form.to_place;
+      const o = searchFromPlace, d = searchToPlace;
       if (!o?.lat || !d?.lat) { toast({ title: 'Choose both airports', description: 'Pick an origin and destination airport from the suggestions.', variant: 'destructive' }); return; }
       setSearching(true);
       try {
@@ -73,42 +107,77 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
           dest_lat: d.lat, dest_lng: d.lng, dest_iata: extractIata(d),
           date: searchDate,
         });
+        if (seq !== reqSeq.current) return;
         const data = res.data || res;
         if (data.error) { setError(data.error); return; }
         setResults(data.results || []);
-        if (!data.results?.length) setError(`No flights found from ${form.location_from} to ${form.location_to} on ${searchDate}.`);
+        if (!data.results?.length) setError(`No flights found from ${searchFromText} to ${searchToText} on ${searchDate}.`);
       } catch (e) {
+        if (seq !== reqSeq.current) return;
         setError(e.response?.data?.error || e.message || 'Search failed. You can still enter the details manually.');
-      } finally { setSearching(false); }
+      } finally {
+        if (seq === reqSeq.current) setSearching(false);
+      }
     }
   }
 
   async function applyFlight(r) {
+    // Duplicate selection guard: tapping the already-selected result is a no-op.
+    if (selected?.id === r.id) return;
+    const seq = ++reqSeq.current;
+    setError(null); setResolveWarning(null);
     const depIso = parseUtcIso(r.dep_utc);
     const arrIso = parseUtcIso(r.arr_utc);
     let fromPlace, toPlace;
-    if (mode === 'route' && form.from_place && form.to_place) {
-      fromPlace = { ...form.from_place, iata: r.dep_iata, tz: r.dep_tz || form.from_place.tz || '' };
-      toPlace = { ...form.to_place, iata: r.arr_iata, tz: r.arr_tz || form.to_place.tz || '' };
+    let degraded = false;
+    if (mode === 'route' && searchFromPlace && searchToPlace) {
+      fromPlace = { ...searchFromPlace, iata: r.dep_iata, tz: r.dep_tz || searchFromPlace.tz || '' };
+      toPlace = { ...searchToPlace, iata: r.arr_iata, tz: r.arr_tz || searchToPlace.tz || '' };
     } else {
       setResolving(true);
       try {
         const res = await base44.functions.invoke('resolveFlightAirports', { from_iata: r.dep_iata, to_iata: r.arr_iata });
+        if (seq !== reqSeq.current) return; // stale — a newer selection/search started
         const data = res.data || res;
-        fromPlace = data.from_place || { iata: r.dep_iata, name: r.dep_name || r.dep_iata, tz: r.dep_tz || '' };
-        toPlace = data.to_place || { iata: r.arr_iata, name: r.arr_name || r.arr_iata, tz: r.arr_tz || '' };
+        fromPlace = data.from_place || null;
+        toPlace = data.to_place || null;
+        if (!fromPlace || !toPlace) degraded = true;
+        if (fromPlace && !fromPlace.city) degraded = true;
+        if (toPlace && !toPlace.city) degraded = true;
+        if (!fromPlace) fromPlace = { iata: r.dep_iata, name: r.dep_name || r.dep_iata, tz: r.dep_tz || '' };
+        if (!toPlace) toPlace = { iata: r.arr_iata, name: r.arr_name || r.arr_iata, tz: r.arr_tz || '' };
       } catch {
+        if (seq !== reqSeq.current) return; // stale
+        degraded = true;
         fromPlace = { iata: r.dep_iata, name: r.dep_name || r.dep_iata, tz: r.dep_tz || '' };
         toPlace = { iata: r.arr_iata, name: r.arr_name || r.arr_iata, tz: r.arr_tz || '' };
-      } finally { setResolving(false); }
+      } finally {
+        if (seq === reqSeq.current) setResolving(false);
+      }
     }
+    if (seq !== reqSeq.current) return; // stale after awaits
+    if (degraded) {
+      setResolveWarning('Airport details incomplete — the city may be missing on the card. You can edit manually if needed.');
+    }
+    // Airline: replace with the new result's known airline, or clear the stale
+    // value (never keep the old carrier when changing flights).
+    // Title: refresh an auto-generated title when changing flights; preserve a
+    // truly custom title. An auto title matches "Flight <oldNumber>" or
+    // "Flight <oldNumber> — <oldAirline>".
+    const oldNum = (form.confirmation_number || '').trim();
+    const oldAirline = form.airline || '';
+    const autoTitleA = oldNum ? `Flight ${oldNum}` : '';
+    const autoTitleB = (oldNum && oldAirline) ? `Flight ${oldNum} — ${oldAirline}` : '';
+    const isAutoTitle = !!(form.title && (form.title === autoTitleA || form.title === autoTitleB));
+    const newAutoTitle = `Flight ${r.number}${r.airline_name ? ' — ' + r.airline_name : ''}`;
+    const nextTitle = isAutoTitle ? newAutoTitle : (form.title || newAutoTitle);
     setStartTouched(true);
     setEndTouched(true);
     setForm((s) => ({
       ...s,
       confirmation_number: normalizeNumber(r.number),
-      airline: r.airline_name || s.airline || '',
-      title: s.title || `Flight ${r.number}${r.airline_name ? ' — ' + r.airline_name : ''}`,
+      airline: r.airline_name || '',
+      title: nextTitle,
       location_from: fromPlace.name || r.dep_iata,
       from_place: fromPlace,
       location_to: toPlace.name || r.arr_iata,
@@ -121,18 +190,22 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
     setSearchAgain(false);
   }
 
-  // Summary display: prefer a just-selected result; fall back to existing
-  // form data so edit shows the stored flight without a forced lookup.
-  const dispNumber = selected ? selected.number : form.confirmation_number;
-  const dispAirline = selected ? selected.airline_name : '';
-  const dispFromIata = selected ? selected.dep_iata : (form.from_place?.iata || '');
-  const dispToIata = selected ? selected.arr_iata : (form.to_place?.iata || '');
-  const dispFromName = selected ? selected.dep_name : (form.from_place?.name || form.location_from || '');
-  const dispToName = selected ? selected.arr_name : (form.to_place?.name || form.location_to || '');
-  const dispDepTime = selected ? selected.dep_local : fmtWall(form.start_datetime);
-  const dispArrTime = selected ? selected.arr_local : fmtWall(form.end_datetime);
-  const overnight = selected ? selected.overnight : false;
-  const dayShift = selected ? selected.day_shift : 0;
+  // Summary display reads from the FORM (source of truth after applyFlight),
+  // so the stored airline shows on edit rather than a blank.
+  const dispNumber = form.confirmation_number;
+  const dispAirline = form.airline || '';
+  const dispFromIata = form.from_place?.iata || '';
+  const dispToIata = form.to_place?.iata || '';
+  const dispFromName = form.from_place?.name || form.location_from || '';
+  const dispToName = form.to_place?.name || form.location_to || '';
+  const dispDepTime = fmtWall(form.start_datetime);
+  const dispArrTime = fmtWall(form.end_datetime);
+  const overnight = selected?.overnight || false;
+  const dayShift = selected?.day_shift || 0;
+
+  const warningNode = resolveWarning && (
+    <p className="text-xs text-terra-deep flex items-start gap-1.5"><AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{resolveWarning}</p>
+  );
 
   return (
     <div className="space-y-4">
@@ -152,7 +225,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
                 <button
                   key={m}
                   type="button"
-                  onClick={() => { setMode(m); setResults([]); setError(null); }}
+                  onClick={() => { setMode(m); setResults([]); setError(null); setResolveWarning(null); }}
                   className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition ${mode === m ? 'bg-card text-ink-deep shadow-sm' : 'text-ink-deep/55'}`}
                 >
                   {m === 'number' ? 'By flight number' : 'By route'}
@@ -176,9 +249,9 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
                 <div className="space-y-1.5">
                   <Label className="text-ink-deep text-xs">From</Label>
                   <PlaceAutocomplete
-                    value={form.location_from}
-                    onText={onFromText}
-                    onSelect={onFromSelect}
+                    value={searchFromText}
+                    onText={onSearchFromText}
+                    onSelect={onSearchFromSelect}
                     placeholder="Origin airport"
                     types="airport"
                     className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
@@ -187,9 +260,9 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
                 <div className="space-y-1.5">
                   <Label className="text-ink-deep text-xs">To</Label>
                   <PlaceAutocomplete
-                    value={form.location_to}
-                    onText={onToText}
-                    onSelect={onToSelect}
+                    value={searchToText}
+                    onText={onSearchToText}
+                    onSelect={onSearchToSelect}
                     placeholder="Destination airport"
                     types="airport"
                     className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
@@ -203,6 +276,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
             </Button>
             {error && <p className="text-xs text-terra-deep">{error}</p>}
             {resolving && <p className="text-xs text-ink-deep/60 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Resolving airport details…</p>}
+            {warningNode}
           </div>
           {results.length > 0 && (
             <div className="space-y-2">
@@ -226,21 +300,17 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
       {showSummary && (
         <>
           <div className="tt-card p-3 border-terra/30">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-display font-semibold text-sm text-ink-deep">
-                  {dispAirline ? `${dispAirline} · ` : ''}{dispNumber}
-                </p>
-                <p className="text-xs text-ink-deep/60">
-                  {dispFromIata || dispFromName} → {dispToIata || dispToName}{overnight ? ` · +${dayShift} day${dayShift > 1 ? 's' : ''}` : ''}
-                </p>
-                <p className="text-xs text-ink-deep/60 mt-0.5">{dispDepTime} → {dispArrTime}</p>
-              </div>
-              {selected && (
-                <button type="button" onClick={() => { setSelected(null); setResults([]); }} className="text-ink-deep/50 hover:text-ink-deep shrink-0"><X className="w-4 h-4" /></button>
-              )}
+            <div>
+              <p className="font-display font-semibold text-sm text-ink-deep">
+                {dispAirline ? `${dispAirline} · ` : ''}{dispNumber}
+              </p>
+              <p className="text-xs text-ink-deep/60">
+                {dispFromIata || dispFromName} → {dispToIata || dispToName}{overnight ? ` · +${dayShift} day${dayShift > 1 ? 's' : ''}` : ''}
+              </p>
+              <p className="text-xs text-ink-deep/60 mt-0.5">{dispDepTime} → {dispArrTime}</p>
             </div>
           </div>
+          {warningNode}
           <div className="space-y-1.5">
             <Label className="text-ink-deep">Title <span className="text-ink-deep/40 font-normal">(optional)</span></Label>
             <Input
@@ -261,7 +331,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
           </div>
           {optionalFields}
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => { setSearchAgain(true); setResults([]); setError(null); }} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
+            <button type="button" onClick={() => { setSearchAgain(true); setResults([]); setError(null); setResolveWarning(null); }} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
               <Search className="w-3 h-3" /> Search another flight
             </button>
             <button type="button" onClick={() => setManual(true)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">

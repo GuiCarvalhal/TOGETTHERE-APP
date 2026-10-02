@@ -25,7 +25,7 @@ export function buildJourneyPayload({ form, attendeeIds, startTz, endTz, meta, c
     ...(meta.place ? { place: form.place || null } : {}),
     confirmation_number: form.confirmation_number,
     booking_reference: form.booking_reference,
-    airline: form.airline || undefined,
+    airline: form.airline,
     notes: form.notes,
     attachments: form.attachments,
     attendee_user_ids: attendeeIds,

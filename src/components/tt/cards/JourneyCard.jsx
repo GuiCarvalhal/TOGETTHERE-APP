@@ -9,6 +9,7 @@ import {
 } from '@/lib/formatPlaceTime';
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
+import { usePlaceCity } from '@/lib/usePlaceCity';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
@@ -61,8 +62,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const isFlight = item.type === 'flight';
   const flightDur = (isFlight && !allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
   const metaLine = isFlight ? [meta, flightDur && `${flightDur} duration`].filter(Boolean).join(' · ') : meta;
-  const fromCity = item.from_place?.city || '';
-  const toCity = item.to_place?.city || '';
+  const fromCity = usePlaceCity(isFlight ? item.from_place : null).city;
+  const toCity = usePlaceCity(isFlight ? item.to_place : null).city;
   const fromCc = item.from_place?.country || startCc || '';
   const toCc = item.to_place?.country || endCc || '';
   const fromLabel = [fromCity, fromCc].filter(Boolean).join(' - ');
