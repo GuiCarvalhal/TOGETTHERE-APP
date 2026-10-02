@@ -9,7 +9,7 @@ import {
 } from '@/lib/formatPlaceTime';
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
-import { usePlaceCity } from '@/lib/usePlaceCity';
+import { useFlightEnrichment } from '@/lib/useFlightEnrichment';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
@@ -52,7 +52,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const startFull = allDay ? '' : formatTimeWithCountry(item.start_datetime, startTz, startCc);
   const endFull = (allDay || !item.end_datetime) ? '' : formatTimeWithCountry(item.end_datetime, endTz, endCc);
   const duration = (!allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
-  const meta = journeyMeta(item);
+  const { fromCity, toCity, airline: enrichedAirline } = useFlightEnrichment(item);
+  const meta = journeyMeta(item, enrichedAirline);
   // Flight-only content for the four card rows (geometry unchanged):
   //  row1 meta  = number · airline · '8h 30m duration' (duration kept here, not
   //              duplicated in the timing row);
@@ -62,8 +63,6 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const isFlight = item.type === 'flight';
   const flightDur = (isFlight && !allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
   const metaLine = isFlight ? [meta, flightDur && `${flightDur} duration`].filter(Boolean).join(' · ') : meta;
-  const fromCity = usePlaceCity(isFlight ? item.from_place : null).city;
-  const toCity = usePlaceCity(isFlight ? item.to_place : null).city;
   const fromCc = item.from_place?.country || startCc || '';
   const toCc = item.to_place?.country || endCc || '';
   const fromLabel = [fromCity, fromCc].filter(Boolean).join(' - ');
@@ -133,7 +132,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           {/* Metadata line — the first line of the card (no item-type label) */}
           {metaLine && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{metaLine}</p>}
 
-          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? <span className="block truncate">{flightRoute}</span> : item.title}</h3>
+          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? <span className="block truncate">{flightRoute || item.title}</span> : item.title}</h3>
 
           {/* Timing: stay legs show a Check-in/Check-out pill + the single
               primary time; other items show start → end · duration. */}
@@ -155,8 +154,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
               <>
                 {startFull && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{startFull}</span>}
                 {endFull && <><span className="opacity-50">→</span><span>{endFull}</span></>}
-                {duration && !isFlight && (
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold border ${onCover ? 'border-transparent bg-white/20 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/60'}`}>
+                {duration && (
+                  <span aria-hidden={isFlight ? 'true' : undefined} className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold border ${isFlight ? 'invisible' : ''} ${onCover ? 'border-transparent bg-white/20 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/60'}`}>
                     {duration}
                   </span>
                 )}

@@ -304,7 +304,7 @@ export function isAllDayItem(item, timeZone) {
 // values. Flight → flight number + carrier (carrier parsed from the lookup-
 // generated title "Flight AA123 — American Airlines"); Stay/Activity → the
 // Google Places name (location_name); Ride → the destination (location_to).
-export function journeyMeta(item) {
+export function journeyMeta(item, enrichedAirline = '') {
   if (!item) return '';
   if (item.type === 'flight') {
     const num = (item.confirmation_number || '').trim();
@@ -313,6 +313,7 @@ export function journeyMeta(item) {
       const m = (item.title || '').match(/^[Ff]light\s+\S+\s+[—–-]\s+(.+)$/);
       if (m) carrier = m[1].trim();
     }
+    if (!carrier) carrier = enrichedAirline || '';
     return [num && `Flight ${num}`, carrier].filter(Boolean).join(' · ');
   }
   if (item.type === 'car') return item.location_to || item.location_name || '';

@@ -22,6 +22,8 @@ import { secrets } from 'base44:runtime';
 // queries are cached briefly (especially route searches, which cost 2 calls)
 // to protect quota.
 
+import { fetchAirportByIata } from '../../shared/aeroDataBox.ts';
+
 const RAPID_HOST = 'aerodatabox.p.rapidapi.com';
 const CACHE_TTL_MS = 60_000; // 1 minute — protects against double-clicks / re-edits
 const AIRPORT_CACHE_TTL_MS = 300_000; // 5 minutes — airports rarely change
@@ -175,19 +177,8 @@ async function airportByIata(key: string, iata: string): Promise<any | null> {
   const ck = `iata:${iata}`;
   const cached = airportCached(ck);
   if (cached !== undefined) return cached;
-  const url = `https://${RAPID_HOST}/airports/iata/${encodeURIComponent(iata)}`;
-  const r = await fetchJson(key, url, 'iata');
-  let val: any = null;
-  if (r.__ok && r.data?.iata) {
-    val = {
-      iata: r.data.iata,
-      name: r.data.shortName || r.data.name || '',
-      country: (r.data.countryCode || '').toUpperCase(),
-      tz: r.data.timeZone || '',
-      lat: r.data.location?.lat ?? null,
-      lon: r.data.location?.lon ?? null,
-    };
-  }
+  const a = await fetchAirportByIata(key, iata);
+  const val = a ? { iata: a.iata, name: a.name, country: a.country, tz: a.tz, lat: a.lat, lon: a.lon } : null;
   setAirportCache(ck, val);
   return val;
 }

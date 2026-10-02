@@ -134,10 +134,14 @@ export async function autocompletePlaces(key, text, types) {
 // name or IATA code). Returns '' when no suitable component exists.
 function cityFromComponents(components: any[]): string {
   if (!Array.isArray(components)) return '';
-  const preferred = ['locality', 'postal_town', 'administrative_area_level_1', 'administrative_area_level_2', 'sublocality', 'neighborhood'];
+  // locality / postal_town are the reliable city sources. administrative_area_level_2
+  // (longText only) is a fallback municipality; admin_area_level_1 (state/province)
+  // is NEVER used — its shortText is a state code (e.g. "SP"), not a city. If none
+  // of these exist, return '' (honest missing) rather than inventing a city.
+  const preferred = ['locality', 'postal_town', 'administrative_area_level_2'];
   for (const t of preferred) {
     const c = components.find((c) => (c.types || []).includes(t));
-    if (c) return c.shortText || c.longText || '';
+    if (c) return c.longText || c.shortText || '';
   }
   return '';
 }
