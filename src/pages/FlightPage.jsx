@@ -212,7 +212,21 @@ export default function FlightPage() {
 
   return (
     <div className="space-y-4">
-      <DetailActionBar onBack={back} />
+      <DetailActionBar
+        onBack={back}
+        backDisabled={saving}
+        actions={
+          <>
+            <Button type="button" variant="secondary" size="sm" onClick={back} disabled={saving} className="shrink-0">
+              <X /> Cancel
+            </Button>
+            <Button type="submit" form="flight-form" size="sm" disabled={saving || resolving || flightNeedsSelection} className="shrink-0">
+              {saving ? <Loader2 className="animate-spin" /> : isEdit ? <Check /> : <Plus />}
+              {isEdit ? 'Save changes' : 'Add flight'}
+            </Button>
+          </>
+        }
+      />
       <div className="mt-5 space-y-4">
         <div className="tt-card p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -221,7 +235,7 @@ export default function FlightPage() {
           </div>
           <p className="text-xs text-ink-deep/55">Search by flight number or route, pick a result to fill the details, or enter them manually. Your draft stays put until you save.</p>
         </div>
-        <form onSubmit={handleSave} className="tt-card p-4 space-y-4">
+        <form id="flight-form" onSubmit={handleSave} className="tt-card p-4 space-y-4">
           <FlightEditor
             form={form}
             setForm={setForm}
@@ -236,13 +250,6 @@ export default function FlightPage() {
           {flightNeedsSelection && (
             <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap “Enter manually instead”.</p>
           )}
-          <div className="flex items-center gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={back}><X /> Cancel</Button>
-            <Button type="submit" disabled={saving || resolving || flightNeedsSelection} className="ml-auto">
-              {saving ? <Loader2 className="animate-spin" /> : isEdit ? <Check /> : <Plus />}
-              {isEdit ? 'Save changes' : 'Add flight'}
-            </Button>
-          </div>
         </form>
       </div>
     </div>

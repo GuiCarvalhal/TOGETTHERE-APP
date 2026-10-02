@@ -11,25 +11,29 @@ import { Button } from '@/components/ui/button';
 //  - Edit: Pencil + "Edit" label, secondary (neutral filled).
 //  - Delete: icon-only trash, destructive (solid red) — compact sticky bar
 //    exception. Keeps its confirmation dialog (caller's onDelete).
-export default function DetailActionBar({ onBack, canEdit, canDelete, onEdit, onDelete, deleting }) {
-  const showActions = canEdit || canDelete;
+export default function DetailActionBar({ onBack, canEdit, canDelete, onEdit, onDelete, deleting, actions, backDisabled }) {
+  const showActions = actions || canEdit || canDelete;
   return (
     <StickyBar>
-      <Button variant="default" size="icon" onClick={onBack} aria-label="Back to journey" className="shrink-0">
+      <Button variant="default" size="icon" onClick={onBack} disabled={backDisabled} aria-label="Back to journey" className="shrink-0">
         <ArrowLeft />
       </Button>
 
       {showActions && (
         <div className="ml-auto flex items-center gap-2">
-          {canEdit && (
-            <Button variant="secondary" size="sm" onClick={onEdit} className="shrink-0">
-              <Pencil /> Edit
-            </Button>
-          )}
-          {canDelete && (
-            <Button variant="destructive" size="icon" onClick={onDelete} disabled={deleting} aria-label="Delete" className="shrink-0">
-              {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-            </Button>
+          {actions || (
+            <>
+              {canEdit && (
+                <Button variant="secondary" size="sm" onClick={onEdit} className="shrink-0">
+                  <Pencil /> Edit
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="destructive" size="icon" onClick={onDelete} disabled={deleting} aria-label="Delete" className="shrink-0">
+                  {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                </Button>
+              )}
+            </>
           )}
         </div>
       )}
