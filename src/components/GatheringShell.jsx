@@ -75,19 +75,18 @@ function ShellInner() {
   const dateRange = formatGatheringRange(gathering, journeyItems, uid);
   const dests = gatheringDestinations(gathering);
 
-  // Flight detail route: hide the gathering hero (flight detail has its own
-  // compact header). Non-flight detail keeps the hero. Detected from the
-  // already-loaded journeyItems (id + type) so there's no extra fetch or flash.
+  // Any journey item detail route hides the gathering hero — the detail page
+  // has its own sticky DetailActionBar (Back/Edit/Delete) as the first element
+  // below the global TopBar. Excludes /new and /:itemId/edit (editor surfaces).
+  // Pure route-based detection — no data lookup, no extra fetch or flash.
   const detailMatch = location.pathname.match(/^\/gathering\/[^/]+\/journey\/([^/]+)$/);
-  const detailItemId = detailMatch?.[1];
-  const detailItem = detailItemId && detailItemId !== 'new' ? journeyItems.find((j) => j.id === detailItemId) : null;
-  const isFlightDetail = detailItem?.type === 'flight';
+  const isItemDetail = !!detailMatch && detailMatch[1] !== 'new';
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TopBar gatheringId={id} onOpenMenu={() => setMoreOpen(true)} />
-      {/* Cover-photo header — hidden on flight detail */}
-      {!isFlightDetail && <header className="relative">
+      {/* Cover-photo header — hidden on journey item detail */}
+      {!isItemDetail && <header className="relative">
         <div className="relative h-[124px] sm:h-[168px] w-full overflow-hidden">
           {gathering.cover_image ? (
             <Image src={gathering.cover_image} alt={gathering.name} className="w-full h-full object-cover" fittingType="fill" />

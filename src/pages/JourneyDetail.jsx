@@ -13,7 +13,7 @@ import SegmentMap from '@/components/journey/SegmentMap';
 import Skeleton from '@/components/tt/Skeleton';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useToast } from '@/components/ui/use-toast';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays } from 'lucide-react';
+import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Clock, CalendarDays } from 'lucide-react';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
 import FlightDetailView from '@/components/journey/FlightDetailView';
 import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
@@ -108,10 +108,7 @@ export default function JourneyDetail() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2 pt-1">
-          <Skeleton className="h-9 w-9 rounded-full" />
-          <Skeleton className="h-4 w-24" />
-        </div>
+        <DetailActionBar onBack={back} />
         <div className="tt-card p-4 space-y-4">
           <Skeleton className="h-12 w-12 rounded-xl" />
           <Skeleton className="h-7 w-2/3" tone="cream" />
@@ -126,13 +123,13 @@ export default function JourneyDetail() {
   }
   if (error || !item) {
     return (
-      <div className="tt-card p-10 text-center max-w-md mx-auto">
-        <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
-        <p className="font-display text-2xl mb-2 text-ink-deep">Segment not found</p>
-        <p className="text-ink-deep/60 mb-6 text-sm">This segment may have been removed or you don't have access.</p>
-        <button onClick={back} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">
-          <ArrowLeft className="w-4 h-4" /> Back to journey
-        </button>
+      <div className="space-y-4">
+        <DetailActionBar onBack={back} />
+        <div className="tt-card p-10 text-center max-w-md mx-auto">
+          <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
+          <p className="font-display text-2xl mb-2 text-ink-deep">Segment not found</p>
+          <p className="text-ink-deep/60 text-sm">This segment may have been removed or you don't have access.</p>
+        </div>
       </div>
     );
   }

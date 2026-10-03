@@ -77,8 +77,6 @@ export default async function(req) {
     // Minimal journey items so the gathering header can derive the date range
     // (earliest..latest across the current user's items, falling back to all).
     const journeyItems = (journeyItemsRaw || []).map((it) => ({
-      id: it.id,
-      type: it.type || null,
       start_datetime: it.start_datetime || null,
       end_datetime: it.end_datetime || null,
       owner_id: it.owner_id || null,
