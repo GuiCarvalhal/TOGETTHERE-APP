@@ -4,7 +4,7 @@ import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canAddJourney, closeFriendUserIds, itemsByCloseFriends } from '@/lib/gatheringHelpers';
 import { tzDateKey } from '@/lib/formatPlaceTime';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
@@ -69,14 +69,21 @@ export default function GatheringJourney() {
 
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
   const uid = currentMember?.user_id;
+  const isViewer = role === 'viewer';
+  // Close-friends membership scope (used for viewers' "Close" tab, since
+  // viewers don't own/attend items themselves). Members the viewer marked
+  // Close — reuses the existing myRelationship field set by getGatheringContext.
+  const closeUids = closeFriendUserIds(members, currentMember);
   // MINE = items the signed-in user owns/created (owner_id is the item creator)
   // OR is an explicit attendee of (attendee_user_ids is the opt-in list,
   // distinct from the ACL member_user_ids which every visible item shares).
   // owner_user_id is the gathering owner (set on every item), NOT the item
-  // creator, so it is intentionally not used here. GROUP = the complete combined
-  // journey for all participating members (everything the user can read).
+  // creator, so it is intentionally not used here. For viewers, MINE becomes
+  // CLOSE = items created by or attended by a close-friend member. GROUP = the
+  // complete combined journey for all participating members (everything the
+  // user can read).
   const visibleItems = scope === 'mine'
-    ? items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
+    ? (isViewer ? itemsByCloseFriends(items, closeUids) : items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid)))
     : items;
   // Type filter composes with scope: narrows the visible set to a single
   // journey type (or all). Feeds both the timeline entries and the route map
@@ -203,8 +210,8 @@ export default function GatheringJourney() {
       {filteredItems.length === 0 ? (
         <EmptyState
           icon={Compass}
-          title={typeFilter !== 'all' ? 'No segments of this type' : (scope === 'mine' ? 'No segments from you yet' : 'No segments yet')}
-          body={typeFilter !== 'all' ? 'Switch to All to see every segment, or pick another type.' : (scope === 'mine' ? 'Add your own flights, stays and activities to see them here.' : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together.")}
+          title={typeFilter !== 'all' ? 'No segments of this type' : (scope === 'mine' ? (isViewer ? 'No segments from your close friends yet' : 'No segments from you yet') : 'No segments yet')}
+          body={typeFilter !== 'all' ? 'Switch to All to see every segment, or pick another type.' : (scope === 'mine' ? (isViewer ? 'Mark members as Close from their profile to see their segments here, or switch to Group.' : 'Add your own flights, stays and activities to see them here.') : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together.")}
           action={canAdd && typeFilter === 'all' ? (
             <Button onClick={() => navigate(`/gathering/${gatheringId}/journey/new`)}>
               <Plus /> Add the first segment

@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { base44 } from '@/api/base44Client';
 import { Image } from '@/components/ui/image';
 import { Button } from '@/components/ui/button';
-import { Loader2, MapPin, CalendarDays, Check, Clock, Lock, Eye, Users, ArrowRight, Sparkles } from 'lucide-react';
+import { Loader2, MapPin, CalendarDays, Check, Eye, Users, ArrowRight } from 'lucide-react';
 import { formatDateRange } from '@/lib/gatheringHelpers';
 
 export default function JoinGathering() {
@@ -45,8 +45,13 @@ export default function JoinGathering() {
         requested_role: asViewer ? 'viewer' : 'member',
       });
       const data = res.data || res;
-      setResult(data.status);
-      if (data.status === 'joined') {
+      // Joining is immediate through either link. An existing member is never
+      // re-joined and never has their role changed by a link.
+      if (data.status === 'joined' || data.status === 'already_member') {
+        setResult('joined');
+        setTimeout(() => navigate(`/gathering/${gatheringId}/journey`, { replace: true }), 700);
+      } else {
+        setResult('joined');
         setTimeout(() => navigate(`/gathering/${gatheringId}/journey`, { replace: true }), 700);
       }
     } catch (e) {
@@ -74,7 +79,6 @@ export default function JoinGathering() {
   }
 
   const g = info.gathering;
-  const mode = g.privacy_mode || 'invite';
 
   return (
     <div className="min-h-screen bg-ink text-cream flex flex-col">
@@ -99,8 +103,8 @@ export default function JoinGathering() {
           </div>
           <div className="p-6">
             <div className="flex items-center gap-2 mb-2">
-              <span className="tt-stamp bg-terra/15 text-terra-coral border-terra/30 capitalize">{g.status}</span>
               {asViewer && <span className="tt-stamp bg-transparent text-ink-deep/55 border-ink-charcoal/25 border-dashed">Viewer invite</span>}
+              {!asViewer && <span className="tt-stamp bg-transparent text-ink-deep/55 border-ink-charcoal/25 border-dashed">Member invite</span>}
             </div>
             <h1 className="font-display text-3xl sm:text-4xl font-bold text-ink-deep leading-tight">{g.name}</h1>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-ink-deep/70 text-sm">
@@ -111,51 +115,24 @@ export default function JoinGathering() {
           </div>
         </div>
 
-        {/* Action panel */}
+        {/* Action panel — immediate join, role set by the link */}
         <div className="mt-6 tt-card p-6">
-          {result === 'joined' && (
+          {result === 'joined' ? (
             <div className="text-center py-4">
               <div className="w-12 h-12 rounded-full bg-terra/15 text-terra-deep flex items-center justify-center mx-auto mb-3"><Check className="w-6 h-6" /></div>
               <p className="font-display text-2xl text-ink-deep mb-1">You're in!</p>
               <p className="text-ink-deep/60 text-sm">Taking you to the gathering…</p>
             </div>
-          )}
-          {result === 'requested' && (
-            <div className="text-center py-4">
-              <div className="w-12 h-12 rounded-full bg-terra/15 text-terra-deep flex items-center justify-center mx-auto mb-3"><Clock className="w-6 h-6" /></div>
-              <p className="font-display text-2xl text-ink-deep mb-1">Request sent</p>
-              <p className="text-ink-deep/60 text-sm">The host will review your request and let you in.</p>
-            </div>
-          )}
-          {result === 'pending' && (
-            <div className="text-center py-4">
-              <div className="w-12 h-12 rounded-full bg-terra/15 text-terra-deep flex items-center justify-center mx-auto mb-3"><Clock className="w-6 h-6" /></div>
-              <p className="font-display text-2xl text-ink-deep mb-1">Already requested</p>
-              <p className="text-ink-deep/60 text-sm">You have a pending request. The host will respond soon.</p>
-            </div>
-          )}
-          {!result && mode === 'invite' && (
-            <div className="text-center py-2">
-              <Lock className="w-10 h-10 text-terra mx-auto mb-3" />
-              <p className="font-display text-2xl text-ink-deep mb-1">Invite-only</p>
-              <p className="text-ink-deep/60 text-sm max-w-sm mx-auto">This gathering is invite-only. Ask the host to add you directly, or send you a personal invite link.</p>
-            </div>
-          )}
-          {!result && mode === 'open' && (
+          ) : (
             <div>
-              <p className="text-ink-deep/70 text-sm mb-4">This gathering is open — anyone with the link can join. {asViewer ? 'You\'ll join as a Viewer with read-only access.' : 'You\'ll join as a Member.'}</p>
+              <p className="text-ink-deep/70 text-sm mb-4">
+                {asViewer
+                  ? "You'll join as a Viewer with read-only access to the journey and members — no expenses or agent."
+                  : "You'll join as a Member and can take part in the journey, expenses, and the agent."}
+              </p>
               <Button onClick={handleJoin} disabled={acting} className="w-full bg-terra hover:bg-terra-deep text-cream rounded-full h-11">
                 {acting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : (asViewer ? <Eye className="w-5 h-5 mr-2" /> : <Users className="w-5 h-5 mr-2" />)}
                 {asViewer ? 'Join as Viewer' : 'Join gathering'}
-              </Button>
-            </div>
-          )}
-          {!result && mode === 'approval' && (
-            <div>
-              <p className="text-ink-deep/70 text-sm mb-4">The host approves each request. {asViewer ? 'You\'re requesting to join as a Viewer (read-only).' : 'You\'re requesting to join as a Member.'}</p>
-              <Button onClick={handleJoin} disabled={acting} className="w-full bg-terra hover:bg-terra-deep text-cream rounded-full h-11">
-                {acting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Sparkles className="w-5 h-5 mr-2" />}
-                Request to join
               </Button>
             </div>
           )}

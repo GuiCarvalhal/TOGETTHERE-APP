@@ -36,6 +36,33 @@ export function participantIds(members) {
   return members.filter((m) => isParticipant(m.role)).map((m) => m.id);
 }
 
+// Participants only (owner/member) — viewers excluded. Shared by every
+// attendee/payer/split picker so viewers never appear in journey attendee
+// selection or expense payer/split lists.
+export function participantMembers(members) {
+  return (members || []).filter((m) => isParticipant(m.role));
+}
+
+// User ids the current user has marked Close within a gathering (the
+// close-friends membership scope). Excludes the user themself. Used by viewers'
+// "Close" tab, since viewers don't own/attend items themselves.
+export function closeFriendUserIds(members, currentMember) {
+  const selfId = currentMember?.id;
+  return new Set((members || [])
+    .filter((m) => m.id !== selfId && m.myRelationship === 'close' && m.user_id)
+    .map((m) => m.user_id));
+}
+
+// Items visible under the "Close" scope (viewers): items a close-friend created
+// or is an attendee of. Pure so it can be unit-tested and reused.
+export function itemsByCloseFriends(items, closeUids) {
+  const uids = closeUids instanceof Set ? closeUids : new Set(closeUids || []);
+  return (items || []).filter((it) =>
+    (it.owner_id && uids.has(it.owner_id)) ||
+    (it.attendee_user_ids || []).some((id) => uids.has(id))
+  );
+}
+
 // Relationship visibility: returns 'full' | 'limited'
 // Owners always see full detail for coordination. Otherwise depends on the
 // private relationship the viewer set toward the target ('close' | 'casual').

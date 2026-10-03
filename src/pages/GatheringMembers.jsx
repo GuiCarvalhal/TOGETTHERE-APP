@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
+import { base44 } from '@/api/base44Client';
 import { canManageMembers, ROLES } from '@/lib/gatheringHelpers';
 import MemberRow from '@/components/members/MemberRow';
 import MemberDetailSheet from '@/components/members/MemberDetailSheet';
