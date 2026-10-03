@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, X, Plane, Car, Train, Hotel, Ship, MapPin } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, formatGatheringRange } from '@/lib/gatheringDates';
+import { format, differenceInCalendarDays } from 'date-fns';
 import EmptyState from '@/components/tt/EmptyState';
 import AppHeader from '@/components/tt/AppHeader';
 import Skeleton from '@/components/tt/Skeleton';
@@ -114,6 +115,24 @@ export default function Home() {
     a.sortKey.bucket - b.sortKey.bucket || a.sortKey.ts - b.sortKey.ts
   );
 
+  // Featured eyebrow: date-focused relative + absolute timing for the next
+  // upcoming segment (replaces the gathering name). Ongoing → HAPPENING NOW ·
+  // TODAY · <today>; upcoming → UP NEXT · <relative> · <start date>. The exact
+  // departure clock time lives on the JourneyCard below; this line is the
+  // calendar-date + how-soon context, which is the more important line.
+  const featuredEyebrow = (() => {
+    if (!nextUpcoming) return null;
+    const start = nextUpcoming.item.start_datetime ? new Date(nextUpcoming.item.start_datetime) : null;
+    const refDate = nextUpcoming.ongoing ? now : start;
+    const absDate = refDate ? format(refDate, 'EEE, MMM d') : '';
+    const days = start ? differenceInCalendarDays(start, now) : 0;
+    const relative = nextUpcoming.ongoing
+      ? 'TODAY'
+      : days <= 0 ? 'TODAY' : days === 1 ? 'TOMORROW' : `IN ${days} DAYS`;
+    const statusLabel = nextUpcoming.ongoing ? 'HAPPENING NOW' : 'UP NEXT';
+    return { statusLabel, relative, absDate };
+  })();
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Universal header */}
@@ -123,11 +142,15 @@ export default function Home() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10">
         {nextUpcoming ? (
           <div>
-            <p className="tt-label text-terra-coral mb-3">
-              {nextUpcoming.ongoing
-                ? `Now · ${gatherings.find((g) => g.id === nextUpcoming.gatheringId)?.name || 'Your trip'}`
-                : `Up next · ${gatherings.find((g) => g.id === nextUpcoming.gatheringId)?.name || 'Your trip'}`}
-            </p>
+            {featuredEyebrow && (
+              <p className="text-sm font-bold mb-3 tracking-wide flex flex-wrap items-baseline gap-x-1.5">
+                <span className="text-terra-coral uppercase">{featuredEyebrow.statusLabel}</span>
+                <span className="text-ink-deep/30">·</span>
+                <span className="text-ink-deep uppercase">{featuredEyebrow.relative}</span>
+                <span className="text-ink-deep/30">·</span>
+                <span className="text-ink-deep/75">{featuredEyebrow.absDate}</span>
+              </p>
+            )}
             <JourneyCard
               item={nextUpcoming.item}
               leg={nextUpcoming.item.type === 'hotel' ? 'check-in' : undefined}
@@ -150,19 +173,21 @@ export default function Home() {
 
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
-        <Button onClick={() => setOpen(true)} className="w-full sm:w-auto mb-6"><Plus /> New Gathering</Button>
-        <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
-          <h2 className="font-display text-2xl font-bold">Your gatherings</h2>
-          {gatherings.length > 1 && (
-            <div className="flex items-center gap-2">
-              {FILTERS.map((f) => (
-                <button key={f.key} onClick={() => setFilter(f.key)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${filter === f.key ? 'bg-primary text-primary-foreground' : 'tt-ink-panel text-muted-foreground hover:text-foreground'}`}>
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-3 min-w-0 flex-wrap">
+            <h2 className="font-display text-2xl font-bold whitespace-nowrap">Your gatherings</h2>
+            {gatherings.length > 1 && (
+              <div className="flex items-center gap-2">
+                {FILTERS.map((f) => (
+                  <button key={f.key} onClick={() => setFilter(f.key)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${filter === f.key ? 'bg-primary text-primary-foreground' : 'tt-ink-panel text-muted-foreground hover:text-foreground'}`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <Button onClick={() => setOpen(true)} size="sm" className="shrink-0"><Plus /> New Gathering</Button>
         </div>
 
         {loading ? (
