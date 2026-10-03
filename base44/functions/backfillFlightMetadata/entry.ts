@@ -139,6 +139,17 @@ export default async function (req) {
       const newFrom = { ...fp };
       // IATA: stored || title
       if (!newFrom.iata && titleFromIata) { newFrom.iata = titleFromIata; fromChanged = true; }
+      // If still no IATA but we have coordinates, recover it via nearest-airport
+      // (also fills city/country/tz from the same lookup).
+      if (!newFrom.iata && newFrom.lat != null && newFrom.lng != null) {
+        const near = await lookupNearest(newFrom.lat, newFrom.lng);
+        if (near?.iata) {
+          newFrom.iata = near.iata; fromChanged = true;
+          if (!newFrom.city && near.city) { newFrom.city = near.city; fromChanged = true; }
+          if (!newFrom.country && near.country) { newFrom.country = near.country; fromChanged = true; }
+          if (!newFrom.tz && near.tz) { newFrom.tz = near.tz; fromChanged = true; }
+        }
+      }
       // City / country / tz: prefer AeroDataBox by IATA, else Google Places by place_id
       const fromIata = newFrom.iata || '';
       const fromNeedsMeta = !newFrom.city || !newFrom.country || !newFrom.tz;
@@ -170,6 +181,16 @@ export default async function (req) {
       let toChanged = false;
       const newTo = { ...tp };
       if (!newTo.iata && titleToIata) { newTo.iata = titleToIata; toChanged = true; }
+      // If still no IATA but we have coordinates, recover it via nearest-airport.
+      if (!newTo.iata && newTo.lat != null && newTo.lng != null) {
+        const near = await lookupNearest(newTo.lat, newTo.lng);
+        if (near?.iata) {
+          newTo.iata = near.iata; toChanged = true;
+          if (!newTo.city && near.city) { newTo.city = near.city; toChanged = true; }
+          if (!newTo.country && near.country) { newTo.country = near.country; toChanged = true; }
+          if (!newTo.tz && near.tz) { newTo.tz = near.tz; toChanged = true; }
+        }
+      }
       const toIata = newTo.iata || '';
       const toNeedsMeta = !newTo.city || !newTo.country || !newTo.tz;
       if (toNeedsMeta && toIata) {
