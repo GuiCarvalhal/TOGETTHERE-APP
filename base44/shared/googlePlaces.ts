@@ -1,4 +1,5 @@
 import { providerJson, ProviderFailure, invalidProviderShape } from './providerJson.ts';
+import { alpha2ToAlpha3 } from './isoCountries.ts';
 
 // Shared Google Places (New Places API v1) + Geocoding helpers.
 // Used by getPlaceInfo and generateRecommendations so the Places fetch logic
@@ -173,6 +174,7 @@ export async function getPlaceDetails(key, placeId) {
     lat: p.location?.latitude ?? null,
     lng: p.location?.longitude ?? null,
     country,
+    country_alpha3: alpha2ToAlpha3(country),
     city,
   };
 }
@@ -200,7 +202,7 @@ export async function resolveAirportPlace(key, iata) {
     place_id: p.id || '',
     name: p.displayName?.text || iata,
     address: p.formattedAddress || '',
-    lat, lng, country, tz, city,
+    lat, lng, country, country_alpha3: alpha2ToAlpha3(country), tz, city,
   };
 }
 

@@ -34,24 +34,29 @@ export function itemEndCountry(item) {
 // those, they geocode the FIRST segment before the arrow so an arrow-style
 // route like "Bomerano → Nocelle" resolves instead of rendering blank.
 // When a stored tz exists the fallback hook is given '' so it never fires.
-export function useItemStartTz(item) {
+// `storedOnly` (default false): when true, never geocode at render — return
+// the stored place tz/country only (null/'' when absent). Flight cards pass
+// storedOnly=true so opening the journey list makes ZERO Google/AeroDataBox
+// requests; non-flight cards and the detail page keep the legacy geocoding
+// fallback for free-text records.
+export function useItemStartTz(item, storedOnly = false) {
   const stored = itemStartTz(item);
-  const fallback = usePlaceTimezone(stored ? '' : arrowFirst(startLocation(item)));
+  const fallback = usePlaceTimezone((stored || storedOnly) ? '' : arrowFirst(startLocation(item)));
   return stored || fallback || null;
 }
-export function useItemEndTz(item) {
+export function useItemEndTz(item, storedOnly = false) {
   const stored = itemEndTz(item);
-  const fallback = usePlaceTimezone(stored ? '' : arrowFirst(endLocation(item)));
+  const fallback = usePlaceTimezone((stored || storedOnly) ? '' : arrowFirst(endLocation(item)));
   return stored || fallback || null;
 }
-export function useItemStartCountry(item) {
+export function useItemStartCountry(item, storedOnly = false) {
   const stored = itemStartCountry(item);
-  const fallback = usePlaceCountryCode(stored ? '' : arrowFirst(startLocation(item)));
+  const fallback = usePlaceCountryCode((stored || storedOnly) ? '' : arrowFirst(startLocation(item)));
   return stored || fallback || '';
 }
-export function useItemEndCountry(item) {
+export function useItemEndCountry(item, storedOnly = false) {
   const stored = itemEndCountry(item);
-  const fallback = usePlaceCountryCode(stored ? '' : arrowFirst(endLocation(item)));
+  const fallback = usePlaceCountryCode((stored || storedOnly) ? '' : arrowFirst(endLocation(item)));
   return stored || fallback || '';
 }
 

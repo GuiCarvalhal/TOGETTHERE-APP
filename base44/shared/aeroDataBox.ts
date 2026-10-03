@@ -41,6 +41,25 @@ export async function fetchAirportByIata(key, iata) {
   };
 }
 
+// Resolve the nearest airport to a lat/lng via the AeroDataBox location
+// search endpoint. Used by the flight-metadata backfill to recover an IATA
+// code for legacy records that have a resolved Google Place (lat/lng) but no
+// stored IATA. Returns null when no airport is found within the radius.
+export async function fetchNearestAirport(key, lat, lng) {
+  const source = 'aerodatabox.airport';
+  const data = await request(key, `/airports/search/location?lat=${lat}&lon=${lng}&radiusKm=100&limit=5`, source);
+  if (data === null) return null;
+  const items = Array.isArray(data?.items) ? data.items : [];
+  if (!items.length) return null;
+  const a = items[0];
+  if (!a || typeof a !== 'object') throw invalidProviderShape(source);
+  return {
+    iata: text(a.iata), municipality: text(a.municipalityName),
+    country: text(a.countryCode).toUpperCase(), tz: text(a.timeZone),
+    name: text(a.shortName || a.name),
+  };
+}
+
 export async function fetchFlightByNumber(key, flightNumber, date) {
   const source = 'aerodatabox.flight';
   const data = await request(key, `/flights/number/${encodeURIComponent(flightNumber)}/${encodeURIComponent(date)}`, source);

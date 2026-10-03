@@ -93,6 +93,22 @@ export function formatTimeTz(iso, timeZone) {
   } catch { return ''; }
 }
 
+// "10:00 AM EDT-USA" — wall clock + DST-aware abbreviation + ISO alpha-3
+// country code, the flight card line-3 format. No GMT offsets: the
+// abbreviation is computed from the stored IANA tz at the scheduled instant
+// (EDT vs EST). Without an alpha-3 code: "10:00 AM EDT". Without an
+// abbreviation: the bare wall clock. Used only by flight cards; the detail
+// page and non-flight cards keep formatTimeWithCountry (alpha-2).
+export function formatTimeAbbrAlpha3(iso, timeZone, alpha3) {
+  if (!iso || !timeZone) return '';
+  const time = formatTimeOnly(iso, timeZone);
+  if (!time) return '';
+  const abbr = tzAbbrAt(iso, timeZone);
+  // Never show a bare GMT offset on flight cards — only a real abbreviation.
+  if (!abbr || /^GMT[+-]/.test(abbr)) return time;
+  return alpha3 ? `${time} ${abbr}-${alpha3}` : `${time} ${abbr}`;
+}
+
 // "Jun 27" — date only, in the place tz (no abbreviation; date-only).
 export function formatDateTz(iso, timeZone) {
   if (!iso) return '';

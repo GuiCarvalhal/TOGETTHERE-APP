@@ -144,6 +144,10 @@
         "country": {
           "type": "string"
         },
+        "country_alpha3": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-3 country code (e.g. 'USA', 'ITA') for the origin, derived from the alpha-2 country code. Absent on legacy rows; the card falls back to a static alpha-2->alpha-3 conversion."
+        },
         "city": {
           "type": "string",
           "description": "Origin city/locality from Google address_components. Absent on legacy rows."
@@ -178,6 +182,10 @@
         },
         "country": {
           "type": "string"
+        },
+        "country_alpha3": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-3 country code (e.g. 'USA', 'ITA') for the destination, derived from the alpha-2 country code. Absent on legacy rows; the card falls back to a static alpha-2->alpha-3 conversion."
         },
         "city": {
           "type": "string",

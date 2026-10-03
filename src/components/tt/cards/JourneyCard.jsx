@@ -4,12 +4,12 @@ import { Paperclip, ChevronRight, Clock, CalendarDays, LogIn, LogOut } from 'luc
 import { Image } from '@/components/ui/image';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import {
-  formatTimeOnly, formatTimeWithCountry, formatDateTz, startLocation, endLocation,
+  formatTimeOnly, formatTimeWithCountry, formatTimeAbbrAlpha3, formatDateTz,
   formatDuration, isAllDayItem, journeyMeta, tzAbbrAt,
 } from '@/lib/formatPlaceTime';
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
-import { useFlightEnrichment } from '@/lib/useFlightEnrichment';
+import { alpha2ToAlpha3 } from '@/lib/isoCountries';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
@@ -31,11 +31,12 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // height never depends on whether avatars are present.
 export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber }) {
   const navigate = useNavigate();
-  const startTz = useItemStartTz(item);
-  const endTz = useItemEndTz(item);
-  const startCc = useItemStartCountry(item);
-  const endCc = useItemEndCountry(item);
-  const placePhoto = usePlacePhoto(item);
+  const isFlight = item.type === 'flight';
+  const startTz = useItemStartTz(item, isFlight);
+  const endTz = useItemEndTz(item, isFlight);
+  const startCc = useItemStartCountry(item, isFlight);
+  const endCc = useItemEndCountry(item, isFlight);
+  const placePhoto = usePlacePhoto(item, isFlight);
   const imageAtt = (item.attachments || []).find(isImg);
   const cover = showImages ? (imageAtt || placePhoto) : null;
   const onCover = !!cover;
@@ -49,27 +50,32 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const allDay = !isStayLeg && isAllDayItem(item, startTz);
   const startTime = allDay ? '' : formatTimeOnly(item.start_datetime, startTz);
   const endTime = (allDay || !item.end_datetime) ? '' : formatTimeOnly(item.end_datetime, endTz);
-  const startFull = allDay ? '' : formatTimeWithCountry(item.start_datetime, startTz, startCc);
-  const endFull = (allDay || !item.end_datetime) ? '' : formatTimeWithCountry(item.end_datetime, endTz, endCc);
+  // Flight cards render line 3 as "10:00 AM EDT-USA → 4:00 PM EDT-CAN"
+  // (DST-aware abbreviation + ISO alpha-3 country), all from stored data. Other
+  // types keep the alpha-2 format (EDT - US) so the detail page and non-flight
+  // cards are unchanged.
+  const startCc3 = isFlight ? (item.from_place?.country_alpha3 || alpha2ToAlpha3(item.from_place?.country) || '') : startCc;
+  const endCc3 = isFlight ? (item.to_place?.country_alpha3 || alpha2ToAlpha3(item.to_place?.country) || '') : endCc;
+  const startFull = allDay ? '' : (isFlight ? formatTimeAbbrAlpha3(item.start_datetime, startTz, startCc3) : formatTimeWithCountry(item.start_datetime, startTz, startCc));
+  const endFull = (allDay || !item.end_datetime) ? '' : (isFlight ? formatTimeAbbrAlpha3(item.end_datetime, endTz, endCc3) : formatTimeWithCountry(item.end_datetime, endTz, endCc));
   const duration = (!allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
-  const { fromCity, toCity, fromCountry, toCountry, airline: enrichedAirline, loading: enrichmentLoading, errors: enrichmentErrors, warnings: enrichmentWarnings } = useFlightEnrichment(item);
-  const meta = journeyMeta(item, enrichedAirline);
+  const meta = journeyMeta(item);
   // Flight-only content for the four card rows (geometry unchanged):
   //  row1 meta  = number · airline · '8h 30m duration' (duration kept here, not
   //              duplicated in the timing row);
-  //  row2 title = 'Origin City - CC → Destination City - CC' using the real city
-  //              from Google address components (never the airport name/IATA),
-  //              falling back to just the country code for legacy rows.
-  const isFlight = item.type === 'flight';
+  //  row2 title = 'Origin City (IATA) → Destination City (IATA)' using the real
+  //              city from the STORED place (resolved at entry time / batch
+  //              backfill), never a render-time API call. Falls back to the
+  //              airport name then the free-text location, then the item title.
   const flightDur = (isFlight && !allDay && !isStayLeg && item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
   const metaLine = isFlight ? [meta, flightDur && `${flightDur} duration`].filter(Boolean).join(' · ') : meta;
-  const fromCc = fromCountry || item.from_place?.country || startCc || '';
-  const toCc = toCountry || item.to_place?.country || endCc || '';
-  const fromLabel = [fromCity, fromCc].filter(Boolean).join(' - ');
-  const toLabel = [toCity, toCc].filter(Boolean).join(' - ');
-  const flightRoute = (fromLabel || toLabel) ? `${fromLabel} > ${toLabel}` : '';
-  const flightTooltip = [flightRoute || item.title, enrichmentLoading ? 'Resolving flight details…' : '',
-    ...[...enrichmentErrors, ...enrichmentWarnings].map(issue => `${issue.field} · ${issue.source}: ${issue.message}`)].filter(Boolean).join('\n');
+  const fromCity = item.from_place?.city || item.from_place?.name || item.location_from || '';
+  const toCity = item.to_place?.city || item.to_place?.name || item.location_to || '';
+  const fromIata = item.from_place?.iata || '';
+  const toIata = item.to_place?.iata || '';
+  const fromLabel = fromCity ? (fromIata ? `${fromCity} (${fromIata})` : fromCity) : (fromIata ? `(${fromIata})` : '');
+  const toLabel = toCity ? (toIata ? `${toCity} (${toIata})` : toCity) : (toIata ? `(${toIata})` : '');
+  const flightRoute = (fromLabel || toLabel) ? { from: fromLabel, to: toLabel } : null;
 
   // Rail time block uses the primary instant's wall clock + abbreviation.
   const railTime = leg === 'check-out' ? endTime : startTime;
@@ -134,7 +140,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           {/* Metadata line — the first line of the card (no item-type label) */}
           {metaLine && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{metaLine}</p>}
 
-          <h3 title={isFlight ? flightTooltip : undefined} aria-busy={isFlight && enrichmentLoading ? true : undefined} className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? <span className="block truncate">{flightRoute || item.title}</span> : item.title}</h3>
+          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? (flightRoute ? <span className="block truncate">{flightRoute.from}<span className="px-1.5 text-ink-deep/40">→</span>{flightRoute.to}</span> : <span className="block truncate">{item.title}</span>) : item.title}</h3>
 
           {/* Timing: stay legs show a Check-in/Check-out pill + the single
               primary time; other items show start → end · duration. */}

@@ -16,11 +16,16 @@ function canResolve(item) {
 // on the server (searchText → photo media → public upload, persisted on the
 // record) so subsequent renders never re-fetch. Returns null while resolving
 // or for items with no resolvable place — callers show the themed placeholder.
-export function usePlacePhoto(item) {
+// `storedOnly` (default false): when true, return the persisted place_photo
+// only and never resolve at render. Flight cards pass storedOnly=true so
+// opening the journey list makes ZERO Google Places photo requests; the card
+// falls back to the themed placeholder when no photo is stored.
+export function usePlacePhoto(item, storedOnly = false) {
   const [photo, setPhoto] = useState(item?.place_photo || null);
   useEffect(() => {
     if (!item?.id) return;
     if (item.place_photo) { setPhoto(item.place_photo); return; }
+    if (storedOnly) return;
     if (!canResolve(item) || resolving.has(item.id)) return;
     resolving.add(item.id);
     let active = true;
@@ -36,7 +41,7 @@ export function usePlacePhoto(item) {
       }
     })();
     return () => { active = false; };
-  }, [item?.id, item?.place_photo]);
+  }, [item?.id, item?.place_photo, storedOnly]);
   return photo;
 }
 
