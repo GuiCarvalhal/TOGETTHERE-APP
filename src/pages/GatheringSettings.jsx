@@ -22,7 +22,7 @@ const SAMPLE_COVERS = [
 ];
 
 export default function GatheringSettings() {
-  const { gatheringId, gathering, role, refresh } = useGathering();
+  const { gatheringId, gathering, role, refresh, setFab } = useGathering();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -48,6 +48,11 @@ export default function GatheringSettings() {
       });
     }
   }, [gathering?.id]);
+
+  useEffect(() => {
+    setFab(null);
+    return () => setFab(null);
+  }, [setFab]);
 
   if (role !== 'owner') {
     return (

@@ -138,7 +138,13 @@ export default function GatheringMembers() {
   const active = activeMember ? (members.find((m) => m.id === activeMember.id) || activeMember) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} onAdd={() => setShareOpen(true)} canAdd={canManage} addLabel="invite" filterRow={<FilterChips options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={setRoleFilter} />}>
+    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} action={canManage ? (
+      <Button variant="default" size="sm" onClick={() => setShareOpen(true)} className="shrink-0">
+        <UserPlus />
+        <span className="hidden sm:inline">Invite</span>
+        <span className="sm:hidden">Invite</span>
+      </Button>
+    ) : undefined} filterRow={<FilterChips options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={setRoleFilter} />}>
       {loading ? (
         <MembersSkeleton />
       ) : roleFiltered.length === 0 ? (
