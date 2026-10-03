@@ -29,7 +29,12 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
       <FlightDetailHeader item={item} />
 
       {item.confirmation_number && (
-        <FlightStatusCard flightNumber={item.confirmation_number} date={item.start_datetime ? item.start_datetime.slice(0, 10) : ''} />
+        <FlightStatusCard
+          flightNumber={item.confirmation_number}
+          date={item.start_datetime ? item.start_datetime.slice(0, 10) : ''}
+          originTimezone={item.from_place?.tz}
+          destinationTimezone={item.to_place?.tz}
+        />
       )}
 
       {/* Where — map only, no redundant text labels around the route */}

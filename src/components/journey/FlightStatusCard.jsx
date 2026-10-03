@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { Plane, RefreshCw, Clock } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import { formatOffsetLocal, formatOffsetTime } from '@/lib/formatPlaceTime';
-import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 
 const STATUS_TONE = {
   Scheduled: 'bg-ink-deep/8 text-ink-deep/70 border-ink-charcoal/15',
@@ -29,12 +28,16 @@ function timeAgo(iso) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export default function FlightStatusCard({ flightNumber, date }) {
+export default function FlightStatusCard({ flightNumber, date, originTimezone, destinationTimezone }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const depTz = usePlaceTimezone(data?.departure?.airport || data?.departure?.iata || '');
-  const arrTz = usePlaceTimezone(data?.arrival?.airport || data?.arrival?.iata || '');
+  // Use the saved item's stored place tz (from_place.tz / to_place.tz) to format
+  // status timestamps — no secondary airport geocode/lookup. When the stored tz
+  // is absent, formatOffsetLocal/Time fall back to the raw local string without
+  // any network call.
+  const depTz = originTimezone || null;
+  const arrTz = destinationTimezone || null;
 
   const load = useCallback(async (silent) => {
     if (!silent) setLoading(true);
