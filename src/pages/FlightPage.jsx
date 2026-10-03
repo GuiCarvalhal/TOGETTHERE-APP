@@ -41,7 +41,11 @@ export default function FlightPage() {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const [attendeeIds, setAttendeeIds] = useState([]);
+  // Fresh add: default to the current signed-in user (they can uncheck).
+  // Edit starts empty and is overwritten by the fetched record's attendees.
+  const [attendeeIds, setAttendeeIds] = useState(() =>
+    isEdit ? [] : (currentMember?.user_id ? [currentMember.user_id] : [])
+  );
   const [form, setForm] = useState({
     type: 'flight',
     title: '',
@@ -69,7 +73,7 @@ export default function FlightPage() {
   useEffect(() => {
     // Reset all form/search state on every route param change so switching
     // between add/edit or different items never leaks the previous flight.
-    setItem(null); setError(null); setAttendeeIds([]); setManual(false); setResolving(false);
+    setItem(null); setError(null); setAttendeeIds(isEdit ? [] : (currentMember?.user_id ? [currentMember.user_id] : [])); setManual(false); setResolving(false);
     setForm({ type: 'flight', title: '', start_datetime: '', end_datetime: '', location_from: '', location_to: '', from_place: null, to_place: null, confirmation_number: '', booking_reference: '', airline: '', notes: '', attachments: [] });
     if (!isEdit) { setLoading(false); return; }
     let alive = true;

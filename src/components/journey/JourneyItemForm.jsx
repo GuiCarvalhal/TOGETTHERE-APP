@@ -15,6 +15,7 @@ import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import JourneyOptionalFields from '@/components/journey/JourneyOptionalFields';
 import FlightEditor from '@/components/journey/FlightEditor';
 import { buildJourneyPayload, submitJourneyItem } from '@/lib/journeyItemSave';
+import DetailActionBar from '@/components/tt/DetailActionBar';
 import { Loader2, X, Plus, Check } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -28,16 +29,18 @@ const TYPE_META = {
   other: { fromTo: false, place: true },
 };
 
-export default function JourneyItemForm({ gatheringId, gatheringStartDate, currentMember, members, item, initial, onClose, onSaved }) {
+export default function JourneyItemForm({ gatheringId, gatheringStartDate, currentMember, members, item, initial, inline, onClose, onSaved }) {
   const navigate = useNavigate();
-  // Participant selection (attendee_user_ids). For a new item the creator is
-  // included by default; for an edit we preselect the existing list, or the
-  // creator for legacy items with an empty attendee list.
+  // Participant selection (attendee_user_ids). Fresh add: default to the
+  // current signed-in user (they can uncheck themselves). Edit: preserve the
+  // existing explicit attendee list — even an empty legacy list stays empty
+  // (no self-defaulting on edit). owner_id / owner_user_id / ACL / role are
+  // never changed by attendee toggling.
   const [attendeeIds, setAttendeeIds] = useState(() => {
-    const existing = item?.attendee_user_ids;
-    if (existing && existing.length) return existing;
-    const creator = item?.owner_id || currentMember?.user_id;
-    return creator ? [creator] : [];
+    if (item) {
+      return Array.isArray(item.attendee_user_ids) ? item.attendee_user_ids : [];
+    }
+    return currentMember?.user_id ? [currentMember.user_id] : [];
   });
   const [form, setForm] = useState({
     type: item?.type || initial?.type || 'activity',
@@ -123,7 +126,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
   function onTypeChange(v) {
     if (v === 'flight') {
       onClose();
-      navigate(item ? `/gathering/${gatheringId}/journey/${item.id}/edit` : `/gathering/${gatheringId}/journey/new`);
+      navigate(item ? `/gathering/${gatheringId}/journey/${item.id}/edit` : `/gathering/${gatheringId}/journey/new/flight`);
       return;
     }
     setForm({ ...form, type: v });
@@ -168,102 +171,135 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     <JourneyOptionalFields form={form} setForm={setForm} attendeeIds={attendeeIds} toggleAttendee={toggleAttendee} members={members} currentMember={currentMember} />
   );
 
+  const formFields = (
+    <>
+      <div className="space-y-2">
+        <Label className="text-ink-deep">Type</Label>
+        <Select value={form.type} onValueChange={onTypeChange}>
+          <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {JOURNEY_TYPES.map((t) => (
+              <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {form.type === 'flight' ? (
+        <FlightEditor
+          form={form}
+          setForm={setForm}
+          setStartTouched={setStartTouched}
+          setEndTouched={setEndTouched}
+          gatheringStartDate={gatheringStartDate}
+          optionalFields={optionalFields}
+          manual={manual}
+          setManual={setManual}
+        />
+      ) : (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="j-title" className="text-ink-deep">Title</Label>
+            <Input id="j-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Flight to Naples" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="j-start" className="text-ink-deep">Start</Label>
+              <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => { setStartTouched(true); setForm({ ...form, start_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="j-end" className="text-ink-deep">End</Label>
+              <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => { setEndTouched(true); setForm({ ...form, end_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            </div>
+          </div>
+          {meta.fromTo && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-ink-deep">From</Label>
+                <PlaceAutocomplete
+                  value={form.location_from}
+                  onText={(v) => setForm((f) => ({ ...f, location_from: v, from_place: null }))}
+                  onSelect={(p) => setForm((f) => ({ ...f, from_place: p }))}
+                  placeholder="Pickup point"
+                  className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-ink-deep">To</Label>
+                <PlaceAutocomplete
+                  value={form.location_to}
+                  onText={(v) => setForm((f) => ({ ...f, location_to: v, to_place: null }))}
+                  onSelect={(p) => setForm((f) => ({ ...f, to_place: p }))}
+                  placeholder="Destination"
+                  className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+                />
+              </div>
+            </div>
+          )}
+          {meta.place && (
+            <div className="space-y-2">
+              <Label className="text-ink-deep">Location</Label>
+              <PlaceAutocomplete
+                value={form.location_name}
+                onText={(v) => setForm((f) => ({ ...f, location_name: v, place: null }))}
+                onSelect={(p) => setForm((f) => ({ ...f, place: p }))}
+                placeholder="Hotel Santa Caterina, Amalfi"
+                className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+              />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label className="text-ink-deep">Confirmation #</Label>
+            <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+          </div>
+          {optionalFields}
+        </>
+      )}
+      {flightNeedsSelection && (
+        <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap "Enter manually instead".</p>
+      )}
+    </>
+  );
+
+  const submitLabel = item ? 'Save changes' : 'Add segment';
+
+  if (inline) {
+    return (
+      <div className="space-y-4">
+        <DetailActionBar
+          onBack={onClose}
+          actions={
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={saving} className="shrink-0">
+                <X /> Cancel
+              </Button>
+              <Button type="submit" form="journey-item-form" size="sm" disabled={saving || flightNeedsSelection} className="shrink-0">
+                {saving ? <Loader2 className="animate-spin" /> : item ? <Check /> : <Plus />}
+                {submitLabel}
+              </Button>
+            </>
+          }
+        />
+        <div className="mt-5 space-y-4">
+          <form id="journey-item-form" onSubmit={handleSave} className="space-y-4">
+            {formFields}
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={item ? 'Edit segment' : 'Add segment'}>
       <form onSubmit={handleSave} className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Type</Label>
-            <Select value={form.type} onValueChange={onTypeChange}>
-              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {JOURNEY_TYPES.map((t) => (
-                  <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {form.type === 'flight' ? (
-            <FlightEditor
-              form={form}
-              setForm={setForm}
-              setStartTouched={setStartTouched}
-              setEndTouched={setEndTouched}
-              gatheringStartDate={gatheringStartDate}
-              optionalFields={optionalFields}
-              manual={manual}
-              setManual={setManual}
-            />
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="j-title" className="text-ink-deep">Title</Label>
-                <Input id="j-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Flight to Naples" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="j-start" className="text-ink-deep">Start</Label>
-                  <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => { setStartTouched(true); setForm({ ...form, start_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="j-end" className="text-ink-deep">End</Label>
-                  <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => { setEndTouched(true); setForm({ ...form, end_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-                </div>
-              </div>
-              {meta.fromTo && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-ink-deep">From</Label>
-                    <PlaceAutocomplete
-                      value={form.location_from}
-                      onText={(v) => setForm((f) => ({ ...f, location_from: v, from_place: null }))}
-                      onSelect={(p) => setForm((f) => ({ ...f, from_place: p }))}
-                      placeholder="Pickup point"
-                      className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-ink-deep">To</Label>
-                    <PlaceAutocomplete
-                      value={form.location_to}
-                      onText={(v) => setForm((f) => ({ ...f, location_to: v, to_place: null }))}
-                      onSelect={(p) => setForm((f) => ({ ...f, to_place: p }))}
-                      placeholder="Destination"
-                      className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
-                    />
-                  </div>
-                </div>
-              )}
-              {meta.place && (
-                <div className="space-y-2">
-                  <Label className="text-ink-deep">Location</Label>
-                  <PlaceAutocomplete
-                    value={form.location_name}
-                    onText={(v) => setForm((f) => ({ ...f, location_name: v, place: null }))}
-                    onSelect={(p) => setForm((f) => ({ ...f, place: p }))}
-                    placeholder="Hotel Santa Caterina, Amalfi"
-                    className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label className="text-ink-deep">Confirmation #</Label>
-                <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-              </div>
-              {optionalFields}
-            </>
-          )}
-
-          {flightNeedsSelection && (
-            <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap "Enter manually instead".</p>
-          )}
-          <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="outline" onClick={onClose}><X /> Cancel</Button>
-            <Button type="submit" disabled={saving || flightNeedsSelection}>
-              {saving ? <Loader2 className="animate-spin" /> : item ? <Check /> : <Plus />}
-              {item ? 'Save changes' : 'Add segment'}
-            </Button>
-          </DialogFooter>
-        </form>
+        {formFields}
+        <DialogFooter className="pt-2 gap-2">
+          <Button type="button" variant="outline" onClick={onClose}><X /> Cancel</Button>
+          <Button type="submit" disabled={saving || flightNeedsSelection}>
+            {saving ? <Loader2 className="animate-spin" /> : item ? <Check /> : <Plus />}
+            {submitLabel}
+          </Button>
+        </DialogFooter>
+      </form>
     </FormSheet>
   );
 }

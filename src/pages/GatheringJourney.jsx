@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
@@ -7,7 +8,6 @@ import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
 import { tzDateKey } from '@/lib/formatPlaceTime';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
-import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import { itemRouteNumbers } from '@/lib/journeyMap';
@@ -45,11 +45,10 @@ function itemParticipants(item, memberById) {
 export default function GatheringJourney() {
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
   const { scope, setScope, images, setImages, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
 
   async function load(silent) {
@@ -200,14 +199,14 @@ export default function GatheringJourney() {
   );
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => { setEditing(null); setOpen(true); }} canAdd={canAdd} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
       {filteredItems.length === 0 ? (
         <EmptyState
           icon={Compass}
           title={typeFilter !== 'all' ? 'No segments of this type' : (scope === 'mine' ? 'No segments from you yet' : 'No segments yet')}
           body={typeFilter !== 'all' ? 'Switch to All to see every segment, or pick another type.' : (scope === 'mine' ? 'Add your own flights, stays and activities to see them here.' : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together.")}
           action={canAdd && typeFilter === 'all' ? (
-            <Button onClick={() => { setEditing(null); setOpen(true); }}>
+            <Button onClick={() => navigate(`/gathering/${gatheringId}/journey/new`)}>
               <Plus /> Add the first segment
             </Button>
           ) : undefined}
@@ -241,17 +240,6 @@ export default function GatheringJourney() {
         </Timeline>
       )}
 
-      {open && (
-        <JourneyItemForm
-          gatheringId={gatheringId}
-          gatheringStartDate={gathering?.start_date}
-          currentMember={currentMember}
-          members={members}
-          item={editing}
-          onClose={() => setOpen(false)}
-          onSaved={load}
-        />
-      )}
     </PageToolbar>
   );
 }
