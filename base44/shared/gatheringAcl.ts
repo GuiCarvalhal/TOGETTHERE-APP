@@ -17,6 +17,16 @@ export function participantUserIds(members) {
     .filter(Boolean);
 }
 
+// Member ids (not user ids) of participants only (owner/member). Viewers are
+// excluded. Used to validate that a new/updated expense payer and every split
+// member is a current participant, so a viewer can never be assigned a payer
+// or split allocation — defense-in-depth behind the form's participant picker.
+export function participantMemberIds(members) {
+  return (members || [])
+    .filter((m) => m.role === 'owner' || m.role === 'member')
+    .map((m) => m.id);
+}
+
 export function gatheringOwnerUserId(gathering, members) {
   if (gathering && gathering.owner_user_id) return gathering.owner_user_id;
   const owner = (members || []).find((m) => m.role === 'owner');

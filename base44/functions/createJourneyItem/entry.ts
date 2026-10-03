@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { getMyMember, allMemberUserIds, gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
+import { getMyMember, allMemberUserIds, participantUserIds, gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
@@ -22,12 +22,15 @@ export default async function(req) {
     ]);
     const ownerUid = gatheringOwnerUserId(gathering, members);
     const memberUserIds = allMemberUserIds(members);
+    const participantUids = new Set(participantUserIds(members));
 
-    // Participant selection from the form: validate that every requested id is
-    // a gathering member, and always include the creator. attendee_user_ids is
-    // the opt-in participants list (NOT member_user_ids, the ACL list).
+    // Attendee selection from the form: validate that every requested id is a
+    // current PARTICIPANT (owner/member) — viewers can never be added to a
+    // segment's opt-in attendee list, even via a crafted request. The creator
+    // is always included (they're a participant — viewers are blocked above).
+    // member_user_ids (the ACL read list) still includes all members.
     const requestedAttendees = Array.isArray(payload.attendee_user_ids)
-      ? payload.attendee_user_ids.filter((id) => memberUserIds.includes(id))
+      ? payload.attendee_user_ids.filter((id) => participantUids.has(id))
       : [];
     const attendeeUserIds = [...new Set([user.id, ...requestedAttendees])];
     const created = await base44.asServiceRole.entities.JourneyItem.create({

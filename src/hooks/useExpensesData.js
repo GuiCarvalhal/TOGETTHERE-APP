@@ -144,7 +144,16 @@ export function useExpensesData() {
   const baseExpensesForBalances = expenses.map((e) => ({ id: e.id, payer_member_id: e.payer_member_id, amount: expenseInBase(e), settled: e.settled }));
   const baseSplitsForBalances = splits.map((s) => ({ expense_id: s.expense_id, member_id: s.member_id, amount: splitInBase(s) }));
   const balances = computeBalances(baseExpensesForBalances, baseSplitsForBalances, participantMembers.map((m) => m.id));
-  const settle = settleUp(balances);
+
+  // Settle-up suggestions are among PARTICIPANTS only — a former member now
+  // demoted to Viewer still contributes to each participant's balance (their
+  // saved splits are NOT discarded, so totals/debt are unchanged), but a
+  // viewer is never shown as a settle-up party. Only participant balances feed
+  // the greedy matcher; the full `balances` (which may carry a viewer entry) is
+  // never displayed and never used for settle suggestions.
+  const participantBalances = {};
+  participantMembers.forEach((m) => { participantBalances[m.id] = balances[m.id] || 0; });
+  const settle = settleUp(participantBalances);
 
   const splitsByExpense = {};
   splits.forEach((s) => { (splitsByExpense[s.expense_id] = splitsByExpense[s.expense_id] || []).push(s); });

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useExpensesData } from '@/hooks/useExpensesData';
-import { formatCurrency, formatDate } from '@/lib/gatheringHelpers';
+import { formatCurrency, formatDate, isParticipant } from '@/lib/gatheringHelpers';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Skeleton from '@/components/tt/Skeleton';
@@ -46,18 +46,24 @@ export default function ExpenseStatement() {
     return sp ? splitInBase(sp) : 0;
   };
 
-  const Row = ({ exp, showShare }) => (
+  const Row = ({ exp, showShare }) => {
+    // Viewers never appear in an expense list: a legacy viewer payer is kept in
+    // the balance math but filtered from the displayed payer name.
+    const payerMember = memberById[exp.payer_member_id];
+    const payerName = payerMember && isParticipant(payerMember.role) ? payerMember.full_name : '—';
+    return (
     <div className="tt-card p-3 flex items-center gap-3">
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-ink-deep text-sm truncate">{exp.title}</p>
-        <p className="text-xs text-ink-deep/50 truncate">{formatDate(exp.date)} · {memberById[exp.payer_member_id]?.full_name || '—'}</p>
+        <p className="text-xs text-ink-deep/50 truncate">{formatDate(exp.date)} · {payerName}</p>
       </div>
       <div className="text-right shrink-0">
         <p className="font-display font-bold text-ink-deep whitespace-nowrap">{formatCurrency(expenseInBase(exp), baseCurrency)}</p>
         {showShare && <p className="text-xs text-ink-deep/50 whitespace-nowrap">your share {formatCurrency(myShareOf(exp), baseCurrency)}</p>}
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-5">

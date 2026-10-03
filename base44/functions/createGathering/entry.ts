@@ -17,7 +17,6 @@ export default async function(req) {
       description: description || '',
       destination_places: Array.isArray(destination_places) ? destination_places : [],
       cover_image: cover_image || '',
-      privacy_mode: 'invite',
       status: 'planning',
       owner_user_id: user.id,
       member_user_ids: [user.id],

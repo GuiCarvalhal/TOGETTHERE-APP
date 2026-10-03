@@ -6,6 +6,9 @@ import {
   isParticipant,
   canSeeExpenses,
   canAddJourney,
+  legacyViewerAllocationIds,
+  computeBalances,
+  settleUp,
 } from '@/lib/gatheringHelpers';
 
 const members = [
@@ -71,5 +74,68 @@ describe('role gating — viewers blocked from participation surfaces', () => {
   it('canAddJourney is false for viewers', () => {
     expect(canAddJourney('viewer')).toBe(false);
     expect(canAddJourney('member')).toBe(true);
+  });
+});
+
+describe('legacyViewerAllocationIds — block silent redistribution on edit', () => {
+  const participants = [
+    { id: 'm-owner', role: 'owner' },
+    { id: 'm-mem', role: 'member' },
+  ];
+  it('flags a saved split for a member who is now a viewer', () => {
+    const splits = [{ member_id: 'm-owner', amount: 40 }, { member_id: 'm-viewer', amount: 20 }];
+    const r = legacyViewerAllocationIds(participants, splits, 'm-owner');
+    expect(r.hasLegacy).toBe(true);
+    expect(r.viewerSplitIds).toEqual(['m-viewer']);
+    expect(r.viewerPayerId).toBe(null);
+  });
+  it('flags a saved payer who is now a viewer', () => {
+    const splits = [{ member_id: 'm-owner', amount: 50 }];
+    const r = legacyViewerAllocationIds(participants, splits, 'm-viewer');
+    expect(r.hasLegacy).toBe(true);
+    expect(r.viewerPayerId).toBe('m-viewer');
+  });
+  it('is clean when payer and all splits are current participants', () => {
+    const splits = [{ member_id: 'm-owner', amount: 30 }, { member_id: 'm-mem', amount: 30 }];
+    const r = legacyViewerAllocationIds(participants, splits, 'm-owner');
+    expect(r.hasLegacy).toBe(false);
+    expect(r.viewerSplitIds).toEqual([]);
+    expect(r.viewerPayerId).toBe(null);
+  });
+});
+
+describe('computeBalances — viewer debt is not discarded', () => {
+  it('keeps a former-member (now viewer) split in the balance math', () => {
+    // $90 paid by Alice (participant), split 3 ways: Alice, Bob (participant),
+    // Carol (now viewer — not in memberIds). Each owes $30.
+    const expenses = [{ id: 'e1', payer_member_id: 'm-alice', amount: 90, settled: false }];
+    const splits = [
+      { expense_id: 'e1', member_id: 'm-alice', amount: 30 },
+      { expense_id: 'e1', member_id: 'm-bob', amount: 30 },
+      { expense_id: 'e1', member_id: 'm-carol', amount: 30 },
+    ];
+    // Only participants are passed as memberIds (viewers excluded from display).
+    const bal = computeBalances(expenses, splits, ['m-alice', 'm-bob']);
+    // Alice paid 90, owes 30 => +60. Bob owes 30 => -30. Carol owes 30 (kept).
+    expect(bal['m-alice']).toBe(60);
+    expect(bal['m-bob']).toBe(-30);
+    expect(bal['m-carol']).toBe(-30); // debt preserved, not discarded
+  });
+});
+
+describe('settleUp — viewers excluded from suggestions', () => {
+  it('only settles among the provided (participant) balances', () => {
+    // Alice is owed 60, Bob owes 30, Carol (viewer) owes 30.
+    const balances = { 'm-alice': 60, 'm-bob': -30, 'm-carol': -30 };
+    const txns = settleUp(balances);
+    // Carol is present in the raw balances, but the hook passes only
+    // participant balances to settleUp — verify the greedy matcher never
+    // produces a transaction involving a viewer when viewers are excluded.
+    const participantOnly = { 'm-alice': 60, 'm-bob': -30 };
+    const safe = settleUp(participantOnly);
+    expect(safe.every((t) => t.from !== 'm-carol' && t.to !== 'm-carol')).toBe(true);
+    expect(safe).toEqual([{ from: 'm-bob', to: 'm-alice', amount: 30 }]);
+    // sanity: the unfiltered call would include carol — proving the filter matters
+    expect(txns.some((t) => t.from === 'm-carol' || t.to === 'm-carol')).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronRight, UtensilsCrossed, Hotel, Car, Compass, Receipt } from 'lucide-react';
-import { formatCurrency, EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
+import { formatCurrency, EXPENSE_CATEGORIES, isParticipant } from '@/lib/gatheringHelpers';
 import AvatarStack from '@/components/tt/AvatarStack';
 
 const CAT_ICON = { food: UtensilsCrossed, lodging: Hotel, transport: Car, activities: Compass, other: Receipt };
@@ -23,7 +23,12 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
   const memberById = Object.fromEntries((members || []).map((m) => [m.id, m]));
   const catColor = CAT_COLOR[exp.category] || '#7a8290';
   const CatIcon = CAT_ICON[exp.category] || Receipt;
-  const splitMembers = (splits || []).map((s) => memberById[s.member_id]).filter(Boolean);
+  // Viewers never appear in an expense list: a legacy viewer split/payer is kept
+  // in the balance math (debt not discarded) but filtered from display here.
+  const splitMembers = (splits || [])
+    .map((s) => memberById[s.member_id])
+    .filter((m) => m && isParticipant(m.role));
+  const displayPayer = payer && isParticipant(payer.role) ? payer : null;
   const splitLabel = SPLIT_LABEL[exp.split_method] || 'Split';
 
   return (
@@ -50,7 +55,7 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
         {canEdit && <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-ink-deep/30" />}
 
         {/* Line 1: payer */}
-        <p className="text-[0.6875rem] truncate pr-5 text-ink-deep/50">{payer?.full_name || '—'}</p>
+        <p className="text-[0.6875rem] truncate pr-5 text-ink-deep/50">{displayPayer?.full_name || '—'}</p>
 
         {/* Line 2: title (left, truncates) + display-currency amount (right, never wraps) */}
         <div className="flex items-baseline gap-2 mt-0.5 pr-5">

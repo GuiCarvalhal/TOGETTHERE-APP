@@ -9,13 +9,13 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   computeUnitAmounts, expandUnitAmountsToMembers, reconstructEditSelection,
-  buildSplitUnits, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency,
+  buildSplitUnits, legacyViewerAllocationIds, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency,
 } from '@/lib/gatheringHelpers';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import SplitMethodTabs from '@/components/expenses/SplitMethodTabs';
 import FamilySplitTable from '@/components/expenses/FamilySplitTable';
 import AttachmentChip from '@/components/tt/AttachmentChip';
-import { Loader2, Upload, X, Plus, Check, Trash2 } from 'lucide-react';
+import { Loader2, Upload, X, Plus, Check, Trash2, AlertTriangle } from 'lucide-react';
 
 // Per-user split preferences (last split method + selected split units +
 // currency) so the next expense form is preselected similarly. Scoped to the
@@ -37,17 +37,40 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   const userId = currentMember?.user_id || '';
   const prefs = useMemo(() => (!isEdit && userId ? readPrefs(userId) : null), [isEdit, userId]);
 
+  // Eligibility: the initial payer must be a current participant. A saved
+  // payer who is now a Viewer is not eligible, so fall back to the current
+  // member (or the first participant) instead of preselecting a viewer — the
+  // legacy-viewer guard below blocks the save regardless.
+  const eligibleInitialPayer = (mid) => participants.some((m) => m.id === mid);
   const [form, setForm] = useState({
     title: expense?.title || '',
     amount: expense?.amount || '',
     currency: expense?.currency || prefs?.currency || 'USD',
     category: expense?.category || 'other',
     split_method: expense?.split_method || prefs?.split_method || 'equal',
-    payer_member_id: expense?.payer_member_id || currentMember?.id || participants[0]?.id || '',
+    payer_member_id: (isEdit && expense?.payer_member_id && eligibleInitialPayer(expense.payer_member_id))
+      ? expense.payer_member_id
+      : (currentMember?.id || participants[0]?.id || ''),
     date: expense?.date || new Date().toISOString().slice(0, 10),
     receipt: expense?.receipt || '',
     settled: expense?.settled || false,
   });
+
+  // Legacy viewer guard: if an existing expense has a split (or payer) for a
+  // member who is now a Viewer, block the save and show an actionable warning.
+  // The viewer cannot be represented in the participant-only split picker, so
+  // saving would silently drop their allocation and redistribute the total.
+  // Instead the edit is refused — records stay unchanged until the owner
+  // changes the member's role back to Member (or the user cancels).
+  const legacy = useMemo(
+    () => (isEdit ? legacyViewerAllocationIds(participants, splits, expense?.payer_member_id) : { hasLegacy: false, viewerSplitIds: [], viewerPayerId: null }),
+    [isEdit, participants, splits, expense]
+  );
+  const legacyNames = useMemo(() => {
+    if (!legacy.hasLegacy) return [];
+    const ids = new Set([...legacy.viewerSplitIds, ...(legacy.viewerPayerId ? [legacy.viewerPayerId] : [])]);
+    return (members || []).filter((m) => ids.has(m.id)).map((m) => m.full_name || 'A member');
+  }, [legacy, members]);
   const [selected, setSelected] = useState(null); // unit keys; null = pending init
   const [inputs, setInputs] = useState({});
   const [saving, setSaving] = useState(false);
@@ -131,6 +154,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
 
   async function handleSave(e) {
     e.preventDefault();
+    if (legacy.hasLegacy) return; // blocked — actionable warning shown below
     if (!form.title.trim() || !form.amount || !form.payer_member_id) return;
     if (!balanced && form.split_method === 'custom') {
       alert('Custom split amounts must add up to the total.');
@@ -208,6 +232,19 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   return (
     <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={expense ? 'Edit expense' : 'Add expense'}>
       <form onSubmit={handleSave} className="space-y-4">
+        {legacy.hasLegacy && (
+          <div className="rounded-xl border border-terra/40 bg-terra/10 p-3.5 space-y-1.5">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-terra-deep shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-deep">This expense can't be edited yet</p>
+                <p className="text-xs text-ink-deep/70 mt-0.5 leading-relaxed">
+                  It includes {legacyNames.join(', ')} as a payer or split member, who is now a Viewer and can't be part of expenses. Ask the owner to change their role back to Member first, or cancel to keep this expense unchanged.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="space-y-2">
           <Label className="text-ink-deep">Title</Label>
           <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Dinner at Da Adolfo" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
@@ -297,7 +334,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
             </Button>
           )}
           <Button type="button" variant="outline" onClick={onClose}><X /> Cancel</Button>
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving || legacy.hasLegacy}>
             {saving ? <Loader2 className="animate-spin" /> : expense ? <Check /> : <Plus />}
             {expense ? 'Save changes' : 'Add expense'}
           </Button>

@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { getMyMember, participantUserIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
+import { getMyMember, participantUserIds, participantMemberIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 import { secrets } from 'base44:runtime';
@@ -25,6 +25,21 @@ export default async function(req) {
     const ownerUid = gatheringOwnerUserId(gathering, members);
     const parts = participantUserIds(members);
     const payerUid = resolvePayerUid(members, expense.payer_member_id, user.id);
+
+    // Eligibility guard: the payer and every split member must be a current
+    // participant (owner/member). Viewers can never be assigned a payer or a
+    // split allocation — rejects crafted requests that bypass the form's
+    // participant-only picker. A non-participant id (e.g. a member who became a
+    // viewer) is rejected rather than silently dropped, so allocations are
+    // never silently redistributed.
+    const participantIdSet = new Set(participantMemberIds(members));
+    if (!expense.payer_member_id || !participantIdSet.has(expense.payer_member_id)) {
+      return Response.json({ error: 'The selected payer is no longer a participant' }, { status: 400 });
+    }
+    const invalidSplit = (splits || []).find((s) => !participantIdSet.has(s.member_id));
+    if (invalidSplit) {
+      return Response.json({ error: 'One or more split members are no longer participants' }, { status: 400 });
+    }
 
     // Capture the display-currency snapshot ONCE at transaction time so this
     // expense renders deterministically forever (no later live-rate drift). The

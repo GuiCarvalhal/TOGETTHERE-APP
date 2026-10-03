@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { getMyMember, participantUserIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
+import { getMyMember, participantUserIds, participantMemberIds, gatheringOwnerUserId, resolvePayerUid, buildSplitRecords } from '../../shared/gatheringAcl.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 import { secrets } from 'base44:runtime';
 import { fetchUsdRates, convertViaUsd } from '../../shared/currencyRates.ts';
@@ -30,6 +30,28 @@ export default async function(req) {
     const ownerUid = gatheringOwnerUserId(gathering, members);
     const parts = participantUserIds(members);
     const payerUid = resolvePayerUid(members, expense.payer_member_id, existing.payer_user_id || user.id);
+
+    // Preserve legacy allocations: if this expense already has a split for a
+    // member who is now a Viewer (a former participant demoted after the
+    // expense was created), REFUSE the edit rather than rewriting splits.
+    // Rewriting would silently drop the viewer's allocation and redistribute
+    // the total among remaining participants. Financial records are never
+    // migrated; the owner must change the member's role back to Member first.
+    const participantIdSet = new Set(participantMemberIds(members));
+    const existingSplits = await base44.asServiceRole.entities.ExpenseSplit.filter({ expense_id: expense_id });
+    const legacyViewerSplit = (existingSplits || []).find((s) => !participantIdSet.has(s.member_id));
+    if (legacyViewerSplit) {
+      return Response.json({ error: 'This expense includes a member who is now a Viewer and cannot be edited. Ask the owner to change their role back to Member first.' }, { status: 409 });
+    }
+    // Eligibility guard for the incoming allocations: payer + every new split
+    // member must be a current participant (no viewers).
+    if (!expense.payer_member_id || !participantIdSet.has(expense.payer_member_id)) {
+      return Response.json({ error: 'The selected payer is no longer a participant' }, { status: 400 });
+    }
+    const invalidSplit = (splits || []).find((s) => !participantIdSet.has(s.member_id));
+    if (invalidSplit) {
+      return Response.json({ error: 'One or more split members are no longer participants' }, { status: 400 });
+    }
 
     // Re-snapshot the display-currency amount on edit (amount/currency may have
     // changed). Same rule as createExpense: identity when same currency, else a

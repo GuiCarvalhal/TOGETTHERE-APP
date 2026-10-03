@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { getMyMember, allMemberUserIds, gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
+import { getMyMember, allMemberUserIds, participantUserIds, gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
@@ -30,10 +30,13 @@ export default async function (req) {
     ]);
     const ownerUid = gatheringOwnerUserId(gathering, members);
     const memberUserIds = allMemberUserIds(members);
+    const participantUids = new Set(participantUserIds(members));
 
-    // Participant selection from the form: validate ids against current
-    // members and always keep the creator. Preserves and allows changing the
-    // participant list on edit.
+    // Attendee selection from the form: validate ids against current
+    // PARTICIPANTS (owner/member) only — viewers can never be attendees. The
+    // original creator is kept only if they are still a participant (a creator
+    // later demoted to viewer is not forced back in). Preserves and allows
+    // changing the attendee list on edit; member_user_ids (ACL) keeps all.
     const updateFields: any = {
       ...payload,
       gathering_id,
@@ -42,8 +45,9 @@ export default async function (req) {
       member_user_ids: memberUserIds,
     };
     if (Array.isArray(payload.attendee_user_ids)) {
-      const valid = payload.attendee_user_ids.filter((id) => memberUserIds.includes(id));
-      updateFields.attendee_user_ids = [...new Set([existing.owner_id, ...valid])].filter(Boolean);
+      const valid = payload.attendee_user_ids.filter((id) => participantUids.has(id));
+      const keepOwner = existing.owner_id && participantUids.has(existing.owner_id) ? [existing.owner_id] : [];
+      updateFields.attendee_user_ids = [...new Set([...keepOwner, ...valid])].filter(Boolean);
     }
     await base44.asServiceRole.entities.JourneyItem.update(item_id, updateFields);
 

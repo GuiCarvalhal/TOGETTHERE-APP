@@ -26,7 +26,6 @@ export default async function(req) {
         end_date: gathering.end_date,
         destinations: gathering.destinations,
         description: gathering.description,
-        privacy_mode: gathering.privacy_mode,
         status: gathering.status,
       },
       isMember: !!me,

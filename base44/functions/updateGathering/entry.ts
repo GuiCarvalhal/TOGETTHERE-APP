@@ -1,8 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember } from '../../shared/gatheringAcl.ts';
 
-const WHITELIST = ['name', 'cover_image', 'start_date', 'end_date', 'destinations', 'destination_places', 'description', 'privacy_mode', 'status'];
-const PRIVACY_MODES = ['open', 'invite', 'approval'];
+const WHITELIST = ['name', 'cover_image', 'start_date', 'end_date', 'destinations', 'destination_places', 'description', 'status'];
 const STATUSES = ['planning', 'active', 'completed'];
 
 export default async function(req) {
@@ -22,9 +21,6 @@ export default async function(req) {
     const allowed = {};
     for (const k of WHITELIST) {
       if (k in fields) allowed[k] = fields[k];
-    }
-    if (allowed.privacy_mode && !PRIVACY_MODES.includes(allowed.privacy_mode)) {
-      return Response.json({ error: 'Invalid privacy mode' }, { status: 400 });
     }
     if (allowed.status && !STATUSES.includes(allowed.status)) {
       return Response.json({ error: 'Invalid status' }, { status: 400 });

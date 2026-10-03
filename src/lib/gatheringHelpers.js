@@ -43,6 +43,26 @@ export function participantMembers(members) {
   return (members || []).filter((m) => isParticipant(m.role));
 }
 
+// Detect legacy viewer involvement in an existing expense: a saved split (or
+// the saved payer) whose member is no longer a participant (i.e. now a
+// Viewer). Returns the offending member ids so the form can show an actionable
+// warning and block the save — legacy viewer allocations are never silently
+// dropped/redistributed, and financial records are never migrated. Pure so it
+// can be unit-tested.
+export function legacyViewerAllocationIds(participants, splits, payerMemberId) {
+  const participantIds = new Set((participants || []).map((m) => m.id));
+  const viewerSplitIds = (splits || [])
+    .filter((s) => !participantIds.has(s.member_id))
+    .map((s) => s.member_id);
+  const viewerPayerId =
+    payerMemberId && !participantIds.has(payerMemberId) ? payerMemberId : null;
+  return {
+    viewerSplitIds,
+    viewerPayerId,
+    hasLegacy: viewerSplitIds.length > 0 || !!viewerPayerId,
+  };
+}
+
 // User ids the current user has marked Close within a gathering (the
 // close-friends membership scope). Excludes the user themself. Used by viewers'
 // "Close" tab, since viewers don't own/attend items themselves.
