@@ -92,7 +92,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
 
   return (
     <div
-      className="flex gap-2 items-stretch cursor-pointer rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
+      className="flex gap-2 items-stretch cursor-pointer rounded-2xl h-[131.5px] focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
       role="link"
       tabIndex={to ? 0 : undefined}
       onClick={open}

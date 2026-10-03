@@ -14,9 +14,9 @@ export default function AgentCard({ rec, members, isSaved, onSave, onDismiss, sh
   const Icon = CAT_ICON[rec.category] || Compass;
   const color = CAT_COLOR[rec.category] || '#E05A47';
   return (
-    <div className="tt-card overflow-hidden flex flex-col">
+    <div className="tt-card flex flex-col h-[131.5px]">
       {showImages ? (
-        <div className="h-12 w-full flex items-center gap-2.5 px-4" style={{ background: `${color}12` }}>
+        <div className="h-12 w-full flex items-center gap-2.5 px-4 rounded-t-[1.25rem]" style={{ background: `${color}12` }}>
           <Icon className="w-5 h-5" style={{ color }} strokeWidth={1.5} />
           <span className="tt-label capitalize" style={{ color }}>{rec.category}</span>
         </div>
