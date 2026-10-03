@@ -140,7 +140,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           {/* Metadata line — the first line of the card (no item-type label) */}
           {metaLine && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{metaLine}</p>}
 
-          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? (flightRoute ? <span className="block truncate">{flightRoute.from}<span className="px-1.5 text-ink-deep/40">→</span>{flightRoute.to}</span> : <span className="block truncate">{item.title}</span>) : item.title}</h3>
+          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? (flightRoute ? <span className="block truncate">{flightRoute.from}<span className="px-3 text-ink-deep/40">→</span>{flightRoute.to}</span> : <span className="block truncate">{item.title}</span>) : item.title}</h3>
 
           {/* Timing: stay legs show a Check-in/Check-out pill + the single
               primary time; other items show start → end · duration. */}

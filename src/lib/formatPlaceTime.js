@@ -18,8 +18,19 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 //  b) Acronym from timeZoneName:'long' — initial of each significant word
 //     ("Central European Summer Time" -> "CEST", "Japan Standard Time" -> "JST").
 //  c) GMT offset (e.g. "GMT+2", "GMT+5:30") only as a last resort.
+// Conventional abbreviations for zones where the acronym algorithm produces
+// ambiguous or non-conventional results: "Brasilia Standard Time" → "BST"
+// collides with British Summer Time (conventional: BRT); "Colombia Standard
+// Time" → "CST" collides with US Central Standard Time (conventional: COT).
+// Both zones abolished DST in 2019, so a static year-round override is safe.
+const TZ_ABBR_OVERRIDE = {
+  'America/Sao_Paulo': 'BRT',
+  'America/Bogota': 'COT',
+};
+
 export function tzAbbrAt(iso, timeZone) {
   if (!timeZone) return '';
+  if (TZ_ABBR_OVERRIDE[timeZone]) return TZ_ABBR_OVERRIDE[timeZone];
   const instant = new Date(iso);
   const isOffset = (v) => !v || /^GMT[+-]/.test(v) || /^[+-]\d{1,2}(:?\d{2})?$/.test(v);
   const STOP = new Set(['of', 'the', 'and']);
