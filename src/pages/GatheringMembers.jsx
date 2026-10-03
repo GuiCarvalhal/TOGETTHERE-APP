@@ -1,21 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
-import { base44 } from '@/api/base44Client';
 import { canManageMembers, ROLES } from '@/lib/gatheringHelpers';
 import MemberRow from '@/components/members/MemberRow';
 import MemberDetailSheet from '@/components/members/MemberDetailSheet';
 import PageToolbar from '@/components/tt/PageToolbar';
 import FilterChips from '@/components/tt/FilterChips';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
-import { DialogFooter } from '@/components/ui/dialog';
 import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { UserPlus, Loader2, Users, X, Handshake, HeartHandshake, User } from 'lucide-react';
+import { UserPlus, Loader2, Users, X, Handshake, HeartHandshake, User, Link2, Eye, Copy, Check } from 'lucide-react';
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 import Skeleton from '@/components/tt/Skeleton';
@@ -61,21 +56,32 @@ const ROLE_FILTER_OPTIONS = [
 export default function GatheringMembers() {
   const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh, loading } = useGathering();
   const { scope, setScope } = useViewPrefs(gatheringId);
-  const [addOpen, setAddOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
-  const [addForm, setAddForm] = useState({ full_name: '', role: 'member', home_city: '' });
-  const [adding, setAdding] = useState(false);
   const [activeMember, setActiveMember] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [copied, setCopied] = useState('');
 
   const canManage = canManageMembers(role);
   const isOwner = role === 'owner';
+  const isViewer = role === 'viewer';
 
   // Add member lives in the sticky PageToolbar (canonical button), not a FAB —
   // matching Journey/Expenses.
   useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   usePolling(silentRefresh, 25000);
+
+  const inviteUrl = `${window.location.origin}/join/${gatheringId}`;
+  const viewerInviteUrl = `${inviteUrl}?as=viewer`;
+
+  async function copy(text, key) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(''), 1800);
+    } catch { /* ignore */ }
+  }
 
   async function handleRelationshipChange(targetUserId, rel) {
     try {
@@ -106,43 +112,22 @@ export default function GatheringMembers() {
     }
   }
 
-  async function handleAdd(e) {
-    e.preventDefault();
-    if (!addForm.full_name.trim()) return;
-    setAdding(true);
-    try {
-      await base44.functions.invoke('addMember', {
-        gathering_id: gatheringId,
-        full_name: addForm.full_name.trim(),
-        role: addForm.role,
-        home_city: addForm.home_city,
-      });
-      setAddOpen(false);
-      setAddForm({ full_name: '', role: 'member', home_city: '' });
-      refresh();
-    } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Could not add member');
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  const visibleMembers = scope === 'mine' ? members.filter((m) => m.id === currentMember?.id) : members;
+  // Scope filter. Members: "Mine" = just the signed-in user. For viewers, the
+  // control becomes "Close" — the close-friends membership scope (members the
+  // viewer marked Close), not the viewer's own participation (viewers don't
+  // participate). The signed-in user's own row is always kept so the "You"
+  // section still renders under Close.
+  const scopedMembers = scope === 'mine'
+    ? (isViewer
+        ? members.filter((m) => m.id === currentMember?.id || m.myRelationship === 'close')
+        : members.filter((m) => m.id === currentMember?.id))
+    : members;
   // Role filter composes with scope: narrows the visible members by gathering
-  // role (owner/admin/member/viewer) — never inferred from friendship. Feeds
-  // the Close/Casual friendship sections below.
-  const roleFiltered = roleFilter === 'all' ? visibleMembers : visibleMembers.filter((m) => m.role === roleFilter);
+  // role (owner/admin/member/viewer) — never inferred from friendship.
+  const roleFiltered = roleFilter === 'all' ? scopedMembers : scopedMembers.filter((m) => m.role === roleFilter);
   // Friendship split uses myRelationship (close | casual). The app's
-  // documented default is 'casual' (set in getGatheringContext for any member
-  // with no explicit Relationship record), so null — only the current user's
-  // own row — is treated as casual. No member disappears; no Uncategorized
-  // section is needed.
-  // The signed-in user is always pulled out into their own "You" section,
-  // above and outside both friendship lists — never counted in Close/Casual,
-  // regardless of their relationship field. When an active role filter
-  // excludes the current user, their card is omitted entirely (never
-  // misclassified into a friendship list). Uncategorized relationships keep
-  // the documented default (Casual) unless the row is the current user.
+  // documented default is 'casual', so null — only the current user's own row
+  // — is treated as casual. No member disappears; no Uncategorized section.
   const others = roleFiltered.filter((m) => m.id !== currentMember?.id);
   const selfMember = roleFiltered.find((m) => m.id === currentMember?.id) || null;
   const closeMembers = others.filter((m) => m.myRelationship === 'close');
@@ -152,17 +137,17 @@ export default function GatheringMembers() {
   const active = activeMember ? (members.find((m) => m.id === activeMember.id) || activeMember) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} onAdd={() => setAddOpen(true)} canAdd={canManage} addLabel="member" filterRow={<FilterChips options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={setRoleFilter} />}>
+    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} onAdd={() => setShareOpen(true)} canAdd={canManage} addLabel="invite" filterRow={<FilterChips options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={setRoleFilter} />}>
       {loading ? (
         <MembersSkeleton />
       ) : roleFiltered.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={roleFilter !== 'all' ? 'No members with this role' : (scope === 'mine' ? 'Nothing to show' : 'No members yet')}
-          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : (scope === 'mine' ? 'Switch to Group to see everyone in this gathering.' : 'Add your crew to start coordinating — invite members to participate in the trip, or viewers to follow along read-only.')}
+          title={roleFilter !== 'all' ? 'No members with this role' : (scope === 'mine' ? (isViewer ? 'No close friends yet' : 'Nothing to show') : 'No members yet')}
+          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : (scope === 'mine' ? (isViewer ? 'Mark members as Close from their profile to see them here, or switch to Group.' : 'Switch to Group to see everyone in this gathering.') : 'Invite your crew to start coordinating — share a Member link so people can participate, or a Viewer link for read-only access.')}
           action={canManage && scope !== 'mine' && roleFilter === 'all' ? (
-            <Button onClick={() => setAddOpen(true)}>
-              <UserPlus /> Add the first member
+            <Button onClick={() => setShareOpen(true)}>
+              <UserPlus /> Share invite link
             </Button>
           ) : undefined}
         />
@@ -201,35 +186,33 @@ export default function GatheringMembers() {
         onRemove={() => active && handleRemove(active)}
       />
 
-      <FormSheet open={addOpen} onOpenChange={setAddOpen} title="Add a member" maxWidth="max-w-md">
-        <form onSubmit={handleAdd} className="space-y-4">
+      <FormSheet open={shareOpen} onOpenChange={setShareOpen} title="Invite to this gathering" maxWidth="max-w-md">
+        <div className="space-y-5">
+          <p className="text-sm text-ink-deep/70">Sharing a link is the only way to add people. Anyone who opens a link signs in and joins immediately with the role the link grants — no approval, no form to fill out.</p>
           <div className="space-y-2">
-            <Label className="text-ink-deep">Name</Label>
-            <Input value={addForm.full_name} onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })} placeholder="Jordan Lee" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            <Label className="text-ink-deep flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" /> Member link</Label>
+            <div className="flex gap-2">
+              <Input readOnly value={inviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
+              <Button type="button" size="sm" onClick={() => copy(inviteUrl, 'member')} className="shrink-0" aria-label="Copy member link">
+                {copied === 'member' ? <Check /> : <Copy />}
+              </Button>
+            </div>
+            <p className="text-xs text-ink-deep/50">Members participate fully — journey, expenses, and the agent.</p>
           </div>
           <div className="space-y-2">
-            <Label className="text-ink-deep">Home city</Label>
-            <Input value={addForm.home_city} onChange={(e) => setAddForm({ ...addForm, home_city: e.target.value })} placeholder="Brooklyn, NY" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            <Label className="text-ink-deep flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> Viewer link</Label>
+            <div className="flex gap-2">
+              <Input readOnly value={viewerInviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
+              <Button type="button" variant="outline" size="sm" onClick={() => copy(viewerInviteUrl, 'viewer')} className="shrink-0" aria-label="Copy viewer link">
+                {copied === 'viewer' ? <Check /> : <Copy />}
+              </Button>
+            </div>
+            <p className="text-xs text-ink-deep/50">Viewers get a read-only look at the journey and members — no expenses or agent.</p>
           </div>
-          <div className="space-y-2">
-            <Label className="text-ink-deep">Role</Label>
-            <Select value={addForm.role} onValueChange={(v) => setAddForm({ ...addForm, role: v })}>
-              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Admin — co-organizer, manages members & journey</SelectItem>
-                <SelectItem value="member">Member — participates, in expenses</SelectItem>
-                <SelectItem value="viewer">Viewer — read only, not in expenses</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-ink-deep/50">They'll be invited to claim their account from the Members page later.</p>
+          <div className="flex justify-end pt-1">
+            <Button type="button" variant="outline" onClick={() => setShareOpen(false)}><X /> Done</Button>
           </div>
-          <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="outline" onClick={() => setAddOpen(false)}><X /> Cancel</Button>
-            <Button type="submit" disabled={adding}>
-              {adding ? <Loader2 className="animate-spin" /> : <UserPlus />} Add member
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
       </FormSheet>
     </PageToolbar>
   );

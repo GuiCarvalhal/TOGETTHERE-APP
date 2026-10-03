@@ -1,8 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember, gatheringOwnerUserId, syncChildArrays } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
-import { notifyUsers, isOneSignalConfigured } from '../../shared/onesignal.ts';
 
+// Joining a gathering is now done exclusively through sharing links. Either
+// link joins immediately after authentication — there is no approval/invite-only
+// gating, and legacy privacy_mode values are ignored (old gatherings behave as
+// open through their existing valid links). The role is determined securely by
+// the link: a viewer link (?as=viewer) only ever grants the viewer role; a
+// member link grants member. An existing member is never re-joined and never
+// has their role changed by clicking a link. Memberships, roles, owners and
+// pending JoinRequest records are never destroyed here.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -16,66 +23,24 @@ export default async function(req) {
     if (!gathering) return Response.json({ error: 'Gathering not found' }, { status: 404 });
     const me = await getMyMember(base44, gatheringId, user.id);
     if (me) return Response.json({ status: 'already_member', role: me.role });
-    const mode = gathering.privacy_mode || 'invite';
     const ownerUid = gatheringOwnerUserId(gathering, []);
     const displayName = user.full_name || (user.email ? user.email.split('@')[0] : 'Traveler');
 
-    if (mode === 'invite') {
-      return Response.json({ status: 'invite_only' });
-    }
-    if (mode === 'open') {
-      await base44.asServiceRole.entities.Member.create({
-        gathering_id: gatheringId,
-        user_id: user.id,
-        role: requestedRole,
-        full_name: displayName,
-        owner_user_id: ownerUid,
-      });
-      const { parts } = await syncChildArrays(base44, gatheringId);
-      await logActivity(base44, {
-        gatheringId, type: 'member_added',
-        actorUserId: user.id, actorName: displayName,
-        summary: `${displayName} joined the gathering`,
-        ownerUserId: ownerUid, participantUserIds: parts,
-      });
-      return Response.json({ status: 'joined', role: requestedRole });
-    }
-    // approval-required
-    const existing = await base44.asServiceRole.entities.JoinRequest.filter({ gathering_id: gatheringId, user_id: user.id });
-    if ((existing || []).some((r) => r.status === 'pending')) {
-      return Response.json({ status: 'pending' });
-    }
-    await base44.asServiceRole.entities.JoinRequest.create({
+    await base44.asServiceRole.entities.Member.create({
       gathering_id: gatheringId,
       user_id: user.id,
+      role: requestedRole,
       full_name: displayName,
-      email: user.email || '',
-      requested_role: requestedRole,
-      status: 'pending',
       owner_user_id: ownerUid,
-      participant_user_ids: gathering.participant_user_ids || [],
     });
+    const { parts } = await syncChildArrays(base44, gatheringId);
     await logActivity(base44, {
-      gatheringId, type: 'join_requested',
+      gatheringId, type: 'member_added',
       actorUserId: user.id, actorName: displayName,
-      summary: `${displayName} requested to join as ${requestedRole === 'viewer' ? 'Viewer' : 'Member'}`,
-      ownerUserId: ownerUid, participantUserIds: gathering.participant_user_ids || [],
+      summary: `${displayName} joined the gathering`,
+      ownerUserId: ownerUid, participantUserIds: parts,
     });
-    if (isOneSignalConfigured()) {
-      const members = await base44.asServiceRole.entities.Member.filter({ gathering_id: gatheringId });
-      const owners = (members || []).filter((m) => m.role === 'owner' || m.role === 'admin').map((m) => m.user_id).filter(Boolean);
-      const origin = req.headers.get('origin') || '';
-      const route = `/gathering/${gatheringId}/settings`;
-      await notifyUsers(base44, {
-        gatheringId: gatheringId, userIds: owners, category: 'members',
-        heading: 'New join request',
-        message: `${displayName} requested to join as ${requestedRole === 'viewer' ? 'Viewer' : 'Member'}.`,
-        data: { gathering_id: gatheringId, route, kind: 'join_requested' },
-        url: origin ? origin + route : undefined,
-        dedupKey: `join_requested:${gatheringId}:${user.id}`,
-      });
-    }
-    return Response.json({ status: 'requested' });
+    return Response.json({ status: 'joined', role: requestedRole });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

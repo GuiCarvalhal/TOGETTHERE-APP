@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Home } from 'lucide-react';
 import ActivityBell from '@/components/tt/ActivityBell';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { useAuth } from '@/lib/AuthContext';
@@ -19,7 +20,7 @@ export default function TopBar({ gatheringId, onOpenMenu }) {
     <div className="sticky top-0 z-40 bg-background/85 backdrop-blur-md border-b border-foreground/8 tt-safe-top">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
         <Link to="/" aria-label="TOGETTHERE home" className="inline-flex items-center gap-1.5 group min-h-[36px]">
-          <span className="w-2 h-2 rounded-full bg-terra group-hover:scale-110 transition-transform" />
+          <Home className="w-4 h-4 text-terra group-hover:scale-110 transition-transform" aria-hidden />
           <span className="font-display font-bold tracking-tight text-foreground text-lg leading-none">TOGETTHERE</span>
         </Link>
         <div className="flex items-center gap-1">

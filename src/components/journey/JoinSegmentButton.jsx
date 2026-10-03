@@ -22,6 +22,9 @@ export default function JoinSegmentButton({ item, currentMember, onJoined, compa
   const attendees = item.attendee_user_ids || [];
   const isCreator = currentMember && item.owner_id === currentMember.user_id;
   const amIn = currentMember && (attendees.includes(currentMember.user_id) || isCreator);
+  // Viewers are read-only: never show a self join/leave control. The server
+  // (joinJourneySegment) also rejects viewer joins, so this is UX, not security.
+  if (currentMember?.role === 'viewer') return null;
 
   async function toggle() {
     setBusy(true);

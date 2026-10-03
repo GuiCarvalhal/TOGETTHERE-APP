@@ -7,10 +7,13 @@ import { Check } from 'lucide-react';
 // never member_user_ids (the ACL list). Only gathering members appear; the
 // creator is always included and shown as "(you)" when it's the current user.
 export default function ParticipantPicker({ members, selected, onToggle, currentUserId }) {
-  if (!members?.length) return null;
+  // Only participants (owner/member) can be segment attendees — viewers are
+  // read-only and never appear in attendee selection.
+  const pickable = (members || []).filter((m) => m.role === 'owner' || m.role === 'member');
+  if (!pickable.length) return null;
   return (
     <div className="space-y-1.5">
-      {members.map((m) => {
+      {pickable.map((m) => {
         const isOn = selected.includes(m.user_id);
         const isMe = m.user_id === currentUserId;
         return (
