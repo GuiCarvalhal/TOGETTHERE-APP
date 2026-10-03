@@ -187,7 +187,7 @@ export default function Home() {
               </div>
             )}
           </div>
-          <Button onClick={() => setOpen(true)} size="sm" className="shrink-0"><Plus /> New Gathering</Button>
+          <Button onClick={() => setOpen(true)} size="sm" className="shrink-0"><Plus /> New</Button>
         </div>
 
         {loading ? (
