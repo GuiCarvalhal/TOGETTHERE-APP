@@ -173,17 +173,19 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
 
   const formFields = (
     <>
-      <div className="space-y-2">
-        <Label className="text-ink-deep">Type</Label>
-        <Select value={form.type} onValueChange={onTypeChange}>
-          <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {JOURNEY_TYPES.map((t) => (
-              <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {!inline && (
+        <div className="space-y-2">
+          <Label className="text-ink-deep">Type</Label>
+          <Select value={form.type} onValueChange={onTypeChange}>
+            <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {JOURNEY_TYPES.map((t) => (
+                <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       {form.type === 'flight' ? (
         <FlightEditor
           form={form}
