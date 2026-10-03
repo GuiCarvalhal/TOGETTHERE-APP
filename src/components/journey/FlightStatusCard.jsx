@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plane, RefreshCw, ChevronDown, Clock } from 'lucide-react';
+import { Plane, RefreshCw, Clock } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import { formatOffsetLocal, formatOffsetTime } from '@/lib/formatPlaceTime';
 import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
@@ -33,7 +33,6 @@ export default function FlightStatusCard({ flightNumber, date }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [more, setMore] = useState(false);
   const depTz = usePlaceTimezone(data?.departure?.airport || data?.departure?.iata || '');
   const arrTz = usePlaceTimezone(data?.arrival?.airport || data?.arrival?.iata || '');
 
@@ -72,8 +71,6 @@ export default function FlightStatusCard({ flightNumber, date }) {
   const tone = STATUS_TONE[data.status] || STATUS_TONE.Scheduled;
   const dep = data.departure || {};
   const arr = data.arrival || {};
-  const ac = data.aircraft || {};
-  const hasMore = ac.model || ac.reg || ac.airline;
 
   return (
     <div className="tt-card p-4">
@@ -88,41 +85,26 @@ export default function FlightStatusCard({ flightNumber, date }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="tt-ink-panel p-3 min-w-0">
-          <p className="tt-label text-ink-deep/40 mb-1 truncate">{dep.iata || 'Departure'}</p>
-          <p className="text-sm font-semibold text-ink-deep truncate">{dep.airport || dep.iata || '—'}</p>
+          <p className="font-display text-base font-bold text-ink-deep mb-0.5 truncate">{dep.iata || 'Departure'}</p>
+          <p className="text-xs text-ink-deep/55 truncate">{dep.airport || dep.iata || '—'}</p>
           <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(dep.actual || dep.revised || dep.scheduled, depTz) || '—'}</p>
           {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">Sched {formatOffsetTime(dep.scheduled, depTz)}</p>}
           {(dep.terminal || dep.gate) && (
-            <p className="text-[0.625rem] text-ink-deep/55 mt-1.5">{dep.terminal && `T${dep.terminal}`}{dep.terminal && dep.gate && ' · '}{dep.gate && `Gate ${dep.gate}`}</p>
+            <p className="text-xs font-semibold text-ink-deep mt-1.5">{dep.terminal && `T${dep.terminal}`}{dep.terminal && dep.gate && ' · '}{dep.gate && `Gate ${dep.gate}`}</p>
           )}
         </div>
         <div className="tt-ink-panel p-3 min-w-0">
-          <p className="tt-label text-ink-deep/40 mb-1 truncate">{arr.iata || 'Arrival'}</p>
-          <p className="text-sm font-semibold text-ink-deep truncate">{arr.airport || arr.iata || '—'}</p>
+          <p className="font-display text-base font-bold text-ink-deep mb-0.5 truncate">{arr.iata || 'Arrival'}</p>
+          <p className="text-xs text-ink-deep/55 truncate">{arr.airport || arr.iata || '—'}</p>
           <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(arr.actual || arr.revised || arr.scheduled, arrTz) || '—'}</p>
           {(arr.actual || arr.revised) && arr.scheduled && (arr.actual || arr.revised) !== arr.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">Sched {formatOffsetTime(arr.scheduled, arrTz)}</p>}
           {(arr.terminal || arr.gate) && (
-            <p className="text-[0.625rem] text-ink-deep/55 mt-1.5">{arr.terminal && `T${arr.terminal}`}{arr.terminal && arr.gate && ' · '}{arr.gate && `Gate ${arr.gate}`}</p>
+            <p className="text-xs font-semibold text-ink-deep mt-1.5">{arr.terminal && `T${arr.terminal}`}{arr.terminal && arr.gate && ' · '}{arr.gate && `Gate ${arr.gate}`}</p>
           )}
         </div>
       </div>
 
       {data.lastUpdatedUtc && <p className="text-[0.625rem] text-ink-deep/40 mt-2.5">Updated {timeAgo(data.lastUpdatedUtc)}</p>}
-
-      {hasMore && (
-        <div className="mt-2.5 border-t border-ink-charcoal/10 pt-2.5">
-          <button onClick={() => setMore((v) => !v)} className="flex items-center gap-1 text-xs font-semibold text-terra-deep w-full">
-            More flight details <ChevronDown className={`w-3.5 h-3.5 transition-transform ${more ? 'rotate-180' : ''}`} />
-          </button>
-          {more && (
-            <div className="mt-2 space-y-1 text-xs text-ink-deep/70">
-              {ac.model && <p><span className="text-ink-deep/45">Aircraft</span> · {ac.model}</p>}
-              {ac.reg && <p><span className="text-ink-deep/45">Registration</span> · {ac.reg}</p>}
-              {ac.airline && <p><span className="text-ink-deep/45">Operating</span> · {ac.airline}</p>}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

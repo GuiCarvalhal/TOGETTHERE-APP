@@ -75,11 +75,19 @@ function ShellInner() {
   const dateRange = formatGatheringRange(gathering, journeyItems, uid);
   const dests = gatheringDestinations(gathering);
 
+  // Flight detail route: hide the gathering hero (flight detail has its own
+  // compact header). Non-flight detail keeps the hero. Detected from the
+  // already-loaded journeyItems (id + type) so there's no extra fetch or flash.
+  const detailMatch = location.pathname.match(/^\/gathering\/[^/]+\/journey\/([^/]+)$/);
+  const detailItemId = detailMatch?.[1];
+  const detailItem = detailItemId && detailItemId !== 'new' ? journeyItems.find((j) => j.id === detailItemId) : null;
+  const isFlightDetail = detailItem?.type === 'flight';
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TopBar gatheringId={id} onOpenMenu={() => setMoreOpen(true)} />
-      {/* Cover-photo header */}
-      <header className="relative">
+      {/* Cover-photo header — hidden on flight detail */}
+      {!isFlightDetail && <header className="relative">
         <div className="relative h-[124px] sm:h-[168px] w-full overflow-hidden">
           {gathering.cover_image ? (
             <Image src={gathering.cover_image} alt={gathering.name} className="w-full h-full object-cover" fittingType="fill" />
@@ -139,7 +147,7 @@ function ShellInner() {
             </div>
           </div>
         </div>
-      </header>
+      </header>}
 
       <NotificationOptInBanner onesignal={onesignal} gatheringId={id} />
 

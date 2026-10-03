@@ -17,7 +17,7 @@ const LABELS = {
 // attendee_user_ids via joinJourneySegment (action 'join' | 'leave'). The
 // creator is always a participant and is shown a "hosting" state instead of a
 // leave control (they manage others from the edit form).
-export default function JoinSegmentButton({ item, currentMember, onJoined }) {
+export default function JoinSegmentButton({ item, currentMember, onJoined, compact }) {
   const [busy, setBusy] = useState(false);
   const attendees = item.attendee_user_ids || [];
   const isCreator = currentMember && item.owner_id === currentMember.user_id;
@@ -37,23 +37,23 @@ export default function JoinSegmentButton({ item, currentMember, onJoined }) {
 
   if (amIn && isCreator) {
     return (
-      <div className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] font-semibold text-sm border border-[#4a8b6f]/25">
-        <Check className="w-4 h-4" /> You're hosting this
+      <div className={`inline-flex items-center gap-1.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] font-semibold border border-[#4a8b6f]/25 ${compact ? 'text-xs px-3 py-1.5' : 'text-sm px-4 py-2.5'}`}>
+        <Check className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} /> {compact ? 'Hosting' : "You're hosting this"}
       </div>
     );
   }
 
   if (amIn) {
     return (
-      <Button variant="secondary" className="w-full h-11" onClick={toggle} disabled={busy}>
-        {busy ? <Loader2 className="animate-spin" /> : <LogOut />} Leave this segment
+      <Button variant="secondary" size={compact ? 'sm' : 'default'} className={compact ? 'shrink-0' : 'w-full h-11'} onClick={toggle} disabled={busy}>
+        {busy ? <Loader2 className="animate-spin" /> : <LogOut />} {compact ? 'Leave' : 'Leave this segment'}
       </Button>
     );
   }
 
   return (
-    <Button className="w-full h-11" onClick={toggle} disabled={busy}>
-      {busy ? <Loader2 className="animate-spin" /> : <Plus />} {LABELS[item.type] || LABELS.other}
+    <Button size={compact ? 'sm' : 'default'} className={compact ? 'shrink-0' : 'w-full h-11'} onClick={toggle} disabled={busy}>
+      {busy ? <Loader2 className="animate-spin" /> : <Plus />} {compact ? 'Join' : (LABELS[item.type] || LABELS.other)}
     </Button>
   );
 }

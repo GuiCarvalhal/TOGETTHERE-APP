@@ -15,6 +15,7 @@ import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useToast } from '@/components/ui/use-toast';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, ArrowLeft, Clock, CalendarDays } from 'lucide-react';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
+import FlightDetailView from '@/components/journey/FlightDetailView';
 import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
 import VenueInfoBlock from '@/components/journey/VenueInfoBlock';
 import SegmentInfoSections from '@/components/journey/SegmentInfoSections';
@@ -158,7 +159,10 @@ export default function JourneyDetail() {
         onDelete={handleDelete}
         deleting={deleting}
       />
-      <div className="mt-5 space-y-4">
+      {item.type === 'flight' ? (
+        <FlightDetailView item={item} members={members} currentMember={currentMember} onReload={() => load(true)} />
+      ) : (
+        <div className="mt-5 space-y-4">
       {/* Hero */}
       <div className="tt-card p-4">
         <div className="flex items-start gap-4">
@@ -292,6 +296,7 @@ export default function JourneyDetail() {
         />
       )}
       </div>
+      )}
     </div>
   );
 }
