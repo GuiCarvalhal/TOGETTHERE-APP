@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
+import { setActiveUser, purgeAll } from '@/lib/offlineCache';
 
 const AuthContext = createContext();
 
@@ -100,6 +101,9 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
+      // Mark the active user for the offline cache. If the account changed,
+      // setActiveUser purges the previous user's cached snapshots.
+      if (currentUser?.id) setActiveUser(currentUser.id).catch(() => {});
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
@@ -112,11 +116,16 @@ export const AuthProvider = ({ children }) => {
           type: 'auth_required',
           message: 'Authentication required'
         });
+        // Authoritative server revocation — purge all cached snapshots.
+        // Transient network failures (no status) never reach this branch.
+        purgeAll().catch(() => {});
       }
     }
   };
 
   const logout = (shouldRedirect = true) => {
+    // Purge all offline cached snapshots on logout — no cross-account leak.
+    purgeAll().catch(() => {});
     setUser(null);
     setIsAuthenticated(false);
     

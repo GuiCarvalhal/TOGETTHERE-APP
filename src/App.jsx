@@ -28,8 +28,10 @@ import GatheringSettings from '@/pages/GatheringSettings';
 import Profile from '@/pages/Profile';
 import ProfileRedirect from '@/components/ProfileRedirect';
 import JoinGathering from '@/pages/JoinGathering';
+import { useOfflinePruneOnMount } from '@/lib/useOfflineSync';
 
 function App() {
+  useOfflinePruneOnMount();
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>

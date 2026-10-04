@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { computeBalances, settleUp, COMMON_CURRENCIES } from '@/lib/gatheringHelpers';
+import { useOfflineExpensesCache } from '@/lib/useOfflineSync';
 import usePolling from '@/hooks/usePolling';
 
 const LS_BASE = (gid) => `tt-exp-base-${gid}`;
@@ -63,6 +64,14 @@ export function useExpensesData() {
   }
   useEffect(() => { load(); }, [gatheringId]);
   usePolling(() => load(true), 25000);
+
+  // Populate the offline cache from successfully loaded expenses. NEVER stores
+  // for viewer role (shouldStoreExpenses guard inside saveExpenses).
+  useOfflineExpensesCache({
+    userId: currentMember?.user_id,
+    gatheringId, role,
+    expenses, error, loading,
+  });
 
   async function loadRates() {
     setRatesLoading(true); setRatesError(null);

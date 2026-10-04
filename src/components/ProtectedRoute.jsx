@@ -26,6 +26,17 @@ export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthe
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     }
+    // A real 401/403 from the server means the session is revoked — go to
+    // login. But if the device is offline and the auth check failed due to a
+    // network error (not a real 401/403), fall back to the offline shell
+    // instead of a blank spinner/login loop.
+    if (authError.type === 'auth_required') {
+      return unauthenticatedElement;
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      window.location.replace('/offline.html');
+      return null;
+    }
     return unauthenticatedElement;
   }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import ActivityBell from '@/components/tt/ActivityBell';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import BrandLogo from '@/components/tt/BrandLogo';
+import ConnectivityIndicator from '@/components/tt/ConnectivityIndicator';
 import { useAuth } from '@/lib/AuthContext';
 
 // Universal app header used on every page (Home, gathering pages, Profile,
@@ -23,6 +24,7 @@ export default function TopBar({ gatheringId, onOpenMenu }) {
           <span className="font-display font-bold tracking-tight text-foreground text-lg leading-none">TOGETTHERE</span>
         </div>
         <div className="flex items-center gap-1">
+          <ConnectivityIndicator />
           <ActivityBell gatheringId={gatheringId} />
           <button onClick={onOpenMenu} aria-label="Open account menu" className="rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]">
             <MemberAvatar member={{ photo, full_name: label }} size="sm" />

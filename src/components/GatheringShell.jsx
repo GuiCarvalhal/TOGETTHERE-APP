@@ -10,6 +10,7 @@ import NotificationOptInBanner from '@/components/tt/NotificationOptInBanner';
 import { useAuth } from '@/lib/AuthContext';
 import { useOneSignal } from '@/lib/useOneSignal';
 import { readLastSection, writeLastSection, sectionFromPath, sectionAllowedForRole } from '@/lib/gatheringLastPage';
+import { useOfflineGatheringCache } from '@/lib/useOfflineSync';
 import { Image } from '@/components/ui/image';
 import { Loader2, CalendarDays, MapPin, Plus, MessageCircle, Music, ExternalLink, Settings } from 'lucide-react';
 
@@ -30,11 +31,23 @@ function FabButton() {
 
 function ShellInner() {
   const { id } = useParams();
-  const { gathering, role, loading, error, currentMember, journeyItems } = useGathering();
+  const { gathering, role, loading, error, currentMember, journeyItems, members } = useGathering();
   const { user } = useAuth();
   const onesignal = useOneSignal(user?.id);
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
+
+  // Populate the offline IndexedDB cache from successfully loaded gathering
+  // context. Fires only after a non-error, non-loading load — auth/network
+  // errors never produce a stale cache entry. No auth tokens stored.
+  useOfflineGatheringCache({
+    userId: currentMember?.user_id || user?.id,
+    gatheringId: id,
+    role,
+    gathering, members,
+    journeyItems,
+    error, loading,
+  });
 
   // Remember the last gathering section this user visited for this gathering,
   // so re-entering the gathering returns them there instead of the default.
