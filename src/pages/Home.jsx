@@ -197,7 +197,7 @@ export default function Home() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[0, 1, 2].map((i) => (
               <div key={i} className="tt-card overflow-hidden">
-                <Skeleton className="h-[131.5px] w-full" />
+                <Skeleton className="h-[155px] w-full" />
                 <div className="p-5 space-y-3">
                   <Skeleton className="h-5 w-2/3" tone="cream" />
                   <Skeleton className="h-3 w-1/2" tone="cream" />
