@@ -39,11 +39,11 @@ export default function FlightDetailHeader({ item }) {
         </div>
         <div className="min-w-0 flex-1">
           {metaLine && <p className="text-[0.6875rem] text-ink-deep/50 truncate">{metaLine}</p>}
-          <h1 className="font-display text-lg font-bold text-ink-deep leading-tight mt-0.5 truncate">
+          <h1 className="font-display text-lg font-bold text-ink-deep leading-tight mt-0.5">
             {fromLabel && toLabel ? (
-              <span className="block truncate">{fromLabel}<span className="px-2 text-ink-deep/40">→</span>{toLabel}</span>
+              <span className="block">{fromLabel}<span className="px-2 text-ink-deep/40">→</span>{toLabel}</span>
             ) : (
-              <span className="block truncate">{item.title}</span>
+              <span className="block">{item.title}</span>
             )}
           </h1>
           {(startFull || endFull) && (

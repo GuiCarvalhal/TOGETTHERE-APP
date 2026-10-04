@@ -89,6 +89,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const subText = onCover ? 'text-white/85' : 'text-ink-deep/55';
   const metaText = onCover ? 'text-white/80' : 'text-ink-deep/50';
   const legBadgeBase = onCover ? 'bg-white/20 text-white' : 'bg-terra/12 text-terra-deep';
+  const arrowColor = onCover ? 'text-white/50' : 'text-ink-deep/40';
 
   const hasAttachments = (item.attachments || []).length > 0;
 
@@ -142,7 +143,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           {/* Metadata line — the first line of the card (no item-type label) */}
           {metaLine && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{metaLine}</p>}
 
-          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 line-clamp-2 pr-5 ${mainText}`}>{isFlight ? (flightRoute ? <span className="block truncate">{flightRoute.from}<span className="px-3 text-ink-deep/40">→</span>{flightRoute.to}</span> : <span className="block truncate">{item.title}</span>) : item.title}</h3>
+          <h3 className={`font-display text-[0.95rem] font-bold leading-tight mt-0.5 pr-5 ${isFlight ? '' : 'line-clamp-2'} ${mainText}`}>{isFlight ? (flightRoute ? <span className="block">{flightRoute.from}<span className={`px-3 ${arrowColor}`}>→</span>{flightRoute.to}</span> : <span className="block">{item.title}</span>) : item.title}</h3>
 
           {/* Timing: stay legs show a Check-in/Check-out pill + the single
               primary time; other items show start → end · duration. */}
@@ -164,8 +165,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
               <>
                 {startFull && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{startFull}</span>}
                 {endFull && <><span className="opacity-50">→</span><span>{endFull}</span></>}
-                {duration && (
-                  <span aria-hidden={isFlight ? 'true' : undefined} className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold border ${isFlight ? 'invisible' : ''} ${onCover ? 'border-transparent bg-white/20 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/60'}`}>
+                {duration && !isFlight && (
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold border ${onCover ? 'border-transparent bg-white/20 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/60'}`}>
                     {duration}
                   </span>
                 )}
