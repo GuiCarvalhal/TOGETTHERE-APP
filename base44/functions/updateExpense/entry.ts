@@ -17,7 +17,7 @@ export default async function(req) {
     if (!me || me.role === 'viewer') return Response.json({ error: 'Only participants can edit expenses' }, { status: 403 });
 
     const existing = await base44.asServiceRole.entities.Expense.get(expense_id);
-    const isOwner = me.role === 'owner' || existing.owner_user_id === user.id;
+    const isOwner = me.role === 'owner' || me.role === 'admin' || existing.owner_user_id === user.id;
     const isPayer = existing.payer_user_id === user.id || existing.created_by_id === user.id;
     if (!isOwner && !isPayer) {
       return Response.json({ error: 'You can only edit expenses you paid or created' }, { status: 403 });
@@ -84,6 +84,8 @@ export default async function(req) {
       split_method: expense.split_method || 'equal',
       category: expense.category || 'other',
       receipt: expense.receipt || '',
+      place_name: expense.place_name || '',
+      place_photo: expense.place_photo || '',
       date: expense.date,
       payer_user_id: payerUid,
       participant_user_ids: parts,

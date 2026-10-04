@@ -2,9 +2,10 @@
 
 export const ROLES = { owner: 'Owner', admin: 'Admin', member: 'Member', viewer: 'Viewer' };
 
-// Admin = co-organizer: manages members & edits shared journey items, but
-// cannot delete the gathering, change settings, or remove/change the Owner.
-// Expenses access is intentionally unchanged (owner + member only).
+// Admin = co-organizer: an active participant exactly like Owner/Member —
+// sees/adds expenses & agent, can be a payer/split/attendee — and manages
+// members & edits shared journey items. Cannot delete the gathering, change
+// settings, or remove/change the Owner (owner-only).
 export function canEditGathering(role) { return role === 'owner'; }
 export function canManageMembers(role) { return role === 'owner' || role === 'admin'; }
 export function canManageRoles(role) { return role === 'owner' || role === 'admin'; }
@@ -25,16 +26,15 @@ export function canDeleteJourneyItem(role, item, currentMember) {
   if (item?.owner_id === currentMember?.user_id) return true;
   return false;
 }
-export function canAddExpense(role) { return role === 'owner' || role === 'member'; }
-export function canSeeExpenses(role) { return role === 'owner' || role === 'member'; }
-export function canSeeAgent(role) { return role === 'owner' || role === 'member'; }
+export function canAddExpense(role) { return role === 'owner' || role === 'admin' || role === 'member'; }
+export function canSeeExpenses(role) { return role === 'owner' || role === 'admin' || role === 'member'; }
+export function canSeeAgent(role) { return role === 'owner' || role === 'admin' || role === 'member'; }
 export function canManageGathering(role) { return role === 'owner'; }
-export function isParticipant(role) { return role === 'owner' || role === 'member'; }
+export function isParticipant(role) { return role === 'owner' || role === 'admin' || role === 'member'; }
 
 // Invite (share-link) permission: owner, admin and member can share
 // Member/Viewer invite links. Viewers cannot. Role/member management (change
-// role, remove) stays owner/admin only via canManageMembers. Admin is a
-// co-organizer who can invite but is not an expense/agent participant.
+// role, remove) stays owner/admin only via canManageMembers.
 export function canInviteMembers(role) { return role === 'owner' || role === 'admin' || role === 'member'; }
 
 // Expenses Mine scope: ONLY expenses where the current member is the payer —

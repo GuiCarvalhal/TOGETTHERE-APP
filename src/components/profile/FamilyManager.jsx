@@ -55,7 +55,7 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
       try {
         const ms = await base44.entities.Member.filter({ gathering_id: gatheringId });
         if (!active) return;
-        const cands = ms.filter((m) => m.user_id && m.user_id !== userId && (m.role === 'owner' || m.role === 'member'));
+        const cands = ms.filter((m) => m.user_id && m.user_id !== userId && (m.role === 'owner' || m.role === 'admin' || m.role === 'member'));
         setCandidates(cands);
         const res = await base44.functions.invoke('getFamiliesForUsers', { user_ids: cands.map((m) => m.user_id) });
         const data = res.data || res;

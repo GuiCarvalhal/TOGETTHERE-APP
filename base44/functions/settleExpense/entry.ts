@@ -18,7 +18,7 @@ export default async function (req) {
 
     const existing = await base44.asServiceRole.entities.Expense.get(expense_id);
     if (!existing || existing.gathering_id !== gathering_id) return Response.json({ error: 'Expense not found' }, { status: 404 });
-    const isOwner = me.role === 'owner' || existing.owner_user_id === user.id;
+    const isOwner = me.role === 'owner' || me.role === 'admin' || existing.owner_user_id === user.id;
     const isPayer = existing.payer_user_id === user.id || existing.created_by_id === user.id;
     if (!isOwner && !isPayer) return Response.json({ error: 'You can only settle expenses you paid or created' }, { status: 403 });
 

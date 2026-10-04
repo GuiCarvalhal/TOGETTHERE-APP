@@ -97,7 +97,7 @@ export function useExpensesData() {
     try { localStorage.setItem(LS_BASE(gatheringId), c); } catch {}
   }
 
-  const participantMembers = members.filter((m) => m.role === 'owner' || m.role === 'member');
+  const participantMembers = members.filter((m) => m.role === 'owner' || m.role === 'admin' || m.role === 'member');
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
   const expenseById = Object.fromEntries(expenses.map((e) => [e.id, e]));
 

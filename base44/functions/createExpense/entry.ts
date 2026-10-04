@@ -76,6 +76,8 @@ export default async function(req) {
       split_method: expense.split_method || 'equal',
       category: expense.category || 'other',
       receipt: expense.receipt || '',
+      place_name: expense.place_name || '',
+      place_photo: expense.place_photo || '',
       date: expense.date,
       settled: false,
       owner_user_id: ownerUid,

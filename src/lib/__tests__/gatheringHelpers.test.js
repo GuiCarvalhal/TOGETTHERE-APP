@@ -3,8 +3,13 @@ import {
   participantMembers,
   isParticipant,
   canSeeExpenses,
+  canAddExpense,
+  canSeeAgent,
   canAddJourney,
   canInviteMembers,
+  canManageGathering,
+  canEditGathering,
+  canManageMembers,
   mineExpenses,
   journeyViewerForcedPrefs,
   legacyViewerAllocationIds,
@@ -14,15 +19,16 @@ import {
 
 const members = [
   { id: 'm-owner', user_id: 'u-owner', role: 'owner' },
+  { id: 'm-admin', user_id: 'u-admin', role: 'admin' },
   { id: 'm-mem', user_id: 'u-mem', role: 'member' },
   { id: 'm-viewer', user_id: 'u-viewer', role: 'viewer' },
   { id: 'm-self', user_id: 'u-self', role: 'viewer' },
 ];
 
 describe('participantMembers — viewers excluded from pickers', () => {
-  it('keeps only owner + member', () => {
+  it('keeps owner + admin + member', () => {
     const pick = participantMembers(members).map((m) => m.id);
-    expect(pick).toEqual(['m-owner', 'm-mem']);
+    expect(pick).toEqual(['m-owner', 'm-admin', 'm-mem']);
   });
   it('a viewer is still excluded', () => {
     expect(participantMembers(members).find((m) => m.role === 'viewer')).toBeUndefined();
@@ -30,14 +36,17 @@ describe('participantMembers — viewers excluded from pickers', () => {
 });
 
 describe('role gating — viewers blocked from participation surfaces', () => {
-  it('isParticipant is false for viewers', () => {
+  it('isParticipant is false for viewers, true for owner/admin/member', () => {
     expect(isParticipant('viewer')).toBe(false);
     expect(isParticipant('member')).toBe(true);
     expect(isParticipant('owner')).toBe(true);
+    expect(isParticipant('admin')).toBe(true);
   });
-  it('canSeeExpenses is false for viewers', () => {
+  it('canSeeExpenses is false for viewers, true for owner/admin/member', () => {
     expect(canSeeExpenses('viewer')).toBe(false);
     expect(canSeeExpenses('member')).toBe(true);
+    expect(canSeeExpenses('admin')).toBe(true);
+    expect(canSeeExpenses('owner')).toBe(true);
   });
   it('canAddJourney is false for viewers', () => {
     expect(canAddJourney('viewer')).toBe(false);
@@ -142,5 +151,30 @@ describe('settleUp — viewers excluded from suggestions', () => {
     expect(safe).toEqual([{ from: 'm-bob', to: 'm-alice', amount: 30 }]);
     // sanity: the unfiltered call would include carol — proving the filter matters
     expect(txns.some((t) => t.from === 'm-carol' || t.to === 'm-carol')).toBe(true);
+  });
+});
+
+describe('admin is an active participant exactly like owner/member', () => {
+  it('isParticipant includes admin', () => { expect(isParticipant('admin')).toBe(true); });
+  it('canSeeExpenses includes admin', () => { expect(canSeeExpenses('admin')).toBe(true); });
+  it('canAddExpense includes admin', () => { expect(canAddExpense('admin')).toBe(true); });
+  it('canSeeAgent includes admin', () => { expect(canSeeAgent('admin')).toBe(true); });
+  it('canInviteMembers includes admin', () => { expect(canInviteMembers('admin')).toBe(true); });
+  it('canAddJourney includes admin', () => { expect(canAddJourney('admin')).toBe(true); });
+  it('participantMembers includes admin', () => {
+    expect(participantMembers(members).map((m) => m.id)).toContain('m-admin');
+  });
+  it('canManageGathering is owner-only (admin excluded)', () => {
+    expect(canManageGathering('admin')).toBe(false);
+    expect(canManageGathering('owner')).toBe(true);
+  });
+  it('canEditGathering is owner-only (admin excluded)', () => {
+    expect(canEditGathering('admin')).toBe(false);
+    expect(canEditGathering('owner')).toBe(true);
+  });
+  it('canManageMembers is owner/admin only (member excluded)', () => {
+    expect(canManageMembers('admin')).toBe(true);
+    expect(canManageMembers('owner')).toBe(true);
+    expect(canManageMembers('member')).toBe(false);
   });
 });

@@ -31,12 +31,14 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
     .filter((m) => m && isParticipant(m.role));
   const displayPayer = payer && isParticipant(payer.role) ? payer : null;
   const splitLabel = SPLIT_LABEL[exp.split_method] || 'Split';
-  // Receipt image: show only when images are ON and the receipt is an image
-  // (not a PDF). PDFs must not render as broken <img> tags. No render-time
-  // Places calls — the receipt URL is a stored upload, never fetched at render.
+  // Card image: prefer a receipt image; fall back to the persisted place photo
+  // when there is no receipt or the receipt is a PDF (PDFs can't render as
+  // <img>). No render-time API calls — both URLs are stored on the expense at
+  // save time.
   const receiptUrl = exp.receipt || '';
-  const isPdf = /\.pdf(\?|$)/i.test(receiptUrl);
-  const showReceiptImage = showImages && receiptUrl && !isPdf;
+  const receiptIsPdf = /\.pdf(\?|$)/i.test(receiptUrl);
+  const cardImage = (receiptUrl && !receiptIsPdf) ? receiptUrl : (exp.place_photo || '');
+  const showReceiptImage = showImages && !!cardImage;
 
   return (
     <div className="flex gap-2 items-stretch">
@@ -61,7 +63,7 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
       >
         {showReceiptImage && (
           <div className="h-24 w-full overflow-hidden rounded-t-2xl">
-            <Image src={receiptUrl} alt={exp.title} className="w-full h-full object-cover" fittingType="fill" />
+            <Image src={cardImage} alt={exp.title} className="w-full h-full object-cover" fittingType="fill" />
           </div>
         )}
         <div className="p-3">

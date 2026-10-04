@@ -9,7 +9,7 @@ import { Check } from 'lucide-react';
 export default function ParticipantPicker({ members, selected, onToggle, currentUserId }) {
   // Only participants (owner/member) can be segment attendees — viewers are
   // read-only and never appear in attendee selection.
-  const pickable = (members || []).filter((m) => m.role === 'owner' || m.role === 'member');
+  const pickable = (members || []).filter((m) => m.role === 'owner' || m.role === 'admin' || m.role === 'member');
   if (!pickable.length) return null;
   return (
     <div className="space-y-1.5">

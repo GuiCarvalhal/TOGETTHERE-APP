@@ -9,12 +9,13 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   computeUnitAmounts, expandUnitAmountsToMembers, reconstructEditSelection,
-  buildSplitUnits, legacyViewerAllocationIds, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency,
+  buildSplitUnits, legacyViewerAllocationIds, participantMembers, EXPENSE_CATEGORIES, COMMON_CURRENCIES, formatCurrency,
 } from '@/lib/gatheringHelpers';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import SplitMethodTabs from '@/components/expenses/SplitMethodTabs';
 import FamilySplitTable from '@/components/expenses/FamilySplitTable';
 import AttachmentChip from '@/components/tt/AttachmentChip';
+import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import { Loader2, Upload, X, Plus, Check, Trash2, AlertTriangle } from 'lucide-react';
 
 // Per-user split preferences (last split method + selected split units +
@@ -32,7 +33,7 @@ function writePrefs(uid, p) {
 }
 
 export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, baseCurrency, onClose, onSaved, onDelete }) {
-  const participants = members.filter((m) => m.role === 'owner' || m.role === 'member');
+  const participants = participantMembers(members);
   const isEdit = !!expense;
   const userId = currentMember?.user_id || '';
   const prefs = useMemo(() => (!isEdit && userId ? readPrefs(userId) : null), [isEdit, userId]);
@@ -53,6 +54,8 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
       : (currentMember?.id || participants[0]?.id || ''),
     date: expense?.date || new Date().toISOString().slice(0, 10),
     receipt: expense?.receipt || '',
+    place_name: expense?.place_name || '',
+    place_photo: expense?.place_photo || '',
     settled: expense?.settled || false,
   });
 
@@ -152,6 +155,24 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
     }
   }
 
+  // Resolve a Google Places photo for an optional expense place and persist the
+  // URL on the expense so cards never fetch at render. Reuses the agent place
+  // photo resolver (searchPlacePhotos -> UploadPublicFile). On edit the existing
+  // place_photo is preserved unless the user picks a different place.
+  async function resolvePlacePhoto(place) {
+    if (!place?.name) { setForm((f) => ({ ...f, place_photo: '' })); return; }
+    setUploading(true);
+    try {
+      const res = await base44.functions.invoke('resolveAgentPlacePhoto', { name: place.name, address: place.address || '' });
+      const data = res.data || res;
+      setForm((f) => ({ ...f, place_name: place.name, place_photo: data.photo_url || '' }));
+    } catch {
+      setForm((f) => ({ ...f, place_name: place.name, place_photo: '' }));
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     if (legacy.hasLegacy) return; // blocked — actionable warning shown below
@@ -170,6 +191,8 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
         split_method: form.split_method,
         category: form.category,
         receipt: form.receipt,
+        place_name: form.place_name.trim(),
+        place_photo: form.place_photo,
         date: form.date,
         settled: form.settled,
         display_currency: baseCurrency || '',
@@ -278,6 +301,19 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
               </SelectContent>
             </Select>
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-ink-deep">Place (optional)</Label>
+          <PlaceAutocomplete
+            value={form.place_name}
+            onText={(v) => setForm((f) => ({ ...f, place_name: v, place_photo: '' }))}
+            onSelect={(place) => resolvePlacePhoto(place)}
+            placeholder="Where was this? (optional)"
+            className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
+          />
+          {form.place_photo && (
+            <p className="text-xs text-ink-deep/50">A place photo will show on the card when there's no receipt.</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label className="text-ink-deep">Split method</Label>

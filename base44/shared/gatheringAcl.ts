@@ -12,7 +12,7 @@ export function allMemberUserIds(members) {
 
 export function participantUserIds(members) {
   return (members || [])
-    .filter((m) => m.role === 'owner' || m.role === 'member')
+    .filter((m) => m.role === 'owner' || m.role === 'admin' || m.role === 'member')
     .map((m) => m.user_id)
     .filter(Boolean);
 }
@@ -23,7 +23,7 @@ export function participantUserIds(members) {
 // or split allocation — defense-in-depth behind the form's participant picker.
 export function participantMemberIds(members) {
   return (members || [])
-    .filter((m) => m.role === 'owner' || m.role === 'member')
+    .filter((m) => m.role === 'owner' || m.role === 'admin' || m.role === 'member')
     .map((m) => m.id);
 }
 

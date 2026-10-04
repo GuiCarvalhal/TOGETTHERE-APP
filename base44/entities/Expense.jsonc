@@ -63,6 +63,14 @@
     "receipt": {
       "type": "string"
     },
+    "place_name": {
+      "type": "string",
+      "description": "Optional Google Places name for this expense (e.g. a restaurant or venue). Resolved at entry time via autocomplete so the card never re-geocodes at render. Free text is allowed; absent on legacy rows."
+    },
+    "place_photo": {
+      "type": "string",
+      "description": "Cached public URL of a small Google Places photo for the expense's place, resolved ONCE at save time (via resolveAgentPlacePhoto) and persisted so the expense card shows a photo without re-fetching at render. Shown on the card only when there is no image receipt. Absent on legacy rows."
+    },
     "settled": {
       "type": "boolean",
       "default": false

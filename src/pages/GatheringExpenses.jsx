@@ -225,7 +225,7 @@ export default function GatheringExpenses() {
                         payer={memberById[exp.payer_member_id]}
                         splits={splitsByExpense[exp.id] || []}
                         members={members}
-                        canEdit={role === 'owner' || (role === 'member' && exp.payer_member_id === currentMember?.id)}
+                        canEdit={role === 'owner' || role === 'admin' || (role === 'member' && exp.payer_member_id === currentMember?.id)}
                         onEdit={() => { setEditing(exp); setOpen(true); }}
                         displayAmount={disp.amount}
                         displayCurrency={disp.currency}
