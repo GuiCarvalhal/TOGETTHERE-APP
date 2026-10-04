@@ -19,6 +19,7 @@ import GatheringCard from '@/components/tt/cards/GatheringCard';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import DestinationPicker from '@/components/tt/DestinationPicker';
+import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -170,6 +171,8 @@ export default function Home() {
           </>
         )}
       </section>
+
+      <ProfileCompleteReminder />
 
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">

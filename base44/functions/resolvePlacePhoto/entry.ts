@@ -1,25 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
-import { searchPlacePhotos, fetchPhotoBlob } from '../../shared/googlePlaces.ts';
-
-// Build a Google Places search query for a journey item's primary place.
-// - hotel/activity → the venue name (location_name)
-// - flight → destination airport (IATA codes qualified with " Airport")
-// - car/train/cruise → the destination endpoint
-function placeQueryForItem(item) {
-  if (!item) return '';
-  const t = item.type;
-  if (t === 'hotel' || t === 'activity') return (item.location_name || '').trim();
-  if (t === 'flight') {
-    const loc = (item.location_to || item.location_from || '').trim();
-    if (!loc) return '';
-    return /^[A-Z]{2,3}$/.test(loc) ? `${loc} Airport` : loc;
-  }
-  if (t === 'car' || t === 'train' || t === 'cruise') {
-    return (item.location_to || item.location_from || '').trim();
-  }
-  return '';
-}
+import { placeQueryForItem, resolveItemPhotoUrl } from '../../shared/journeyPhoto.ts';
 
 // Resolves a small Google Places photo for a journey item's primary place,
 // uploads it to permanent public storage, and caches the URL on the record
@@ -41,19 +22,10 @@ export default async function(req) {
     const item = await base44.entities.JourneyItem.get(itemId);
     if (item.place_photo) return Response.json({ photo_url: item.place_photo });
 
-    const query = placeQueryForItem(item);
-    if (!query) return Response.json({ error: 'No resolvable place for this item type' }, { status: 400 });
+    if (!placeQueryForItem(item)) return Response.json({ error: 'No resolvable place for this item type' }, { status: 400 });
 
-    const photos = await searchPlacePhotos(key, query);
-    if (!photos.length) return Response.json({ error: 'No place photo found' }, { status: 404 });
-    const blob = await fetchPhotoBlob(key, photos[0].name, 400);
-    if (!blob) return Response.json({ error: 'Could not fetch photo' }, { status: 502 });
-
-    // UploadPublicFile expects a File (with name + type), not a bare Blob.
-    const file = new File([blob], 'place-photo.jpg', { type: blob.type || 'image/jpeg' });
-    const uploaded = await base44.asServiceRole.integrations.Core.UploadPublicFile({ file });
-    const fileUrl = uploaded.file_url;
-    if (!fileUrl) return Response.json({ error: 'Upload failed' }, { status: 502 });
+    const fileUrl = await resolveItemPhotoUrl(base44, item, key);
+    if (!fileUrl) return Response.json({ error: 'No place photo found' }, { status: 404 });
     await base44.asServiceRole.entities.JourneyItem.update(itemId, { place_photo: fileUrl });
     return Response.json({ photo_url: fileUrl });
   } catch (error) {

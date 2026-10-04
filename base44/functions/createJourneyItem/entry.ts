@@ -1,7 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
 import { getMyMember, allMemberUserIds, participantUserIds, gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
+import { resolveItemPhotoUrl } from '../../shared/journeyPhoto.ts';
 
 export default async function(req) {
   try {
@@ -41,6 +43,20 @@ export default async function(req) {
       member_user_ids: memberUserIds,
       attendee_user_ids: attendeeUserIds,
     });
+
+    // Persist a Google Places photo for the segment's primary place at create
+    // time so cards never re-fetch at render. Best-effort: a failure leaves
+    // place_photo unset and the card falls back to its themed placeholder; the
+    // lazy resolvePlacePhoto endpoint can still fill it later.
+    const mapsKey = secrets.get('GOOGLEMAPS_TOGETTHERE');
+    if (mapsKey) {
+      const photoUrl = await resolveItemPhotoUrl(base44, created, mapsKey);
+      if (photoUrl) {
+        await base44.asServiceRole.entities.JourneyItem.update(created.id, { place_photo: photoUrl });
+        created.place_photo = photoUrl;
+      }
+    }
+
     await logActivity(base44, {
       gatheringId: gathering_id, type: 'journey_added',
       actorUserId: user.id, actorName: me.full_name || user.full_name || 'Someone',

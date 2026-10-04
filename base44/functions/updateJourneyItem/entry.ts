@@ -1,7 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
 import { getMyMember, allMemberUserIds, participantUserIds, gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
+import { resolveItemPhotoUrl, placeDefiningFields } from '../../shared/journeyPhoto.ts';
 
 export default async function (req) {
   try {
@@ -50,6 +52,27 @@ export default async function (req) {
       updateFields.attendee_user_ids = [...new Set([...keepOwner, ...valid])].filter(Boolean);
     }
     await base44.asServiceRole.entities.JourneyItem.update(item_id, updateFields);
+
+    // Re-resolve the place photo when a place-defining field changed on edit
+    // and either no photo is cached or the place moved. Best-effort: a failure
+    // leaves the existing place_photo intact. Avoids burning Places quota on
+    // edits that don't touch the location (e.g. notes/time/attendee changes).
+    const mapsKey = secrets.get('GOOGLEMAPS_TOGETTHERE');
+    if (mapsKey) {
+      const fields = placeDefiningFields(existing.type);
+      const placeChanged = fields.some((f) => {
+        const oldVal = (existing[f] || '').toString().trim();
+        const newVal = (payload[f] != null ? payload[f] : existing[f] || '').toString().trim();
+        return oldVal !== newVal;
+      });
+      if (placeChanged || !existing.place_photo) {
+        const merged = { ...existing, ...updateFields };
+        const photoUrl = await resolveItemPhotoUrl(base44, merged, mapsKey);
+        if (photoUrl) {
+          await base44.asServiceRole.entities.JourneyItem.update(item_id, { place_photo: photoUrl });
+        }
+      }
+    }
 
     await logActivity(base44, {
       gatheringId: gathering_id, type: 'journey_added',
