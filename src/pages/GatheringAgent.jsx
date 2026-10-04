@@ -19,6 +19,7 @@ import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyIt
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays, Users } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { sliceAgentData, shouldShowReloadHint } from '@/lib/agentSlice';
 
 const CAT_KEYS = [
   { key: 'all', tk: 'agent.catAll' },
@@ -63,7 +64,7 @@ export default function GatheringAgent() {
   const { t, fmt } = useI18n();
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
   const CATS = CAT_KEYS.map((c) => ({ ...c, label: t(c.tk) }));
-  const { scope, setScope, images, setImages, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
+  const { images, setImages, mapOpen, setMapOpen, agentLength, setAgentLength } = useViewPrefs(gatheringId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -73,13 +74,23 @@ export default function GatheringAgent() {
   const [journeyInitial, setJourneyInitial] = useState(null);
   const [journeyItems, setJourneyItems] = useState([]);
 
+  // Slice the underlying 10+10 set to Short (5+5) or Long (10+10). Switching
+  // is instant — no re-generation or network calls. todaysPicks are not sliced.
+  const slicedData = sliceAgentData(data, agentLength);
+  const eatPlaces = slicedData?.whereToEat || [];
+  const doPlaces = slicedData?.whatToDo || [];
+  const todaysPicks = slicedData?.todaysPicks || [];
+  const showReloadHint = shouldShowReloadHint(data, agentLength);
+
   // All AI-suggested places on the page (today + eat + do), tagged with their
-  // section label, for layering on the route map. Empty until a brief exists.
+  // section label, for layering on the route map. Uses the SLICED list so
+  // counts, cards, map pins and numbering all stay consistent with the
+  // Short/Long toggle. Empty until a brief exists.
   const allSuggestions = [];
   if (data) {
-    (data.todaysPicks || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catToday') }));
-    (data.whereToEat || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catEat') }));
-    (data.whatToDo || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catDo') }));
+    todaysPicks.forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catToday') }));
+    eatPlaces.forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catEat') }));
+    doPlaces.forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catDo') }));
   }
   // Resolve suggestion coords only while the map panel is open (lazy), via the
   // existing getPlaceInfo path — cached + deduped in the hook.
@@ -105,10 +116,8 @@ export default function GatheringAgent() {
   // suggestions; resolves lazily, only while the map panel is open, and never
   // writes a record. Declared before the viewer early-return so hook order is
   // stable across every render.
-  const uid = currentMember?.user_id;
-  const visibleItems = scope === 'mine'
-    ? journeyItems.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
-    : journeyItems;
+  // Agent map uses GROUP context — all journey items, not filtered by Mine.
+  const visibleItems = journeyItems;
   const destName = gathering?.destination_places?.[0]?.name || gathering?.destinations?.[0] || '';
   const { coords: itemCoords, pending: itemCoordsPending } = useJourneyItemCoords(
     mapOpen ? visibleItems : [], destName
@@ -182,16 +191,12 @@ export default function GatheringAgent() {
   }
 
   const phase = data?.phase;
-  const showToday = phase === 'during' && data?.todaysPicks?.length > 0;
+  const showToday = phase === 'during' && todaysPicks.length > 0;
   const cats = CATS.filter((c) => c.key !== 'today' || showToday);
   const activeCat = cats.find((c) => c.key === cat) ? cat : 'all';
 
-  const myName = currentMember?.full_name;
-  const suggestedTasks = (data?.tasks || []).filter((t) => {
-    if (scope !== 'mine') return true;
-    const fm = t.forMembers || [];
-    return fm.length === 0 || fm.includes(myName);
-  });
+  // Agent tasks use GROUP context — all suggested tasks, not filtered by Mine.
+  const suggestedTasks = data?.tasks || [];
   const savedTaskTitles = new Set(tasks.map((t) => t.title));
 
   const show = (key) => activeCat === 'all' || activeCat === key;
@@ -240,10 +245,31 @@ export default function GatheringAgent() {
   const regenerateAction = (
     <Button onClick={generate} disabled={loading} size="sm" className="shrink-0">
       {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-      <span className="hidden sm:inline">{data ? t('agent.regenerate') : t('agent.generate')}</span>
-      <span className="sm:hidden">{data ? t('agent.redo') : t('agent.go')}</span>
+      <span className="hidden sm:inline">{data ? t('agent.reload') : t('agent.generate')}</span>
+      <span className="sm:hidden">{data ? t('agent.reload') : t('agent.go')}</span>
     </Button>
   );
+  const lengthSwitcher = (
+    <div className="inline-flex items-center gap-0.5 bg-foreground/5 rounded-full p-0.5">
+      <button
+        type="button"
+        onClick={() => setAgentLength('short')}
+        aria-pressed={agentLength === 'short'}
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${agentLength === 'short' ? 'bg-terra text-cream' : 'text-foreground/70 hover:text-foreground'}`}
+      >
+        {t('agent.short')}
+      </button>
+      <button
+        type="button"
+        onClick={() => setAgentLength('long')}
+        aria-pressed={agentLength === 'long'}
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${agentLength === 'long' ? 'bg-terra text-cream' : 'text-foreground/70 hover:text-foreground'}`}
+      >
+        {t('agent.long')}
+      </button>
+    </div>
+  );
+
   const filterRow = data && phase !== 'ended' && phase !== 'no_participants' ? (
     cats.map((c) => (
       <button key={c.key} onClick={() => setCat(c.key)} className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${activeCat === c.key ? 'bg-terra text-cream' : 'bg-foreground/5 text-foreground/70 hover:text-foreground border border-foreground/10'}`}>
@@ -253,7 +279,7 @@ export default function GatheringAgent() {
   ) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
+    <PageToolbar switcher={lengthSwitcher} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
       <div className="space-y-5">
         {/* Brief header */}
         <div className="tt-card p-4">
@@ -270,6 +296,13 @@ export default function GatheringAgent() {
             </div>
           </div>
         </div>
+
+        {showReloadHint && (
+          <p className="text-xs text-ink-deep/50 flex items-center gap-1.5 px-1">
+            <Sparkles className="w-3 h-3 text-terra-deep shrink-0" />
+            {t('agent.reloadHint')}
+          </p>
+        )}
 
         {loading && !data && <AgentSkeleton />}
 
@@ -317,7 +350,7 @@ export default function GatheringAgent() {
                 </p>
                 <Timeline>
                   <div className="space-y-3">
-                    {data.todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Today" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Today', place: p })) : undefined} />)}
+                    {todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catToday')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catToday'), place: p })) : undefined} />)}
                   </div>
                 </Timeline>
               </section>
@@ -325,23 +358,23 @@ export default function GatheringAgent() {
 
             {show('info') && data.vibe && <VibeCard vibe={data.vibe} />}
 
-            {show('eat') && data.whereToEat?.length > 0 && (
+            {show('eat') && eatPlaces.length > 0 && (
               <section>
-                <SectionHeader icon={UtensilsCrossed} title={t('agent.whereToEat')} count={data.whereToEat.length} />
+                <SectionHeader icon={UtensilsCrossed} title={t('agent.whereToEat')} count={eatPlaces.length} />
                 <Timeline>
                   <div className="space-y-3">
-                    {data.whereToEat.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Eat" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Eat', place: p })) : undefined} />)}
+                    {eatPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catEat')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catEat'), place: p })) : undefined} />)}
                   </div>
                 </Timeline>
               </section>
             )}
 
-            {show('do') && data.whatToDo?.length > 0 && (
+            {show('do') && doPlaces.length > 0 && (
               <section>
-                <SectionHeader icon={Compass} title={t('agent.whatToDo')} count={data.whatToDo.length} />
+                <SectionHeader icon={Compass} title={t('agent.whatToDo')} count={doPlaces.length} />
                 <Timeline>
                   <div className="space-y-3">
-                    {data.whatToDo.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Do" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Do', place: p })) : undefined} />)}
+                    {doPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catDo')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catDo'), place: p })) : undefined} />)}
                   </div>
                 </Timeline>
               </section>

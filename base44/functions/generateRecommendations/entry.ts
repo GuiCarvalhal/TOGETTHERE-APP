@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
 import { secrets } from 'base44:runtime';
 import { getMyMember } from '../../shared/gatheringAcl.ts';
-import { searchText, formatPlace, geocode } from '../../shared/googlePlaces.ts';
+import { searchText, formatPlace, geocode, dedupePlaces } from '../../shared/googlePlaces.ts';
 
 // TOGETTHERE AI concierge. Returns a route + date aware travel brief:
 // group vibe, real nearby places (Google Places) to eat/do, today's picks
@@ -201,12 +201,12 @@ Return only JSON matching the schema.`;
         const coords = await Promise.all(locs.map((l) => geocode(mapsKey, l)));
         const coordMap = {};
         locs.forEach((l, i) => { coordMap[l] = coords[i]; });
-        const fields = 'places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.googleMapsUri';
+        const fields = 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.googleMapsUri';
         async function searchNear(loc, query, radius) {
           const c = coordMap[loc];
           const bias = c ? { circle: { center: { latitude: c.lat, longitude: c.lng }, radius } } : null;
           const places = await searchText(mapsKey, `${query} in ${loc}`, bias, fields);
-          return places.slice(0, 4).map(formatPlace);
+          return places.map(formatPlace);
         }
         const eatP = locs.map((l) => searchNear(l, 'restaurants', 5000));
         const doP = locs.map((l) => searchNear(l, 'attractions and things to do', 25000));
@@ -214,8 +214,8 @@ Return only JSON matching the schema.`;
         const todayP = todayLoc ? searchNear(todayLoc, 'things to do highlights', 25000) : Promise.resolve([]);
         const [eatLists, doLists, todaysPicks] = await Promise.all([Promise.all(eatP), Promise.all(doP), todayP]);
         return {
-          whereToEat: eatLists.flat().slice(0, 8),
-          whatToDo: doLists.flat().slice(0, 8),
+          whereToEat: dedupePlaces(eatLists, 10),
+          whatToDo: dedupePlaces(doLists, 10),
           todaysPicks: (todaysPicks || []).slice(0, 4),
         };
       } catch {

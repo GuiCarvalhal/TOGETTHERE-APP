@@ -23,6 +23,7 @@ export async function searchText(key, textQuery, locationBias, fieldMask) {
 
 export function formatPlace(p) {
   return {
+    id: p.id || '',
     name: p.displayName?.text || '',
     rating: p.rating ?? null,
     reviews: p.userRatingCount ?? null,
@@ -30,6 +31,21 @@ export function formatPlace(p) {
     mapsUrl: p.googleMapsUri || '',
     summary: p.editorialSummary?.text || '',
   };
+}
+
+// Deduplicate a list of place lists by place identity (provider id, or
+// name+address when id is absent), then cap to `max`. Used by
+// generateRecommendations so multiple search legs can overlap without
+// producing duplicate suggestions, and a single-destination gathering can
+// still yield up to `max` unique real places. Never fabricates or pads.
+export function dedupePlaces(lists: any[][], max: number): any[] {
+  const seen = new Set();
+  const result: any[] = [];
+  for (const p of lists.flat()) {
+    const key = p.id || `${p.name}::${p.address}`.toLowerCase();
+    if (!seen.has(key)) { seen.add(key); result.push(p); }
+  }
+  return result.slice(0, max);
 }
 
 // Geocode a place name to { lat, lng, country }. The country is the ISO

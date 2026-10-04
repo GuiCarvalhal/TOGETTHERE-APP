@@ -6,6 +6,7 @@ import { itemStartTz } from '@/lib/useItemPlace';
 import { formatFullDateTz, formatTimeTz } from '@/lib/formatPlaceTime';
 import { itemWaypoints, itemRouteNumbers, placeLabel, suggestionRouteNumbers, suggestionKey } from '@/lib/journeyMap';
 import { MapPin, Loader2 } from 'lucide-react';
+import { OVERLAY_VIEWPORT_CLASS } from '@/lib/overlayViewport';
 
 const TERRA = '#E05A47';
 // Suggested-place markers use a distinct indigo so confirmed (terra) vs
@@ -198,7 +199,7 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions }) {
   }, [mapFingerprint, suggFingerprint, gatheringId, navigate]);
 
   return (
-    <div className="relative w-full h-48 sm:h-56 lg:h-64 rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale">
+    <div className={`relative w-full ${OVERLAY_VIEWPORT_CLASS} rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale`}>
       <div ref={mapRef} className="absolute inset-0" />
       {status === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-cream-pale">

@@ -330,6 +330,10 @@ export const ptBR = {
     catDo: 'Fazer',
     catTasks: 'Tarefas',
     catInfo: 'Info',
+    short: 'Curto',
+    long: 'Longo',
+    reload: 'Recarregar',
+    reloadHint: 'Recarregar para buscar mais lugares',
   },
 
   settings: {
@@ -589,6 +593,7 @@ export const ptBR = {
   },
 
   expenseGraph: {
+    unknown: 'Desconhecido',
     yourPaid: 'Suas despesas pagas',
     allExpenses: 'Todas as despesas',
     noExpensesChart: 'Nenhuma despesa para gráfico ainda.',

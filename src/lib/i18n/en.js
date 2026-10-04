@@ -334,6 +334,10 @@ export const en = {
     catDo: 'Do',
     catTasks: 'Tasks',
     catInfo: 'Info',
+    short: 'Short',
+    long: 'Long',
+    reload: 'Reload',
+    reloadHint: 'Reload to fetch more places',
   },
 
   settings: {
@@ -593,6 +597,7 @@ export const en = {
   },
 
   expenseGraph: {
+    unknown: 'Unknown',
     yourPaid: 'Your paid expenses',
     allExpenses: 'All expenses',
     noExpensesChart: 'No expenses to chart yet.',
