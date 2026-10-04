@@ -390,20 +390,20 @@ export default function GatheringAgent() {
                   <div>
                     <p className="tt-label text-ink-deep/45 mb-2">{t('agent.suggestedTasks')}</p>
                     <div className="space-y-2">
-                      {suggestedTasks.map((t, i) => {
-                        const added = savedTaskTitles.has(t.text);
+                      {suggestedTasks.map((task, i) => {
+                        const added = savedTaskTitles.has(task.text);
                         return (
                           <div key={i} className="tt-card p-3 flex items-center gap-2.5">
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm text-ink-deep leading-snug">{t.text}</p>
-                              <span className="text-[0.625rem] text-ink-deep/45 capitalize">{t.category}</span>
+                              <p className="text-sm text-ink-deep leading-snug">{task.text}</p>
+                              <span className="text-[0.625rem] text-ink-deep/45 capitalize">{task.category}</span>
                             </div>
                             {added ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] text-xs font-semibold shrink-0">
                                 <Check className="w-3.5 h-3.5" /> {t('agent.added')}
                               </span>
                               ) : (
-                              <Button size="sm" onClick={() => createTask(t.text)} className="shrink-0">
+                              <Button size="sm" onClick={() => createTask(task.text)} className="shrink-0">
                                 <Plus /> {t('common.add')}
                               </Button>
                             )}
