@@ -61,7 +61,8 @@ export async function sendToUsers({ externalUserIds, heading, message, data, ded
 
   const body = {
     app_id: appId,
-    include_external_user_ids: ids,
+    include_aliases: { external_id: ids },
+    target_channel: 'push',
     headings: { en: heading || 'TOGETTHERE' },
     contents: { en: message || '' },
     data: data || {},
@@ -69,9 +70,9 @@ export async function sendToUsers({ externalUserIds, heading, message, data, ded
   if (url) body.url = url;
 
   try {
-    const res = await fetch('https://onesignal.com/api/v1/notifications', {
+    const res = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${restKey}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Key ${restKey}` },
       body: JSON.stringify(body),
     });
     const json = await res.json().catch(() => ({}));
@@ -82,6 +83,11 @@ export async function sendToUsers({ externalUserIds, heading, message, data, ded
         (json && json.error) ||
         `OneSignal error (${res.status})`;
       return { ok: false, error: errMsg, sent: 0, status: res.status };
+    }
+    // The current API returns 200 with a falsy id when no subscribers were
+    // eligible (e.g. all targets unsubscribed). Treat that as not-sent.
+    if (!json.id) {
+      return { ok: false, error: 'No eligible subscribers', sent: 0, status: res.status };
     }
     const sent = typeof json.recipients === 'number' ? json.recipients : ids.length;
     return { ok: true, sent, id: json.id };

@@ -58,7 +58,7 @@ test('memberEligibleForCategory: skips pref check when prefKey absent', () => {
 
 // ---- sendToUsers: request shape + auth ----
 
-test('sendToUsers: posts to OneSignal with app_id, external_user_ids, Basic auth', async () => {
+test('sendToUsers: posts to current OneSignal endpoint with app_id, include_aliases external_id, target_channel push, Key auth', async () => {
   setConfig('test-rest-key', 'test-app-id');
   let captured = null;
   globalThis.fetch = async (url, init) => { captured = { url, init }; return json({ id: 'n1', recipients: 2 }); };
@@ -69,13 +69,15 @@ test('sendToUsers: posts to OneSignal with app_id, external_user_ids, Basic auth
     });
     assert.equal(result.ok, true);
     assert.equal(result.sent, 2);
-    assert.equal(captured.url, 'https://onesignal.com/api/v1/notifications');
+    assert.equal(captured.url, 'https://api.onesignal.com/notifications');
     assert.equal(captured.init.method, 'POST');
     assert.equal(captured.init.headers['Content-Type'], 'application/json');
-    assert.equal(captured.init.headers.Authorization, 'Basic test-rest-key');
+    assert.equal(captured.init.headers.Authorization, 'Key test-rest-key');
     const body = JSON.parse(captured.init.body);
     assert.equal(body.app_id, 'test-app-id');
-    assert.deepEqual(body.include_external_user_ids, ['u1', 'u2']);
+    assert.deepEqual(body.include_aliases, { external_id: ['u1', 'u2'] });
+    assert.equal(body.target_channel, 'push');
+    assert.equal(body.include_external_user_ids, undefined);
     assert.equal(body.headings.en, 'Test');
     assert.equal(body.contents.en, 'Hello');
     assert.deepEqual(body.data, { route: '/x' });
@@ -92,6 +94,19 @@ test('sendToUsers: defaults heading to TOGETTHERE and omits url', async () => {
     const body = JSON.parse(captured.init.body);
     assert.equal(body.headings.en, 'TOGETTHERE');
     assert.equal(body.url, undefined);
+    assert.deepEqual(body.include_aliases, { external_id: ['u1'] });
+    assert.equal(body.target_channel, 'push');
+  } finally { restore(); }
+});
+
+test('sendToUsers: 200 with falsy id (no eligible subscribers) reports not-sent', async () => {
+  setConfig('test-rest-key', 'test-app-id');
+  globalThis.fetch = async () => json({ id: '', errors: ['No eligible subscribers for this notification'] }, 200);
+  try {
+    const result = await sendToUsers({ externalUserIds: ['u1'], heading: 'H', message: 'M', dedupKey: 'nosub-1' });
+    assert.equal(result.ok, false);
+    assert.equal(result.sent, 0);
+    assert.equal(result.error, 'No eligible subscribers');
   } finally { restore(); }
 });
 
