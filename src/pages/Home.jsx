@@ -20,6 +20,7 @@ import JourneyCard from '@/components/tt/cards/JourneyCard';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import DestinationPicker from '@/components/tt/DestinationPicker';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
+import { useI18n } from '@/lib/i18n';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -27,10 +28,10 @@ const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&q=80',
 ];
 
-const FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'past', label: 'Past' },
+const FILTER_KEYS = [
+  { key: 'all', tk: 'home.filterAll' },
+  { key: 'upcoming', tk: 'home.filterUpcoming' },
+  { key: 'past', tk: 'home.filterPast' },
 ];
 
 const EMPTY_FORM = { name: '', description: '', destination_places: [], cover_image: SAMPLE_COVERS[0] };
@@ -39,6 +40,7 @@ const JOURNEY_ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, act
 const JOURNEY_TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 
 export default function Home() {
+  const { t } = useI18n();
   const [memberships, setMemberships] = useState([]);
   const [gatherings, setGatherings] = useState([]);
   const [previews, setPreviews] = useState({});
@@ -128,9 +130,9 @@ export default function Home() {
     const absDate = refDate ? format(refDate, 'EEE, MMM d') : '';
     const days = start ? differenceInCalendarDays(start, now) : 0;
     const relative = nextUpcoming.ongoing
-      ? 'TODAY'
-      : days <= 0 ? 'TODAY' : days === 1 ? 'TOMORROW' : `IN ${days} DAYS`;
-    const statusLabel = nextUpcoming.ongoing ? 'HAPPENING NOW' : 'UP NEXT';
+      ? t('home.today')
+      : days <= 0 ? t('home.today') : days === 1 ? t('home.tomorrow') : t('home.inDays', { count: days });
+    const statusLabel = nextUpcoming.ongoing ? t('home.happeningNow') : t('home.upNext');
     return { statusLabel, relative, absDate };
   })();
 
@@ -164,9 +166,9 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <p className="tt-label text-terra-coral mb-3">Group travel & gatherings</p>
+            <p className="tt-label text-terra-coral mb-3">{t('home.groupTravel')}</p>
             <h1 className="font-display text-4xl sm:text-6xl font-bold leading-[1.05] tt-text-balance max-w-3xl">
-              Plan together.<br /><span className="italic text-terra-coral">Get there, together.</span>
+              {t('home.heroLine1')}<br /><span className="italic text-terra-coral">{t('home.heroLine2')}</span>
             </h1>
           </>
         )}
@@ -178,19 +180,19 @@ export default function Home() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3 min-w-0 flex-wrap">
-            <h2 className="font-display text-2xl font-bold whitespace-nowrap">Your gatherings</h2>
+            <h2 className="font-display text-2xl font-bold whitespace-nowrap">{t('home.yourGatherings')}</h2>
             {gatherings.length > 1 && (
               <div className="flex items-center gap-2">
-                {FILTERS.map((f) => (
+                {FILTER_KEYS.map((f) => (
                   <button key={f.key} onClick={() => setFilter(f.key)}
                     className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${filter === f.key ? 'bg-primary text-primary-foreground' : 'tt-ink-panel text-muted-foreground hover:text-foreground'}`}>
-                    {f.label}
+                    {t(f.tk)}
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <Button onClick={() => setOpen(true)} size="sm" className="shrink-0"><Plus /> New</Button>
+          <Button onClick={() => setOpen(true)} size="sm" className="shrink-0"><Plus /> {t('home.new')}</Button>
         </div>
 
         {loading ? (
@@ -212,15 +214,15 @@ export default function Home() {
         ) : gatherings.length === 0 ? (
           <EmptyState
             icon={Compass}
-            title="No gatherings yet"
-            body="Start your first trip or event and invite your crew. TOGETTHERE keeps everyone on one shared timeline — itinerary, expenses, and daily AI picks, all in one place."
-            action={<Button onClick={() => setOpen(true)}><Plus /> Create a gathering</Button>}
+            title={t('home.noGatherings')}
+            body={t('home.noGatheringsBody')}
+            action={<Button onClick={() => setOpen(true)}><Plus /> {t('home.createGathering')}</Button>}
           />
         ) : sorted.length === 0 ? (
           <EmptyState
             icon={filter === 'past' ? CalendarDays : Compass}
-            title={filter === 'past' ? 'No past gatherings' : 'No upcoming gatherings'}
-            body={filter === 'past' ? 'Completed trips will show up here once your gatherings wrap.' : 'Upcoming and in-progress gatherings will appear here. Switch to “All” to see everything.'}
+            title={filter === 'past' ? t('home.noPast') : t('home.noUpcoming')}
+            body={filter === 'past' ? t('home.noPastBody') : t('home.noUpcomingBody')}
           />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -243,9 +245,9 @@ export default function Home() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
         <div className="grid grid-cols-3 gap-2.5">
           {[
-            { icon: Route, title: 'A living itinerary' },
-            { icon: Receipt, title: 'Fair splits, sorted' },
-            { icon: Sparkles, title: 'An AI concierge' },
+            { icon: Route, title: t('home.pillarItinerary') },
+            { icon: Receipt, title: t('home.pillarSplits') },
+            { icon: Sparkles, title: t('home.pillarAI') },
           ].map((f) => (
             <Link
               key={f.title}
@@ -266,25 +268,25 @@ export default function Home() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="tt-card bg-card text-card-foreground rounded-[1.5rem] p-0 max-w-lg">
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="font-display text-2xl font-bold text-ink-deep">New gathering</DialogTitle>
-            <DialogDescription className="text-ink-deep/60">A trip or event to coordinate with your crew. Dates come from your itinerary — add segments after creating.</DialogDescription>
+            <DialogTitle className="font-display text-2xl font-bold text-ink-deep">{t('home.newGathering')}</DialogTitle>
+            <DialogDescription className="text-ink-deep/60">{t('home.newGatheringDesc')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate} className="px-6 pb-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="g-name" className="text-ink-deep">Name</Label>
+              <Label htmlFor="g-name" className="text-ink-deep">{t('home.name')}</Label>
               <Input id="g-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Amalfi Coast Reunion '25" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
             <div className="space-y-2">
-              <Label className="text-ink-deep">Destinations</Label>
+              <Label className="text-ink-deep">{t('home.destinations')}</Label>
               <DestinationPicker
                 places={form.destination_places}
                 onChange={(places) => setForm({ ...form, destination_places: places })}
-                placeholder="Search a destination on Google Maps"
+                placeholder={t('home.destPlaceholder')}
               />
-              <p className="text-xs text-ink-deep/50">Pick real places so we can link them to Google Maps. You can add more later.</p>
+              <p className="text-xs text-ink-deep/50">{t('home.destHint')}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-ink-deep">Cover image</Label>
+              <Label className="text-ink-deep">{t('home.coverImage')}</Label>
               <div className="flex gap-2">
                 {SAMPLE_COVERS.map((url) => (
                   <button type="button" key={url} onClick={() => setForm({ ...form, cover_image: url })}
@@ -295,13 +297,13 @@ export default function Home() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="g-desc" className="text-ink-deep">Description <span className="text-ink-deep/40 font-normal">(optional)</span></Label>
+              <Label htmlFor="g-desc" className="text-ink-deep">{t('home.description')} <span className="text-ink-deep/40 font-normal">({t('common.optional')})</span></Label>
               <Textarea id="g-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
             <DialogFooter className="pt-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}><X /> Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}><X /> {t('common.cancel')}</Button>
               <Button type="submit" disabled={creating}>
-                {creating ? <Loader2 className="animate-spin" /> : <Plus />} Create gathering
+                {creating ? <Loader2 className="animate-spin" /> : <Plus />} {t('home.createGatheringBtn')}
               </Button>
             </DialogFooter>
           </form>

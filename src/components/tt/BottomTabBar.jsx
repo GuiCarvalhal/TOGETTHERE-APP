@@ -2,20 +2,23 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Sparkles, Route, Receipt, Users } from 'lucide-react';
 import { canSeeExpenses, canSeeAgent } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 
 // Floating translucent dock — primary navigation for gathering pages.
 // Centered above the safe-area bottom inset; rounded pill, backdrop blur,
 // subtle border/shadow. Active tab gets a terracotta-tinted pill highlight.
-const TABS = [
-  { key: 'home', label: 'Home', icon: Home, to: '/', show: () => true },
-  { key: 'agent', label: 'Agent', icon: Sparkles, path: 'agent', show: canSeeAgent },
-  { key: 'journey', label: 'Journey', icon: Route, path: 'journey', show: () => true },
-  { key: 'expenses', label: 'Expenses', icon: Receipt, path: 'expenses', show: canSeeExpenses },
-  { key: 'members', label: 'Members', icon: Users, path: 'members', show: () => true },
+const TAB_DEFS = [
+  { key: 'home', tk: 'tabs.home', icon: Home, to: '/', show: () => true },
+  { key: 'agent', tk: 'tabs.agent', icon: Sparkles, path: 'agent', show: canSeeAgent },
+  { key: 'journey', tk: 'tabs.journey', icon: Route, path: 'journey', show: () => true },
+  { key: 'expenses', tk: 'tabs.expenses', icon: Receipt, path: 'expenses', show: canSeeExpenses },
+  { key: 'members', tk: 'tabs.members', icon: Users, path: 'members', show: () => true },
 ];
 
 export default function BottomTabBar({ gatheringId, role }) {
+  const { t } = useI18n();
   const location = useLocation();
+  const TABS = TAB_DEFS.map((tab) => ({ ...tab, label: t(tab.tk) }));
   const tabs = TABS.filter((t) => t.show(role));
   // Active section = the 3rd path segment of /gathering/:id/:section (and
   // /gathering/:id/journey/:itemId), so the Journey tab stays highlighted on
@@ -25,7 +28,7 @@ export default function BottomTabBar({ gatheringId, role }) {
 
   return (
     <nav
-      aria-label="Gathering sections"
+      aria-label={t('tabs.sections')}
       className="fixed inset-x-0 z-40 flex justify-center bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]"
     >
       <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-background/70 backdrop-blur-xl border border-foreground/10 shadow-[0_8px_30px_rgba(0,0,0,0.18)] w-[90vw] max-w-md">

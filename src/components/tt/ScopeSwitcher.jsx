@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, Users } from 'lucide-react';
 import { useOptionalGathering } from '@/lib/gatheringContext';
+import { useI18n } from '@/lib/i18n';
 
 // Shared Mine/Group scope switcher used by every toolbar page (Journey,
 // Expenses, Members, Agent). Extracted from PageToolbar so the Agent page can
@@ -12,6 +13,7 @@ import { useOptionalGathering } from '@/lib/gatheringContext';
 // actions stay flush right) without rendering a dangling toggle.
 export default function ScopeSwitcher({ scope, setScope }) {
   const gctx = useOptionalGathering() || {};
+  const { t } = useI18n();
   const isViewer = gctx.role === 'viewer';
   if (isViewer) return null;
 
@@ -22,14 +24,14 @@ export default function ScopeSwitcher({ scope, setScope }) {
         aria-pressed={scope === 'mine'}
         className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 transition-colors ${scope === 'mine' ? 'bg-terra text-cream' : 'text-foreground/60 hover:text-foreground'}`}
       >
-        <User className="w-3.5 h-3.5" /> Mine
+        <User className="w-3.5 h-3.5" /> {t('toolbar.mine')}
       </button>
       <button
         onClick={() => setScope('group')}
         aria-pressed={scope === 'group'}
         className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 transition-colors ${scope === 'group' ? 'bg-terra text-cream' : 'text-foreground/60 hover:text-foreground'}`}
       >
-        <Users className="w-3.5 h-3.5" /> Group
+        <Users className="w-3.5 h-3.5" /> {t('toolbar.group')}
       </button>
     </div>
   );

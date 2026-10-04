@@ -3,6 +3,7 @@ import { Image as ImageIcon, ImageOff, Plus, Map, BarChart3 } from 'lucide-react
 import StickyBar from '@/components/tt/StickyBar';
 import ScopeSwitcher from '@/components/tt/ScopeSwitcher';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n';
 
 // Shared per-page toolbar + content shell used by every page that has the
 // Mine/Group scope switcher (Journey, Expenses, Members, Agent). The sticky
@@ -33,6 +34,7 @@ import { Button } from '@/components/ui/button';
 // `switcher` (optional): replaces the default ScopeSwitcher on the left — used
 // by the Members page for its Summary/Details toggle.
 export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, graphOpen, setGraphOpen, showGraphToggle = false, graphRow = null, onAdd, canAdd, addLabel = 'item', action, filterRow, hideBar = false, switcher, children }) {
+  const { t } = useI18n();
   if (hideBar) {
     return <div className="mt-5">{children}</div>;
   }
@@ -48,7 +50,7 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
               size="sm"
               onClick={() => setMapOpen(!mapOpen)}
               aria-pressed={mapOpen}
-              aria-label={mapOpen ? 'Hide route map' : 'Show route map'}
+              aria-label={mapOpen ? t('toolbar.hideRouteMap') : t('toolbar.showRouteMap')}
               className={mapOpen ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
             >
               <Map />
@@ -60,7 +62,7 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
               size="sm"
               onClick={() => setGraphOpen(!graphOpen)}
               aria-pressed={graphOpen}
-              aria-label={graphOpen ? 'Hide graph' : 'Show graph'}
+              aria-label={graphOpen ? t('toolbar.hideGraph') : t('toolbar.showGraph')}
               className={graphOpen ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
             >
               <BarChart3 />
@@ -72,18 +74,18 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
               size="sm"
               onClick={() => setImages(!images)}
               aria-pressed={images}
-              aria-label={images ? 'Hide cover images' : 'Show cover images'}
+              aria-label={images ? t('toolbar.hideCoverImages') : t('toolbar.showCoverImages')}
               className={images ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
             >
               {images ? <ImageIcon /> : <ImageOff />}
-              <span className="hidden sm:inline">{images ? 'Images' : 'Compact'}</span>
+              <span className="hidden sm:inline">{images ? t('toolbar.images') : t('toolbar.compact')}</span>
             </Button>
           )}
           {action != null ? action : (canAdd && (
             <Button variant="default" size="sm" onClick={onAdd} className="shrink-0">
               <Plus />
-              <span className="hidden sm:inline">Add {addLabel}</span>
-              <span className="sm:hidden">Add</span>
+              <span className="hidden sm:inline">{t('common.addLabel', { label: addLabel })}</span>
+              <span className="sm:hidden">{t('toolbar.add')}</span>
             </Button>
           ))}
         </div>

@@ -7,6 +7,7 @@ import ProfileActionBar from '@/components/tt/ProfileActionBar';
 import OwnProfileEdit from '@/components/profile/OwnProfileEdit';
 import OwnProfileView from '@/components/profile/OwnProfileView';
 import OtherProfileView from '@/components/profile/OtherProfileView';
+import { useI18n } from '@/lib/i18n';
 
 // Canonical universal Profile page. Not gathering-scoped: the user_id is the
 // only route param. An optional ?g=<gatheringId> query param provides gathering
@@ -18,6 +19,7 @@ import OtherProfileView from '@/components/profile/OtherProfileView';
 // shell) directly below it. The owner gets an Edit → Save/Cancel flow; other
 // viewers see Back only.
 export default function Profile() {
+  const { t } = useI18n();
   const { userId } = useParams();
   const [searchParams] = useSearchParams();
   const gatheringId = searchParams.get('g') || '';
@@ -37,7 +39,7 @@ export default function Profile() {
       const res = await base44.functions.invoke('getProfile', { gathering_id: gatheringId || undefined, user_id: userId });
       setData(res.data || res);
     } catch (e) {
-      setError(e.response?.data?.error || e.message || 'Could not load profile');
+      setError(e.response?.data?.error || e.message || t('profile.couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ export default function Profile() {
             </div>
           ) : error ? (
             <div className="tt-card p-8 text-center">
-              <p className="font-display text-lg text-ink-deep mb-1">Profile unavailable</p>
+              <p className="font-display text-lg text-ink-deep mb-1">{t('profile.profileUnavailable')}</p>
               <p className="text-sm text-ink-deep/60">{error}</p>
             </div>
           ) : isOwner ? (

@@ -18,14 +18,15 @@ import { useAgentPlaceCoords, agentPlaceKey } from '@/lib/useAgentPlaceCoords';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays, Users } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
-const CATS = [
-  { key: 'all', label: 'All' },
-  { key: 'today', label: 'Today' },
-  { key: 'eat', label: 'Eat' },
-  { key: 'do', label: 'Do' },
-  { key: 'tasks', label: 'Tasks' },
-  { key: 'info', label: 'Info' },
+const CAT_KEYS = [
+  { key: 'all', tk: 'agent.catAll' },
+  { key: 'today', tk: 'agent.catToday' },
+  { key: 'eat', tk: 'agent.catEat' },
+  { key: 'do', tk: 'agent.catDo' },
+  { key: 'tasks', tk: 'agent.catTasks' },
+  { key: 'info', tk: 'agent.catInfo' },
 ];
 
 function SectionHeader({ icon: Icon, title, count }) {
@@ -59,7 +60,9 @@ function AgentSkeleton() {
 }
 
 export default function GatheringAgent() {
+  const { t, fmt } = useI18n();
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
+  const CATS = CAT_KEYS.map((c) => ({ ...c, label: t(c.tk) }));
   const { scope, setScope, images, setImages, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -74,9 +77,9 @@ export default function GatheringAgent() {
   // section label, for layering on the route map. Empty until a brief exists.
   const allSuggestions = [];
   if (data) {
-    (data.todaysPicks || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: 'Today' }));
-    (data.whereToEat || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: 'Eat' }));
-    (data.whatToDo || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: 'Do' }));
+    (data.todaysPicks || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catToday') }));
+    (data.whereToEat || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catEat') }));
+    (data.whatToDo || []).forEach((p) => allSuggestions.push({ place: p, categoryLabel: t('agent.catDo') }));
   }
   // Resolve suggestion coords only while the map panel is open (lazy), via the
   // existing getPlaceInfo path — cached + deduped in the hook.
@@ -123,7 +126,7 @@ export default function GatheringAgent() {
       setData(d);
       try { localStorage.setItem(storeKey, JSON.stringify(d)); } catch { /* ignore */ }
     } catch (e) {
-      setError(e.response?.data?.error || e.message || 'The concierge is unavailable right now.');
+      setError(e.response?.data?.error || e.message || t('agent.unavailable'));
     } finally {
       setLoading(false);
     }
@@ -158,7 +161,7 @@ export default function GatheringAgent() {
       await base44.entities.Task.create({ gathering_id: gatheringId, title, done: false, member_user_ids: memberIds, source: 'ai' });
       loadTasks();
     } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Could not add task');
+      alert(e.response?.data?.error || e.message || t('agent.couldNotAddTask'));
     }
   }
   async function toggleTask(t) {
@@ -172,8 +175,8 @@ export default function GatheringAgent() {
     return (
       <div className="tt-card p-10 text-center max-w-md mx-auto">
         <Sparkles className="w-10 h-10 text-terra mx-auto mb-4" />
-        <p className="font-display text-2xl mb-2 text-ink-deep">Agent isn't available to viewers</p>
-        <p className="text-ink-deep/60 text-sm">The AI concierge is a participant tool. Ask the organizer to change your role to Member.</p>
+        <p className="font-display text-2xl mb-2 text-ink-deep">{t('agent.notAvailable')}</p>
+        <p className="text-ink-deep/60 text-sm">{t('agent.notAvailableBody')}</p>
       </div>
     );
   }
@@ -237,8 +240,8 @@ export default function GatheringAgent() {
   const regenerateAction = (
     <Button onClick={generate} disabled={loading} size="sm" className="shrink-0">
       {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-      <span className="hidden sm:inline">{data ? 'Regenerate' : 'Generate'}</span>
-      <span className="sm:hidden">{data ? 'Redo' : 'Go'}</span>
+      <span className="hidden sm:inline">{data ? t('agent.regenerate') : t('agent.generate')}</span>
+      <span className="sm:hidden">{data ? t('agent.redo') : t('agent.go')}</span>
     </Button>
   );
   const filterRow = data && phase !== 'ended' && phase !== 'no_participants' ? (
@@ -259,11 +262,11 @@ export default function GatheringAgent() {
               <Sparkles className="w-5 h-5 text-terra-deep" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-display text-lg font-bold text-ink-deep">Personalized for your crew</h3>
+              <h3 className="font-display text-lg font-bold text-ink-deep">{t('agent.personalized')}</h3>
               <p className="text-sm text-ink-deep/60 mt-0.5 truncate">
-                {members.filter((m) => m.role !== 'viewer').length} participants · {gathering?.destinations?.join(', ') || 'your destination'}
+                {t('agent.participants', { count: members.filter((m) => m.role !== 'viewer').length })} · {gathering?.destinations?.join(', ') || ''}
               </p>
-              {data && !loading && <p className="text-[0.625rem] text-ink-deep/40 mt-1">Updated {timeAgo(data.generatedAt)} ago</p>}
+              {data && !loading && <p className="text-[0.625rem] text-ink-deep/40 mt-1">{t('agent.updatedAgo', { time: fmt.timeAgo(data.generatedAt) })}</p>}
             </div>
           </div>
         </div>
@@ -273,34 +276,34 @@ export default function GatheringAgent() {
         {error && (
           <div className="tt-card p-6 text-center max-w-md mx-auto border-terra/30">
             <Sparkles className="w-7 h-7 text-terra mx-auto mb-3" />
-            <p className="font-display text-xl mb-1 text-ink-deep">The concierge hit a snag</p>
+            <p className="font-display text-xl mb-1 text-ink-deep">{t('agent.conciergeSnag')}</p>
             <p className="text-ink-deep/60 text-sm mb-5">{error}</p>
-            <Button onClick={generate}><Sparkles /> Try again</Button>
+            <Button onClick={generate}><Sparkles /> {t('common.tryAgain')}</Button>
           </div>
         )}
 
         {!loading && !data && !error && (
           <EmptyState
             icon={Sparkles}
-            title="Your AI concierge"
-            body="Generate a personalized brief: group vibe, real nearby places to eat and explore, prep tasks, and the practical info you need — all tuned to your route and dates."
-            action={<Button onClick={generate}><Sparkles /> Generate brief</Button>}
+            title={t('agent.yourConcierge')}
+            body={t('agent.conciergeBody')}
+            action={<Button onClick={generate}><Sparkles /> {t('agent.generateBrief')}</Button>}
           />
         )}
 
         {data && phase === 'ended' && (
           <div className="tt-card p-8 text-center max-w-md mx-auto">
             <CalendarDays className="w-10 h-10 text-terra mx-auto mb-4" />
-            <p className="font-display text-2xl mb-2 text-ink-deep">This trip has ended</p>
-            <p className="text-ink-deep/60 text-sm">The concierge no longer generates new suggestions for past trips. Look back at your journey and expenses instead.</p>
+            <p className="font-display text-2xl mb-2 text-ink-deep">{t('agent.tripEnded')}</p>
+            <p className="text-ink-deep/60 text-sm">{t('agent.tripEndedBody')}</p>
           </div>
         )}
 
         {data && phase === 'no_participants' && (
           <div className="tt-card p-8 text-center max-w-md mx-auto">
             <Users className="w-10 h-10 text-terra mx-auto mb-4" />
-            <p className="font-display text-2xl mb-2 text-ink-deep">No participants yet</p>
-            <p className="text-ink-deep/60 text-sm">{data.message || 'Ask an organizer or member to add people to the gathering so the concierge can tailor advice.'}</p>
+            <p className="font-display text-2xl mb-2 text-ink-deep">{t('agent.noParticipants')}</p>
+            <p className="text-ink-deep/60 text-sm">{data.message || t('agent.noParticipantsBody')}</p>
           </div>
         )}
 
@@ -308,7 +311,7 @@ export default function GatheringAgent() {
           <div className="space-y-5">
             {showToday && show('today') && (
               <section>
-                <SectionHeader icon={CalendarDays} title="Today's picks" />
+                <SectionHeader icon={CalendarDays} title={t('agent.todaysPicks')} />
                 <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
                   Fits the gaps in today's plan{data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : ''}.
                 </p>
@@ -324,7 +327,7 @@ export default function GatheringAgent() {
 
             {show('eat') && data.whereToEat?.length > 0 && (
               <section>
-                <SectionHeader icon={UtensilsCrossed} title="Where to eat" count={data.whereToEat.length} />
+                <SectionHeader icon={UtensilsCrossed} title={t('agent.whereToEat')} count={data.whereToEat.length} />
                 <Timeline>
                   <div className="space-y-3">
                     {data.whereToEat.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Eat" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Eat', place: p })) : undefined} />)}
@@ -335,7 +338,7 @@ export default function GatheringAgent() {
 
             {show('do') && data.whatToDo?.length > 0 && (
               <section>
-                <SectionHeader icon={Compass} title="What to do" count={data.whatToDo.length} />
+                <SectionHeader icon={Compass} title={t('agent.whatToDo')} count={data.whatToDo.length} />
                 <Timeline>
                   <div className="space-y-3">
                     {data.whatToDo.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel="Do" gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: 'Do', place: p })) : undefined} />)}
@@ -347,12 +350,12 @@ export default function GatheringAgent() {
             {show('tasks') && (
               <section className="space-y-3">
                 <div>
-                  <SectionHeader icon={ClipboardList} title="Trip tasks" />
+                  <SectionHeader icon={ClipboardList} title={t('agent.tripTasks')} />
                   <TaskChecklist tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} loading={loadingTasks} />
                 </div>
                 {suggestedTasks.length > 0 && (
                   <div>
-                    <p className="tt-label text-ink-deep/45 mb-2">Suggested tasks</p>
+                    <p className="tt-label text-ink-deep/45 mb-2">{t('agent.suggestedTasks')}</p>
                     <div className="space-y-2">
                       {suggestedTasks.map((t, i) => {
                         const added = savedTaskTitles.has(t.text);
@@ -364,11 +367,11 @@ export default function GatheringAgent() {
                             </div>
                             {added ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] text-xs font-semibold shrink-0">
-                                <Check className="w-3.5 h-3.5" /> Added
+                                <Check className="w-3.5 h-3.5" /> {t('agent.added')}
                               </span>
-                            ) : (
+                              ) : (
                               <Button size="sm" onClick={() => createTask(t.text)} className="shrink-0">
-                                <Plus /> Add
+                                <Plus /> {t('common.add')}
                               </Button>
                             )}
                           </div>

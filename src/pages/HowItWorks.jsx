@@ -3,43 +3,44 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Route, Receipt, Sparkles, ArrowRight } from 'lucide-react';
 import AppHeader from '@/components/tt/AppHeader';
-
-const PILLARS = [
-  {
-    icon: Route,
-    title: 'A living itinerary',
-    tagline: 'One shared timeline for the whole crew.',
-    body: "Flights, stays, and activities live on one timezone-aware timeline everyone can read. Add a segment and it lands on the right day; hotels split into check-in and check-out legs; flight numbers resolve to live status. No more chasing threads across apps.",
-    points: ['Timezone-aware timeline', 'Stays as check-in / check-out legs', 'Live flight status by flight number'],
-  },
-  {
-    icon: Receipt,
-    title: 'Fair splits, sorted',
-    tagline: 'Track shared costs and settle up without the math.',
-    body: "Log expenses in any currency, split equally or by share, and see a running balance that tells you exactly who owes whom — down to the cent. Group by family so households settle together.",
-    points: ['Multi-currency with live rates', 'Equal or by-share splits', 'Running balance & settle-up suggestions'],
-  },
-  {
-    icon: Sparkles,
-    title: 'An AI concierge',
-    tagline: 'Each day tuned to where the group actually is.',
-    body: "A concierge that reads your itinerary, the crew's diets and interests, and where you'll actually be — then suggests where to eat, what to do, and what to prep. It adapts before and during the trip.",
-    points: ['Phase-aware: before vs during', 'Real nearby places from Google', 'Prep tasks & good-to-know info'],
-  },
-];
+import { useI18n } from '@/lib/i18n';
 
 export default function HowItWorks() {
+  const { t } = useI18n();
+  const PILLARS = [
+    {
+      icon: Route,
+      title: t('howItWorks.pillar1Title'),
+      tagline: t('howItWorks.pillar1Tagline'),
+      body: t('howItWorks.pillar1Body'),
+      points: t('howItWorks.pillar1Points'),
+    },
+    {
+      icon: Receipt,
+      title: t('howItWorks.pillar2Title'),
+      tagline: t('howItWorks.pillar2Tagline'),
+      body: t('howItWorks.pillar2Body'),
+      points: t('howItWorks.pillar2Points'),
+    },
+    {
+      icon: Sparkles,
+      title: t('howItWorks.pillar3Title'),
+      tagline: t('howItWorks.pillar3Tagline'),
+      body: t('howItWorks.pillar3Body'),
+      points: t('howItWorks.pillar3Points'),
+    },
+  ];
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
 
       <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-8">
-        <p className="tt-label text-terra-coral mb-3">How it works</p>
+        <p className="tt-label text-terra-coral mb-3">{t('howItWorks.label')}</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold leading-tight tt-text-balance">
-          Three things that make group travel feel effortless.
+          {t('howItWorks.title')}
         </h1>
         <p className="text-muted-foreground mt-4 max-w-xl leading-relaxed">
-          TOGETTHERE keeps your crew on one shared timeline — the itinerary, the money, and a concierge that knows where you'll actually be.
+          {t('howItWorks.intro')}
         </p>
       </section>
 
@@ -69,7 +70,7 @@ export default function HowItWorks() {
 
       <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 text-center">
         <Button asChild className="bg-terra hover:bg-terra-deep text-cream rounded-full">
-          <Link to="/">Start planning <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
+          <Link to="/">{t('howItWorks.startPlanning')} <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
         </Button>
       </section>
     </div>

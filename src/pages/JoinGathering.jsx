@@ -5,8 +5,10 @@ import { Image } from '@/components/ui/image';
 import { Button } from '@/components/ui/button';
 import { Loader2, MapPin, CalendarDays, Check, Eye, Users, ArrowRight } from 'lucide-react';
 import { formatDateRange } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 
 export default function JoinGathering() {
+  const { t } = useI18n();
   const { gatheringId } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ export default function JoinGathering() {
           navigate(`/gathering/${gatheringId}/journey`, { replace: true });
         }
       } catch (e) {
-        setError(e.response?.data?.error || e.message || 'Could not load gathering');
+        setError(e.response?.data?.error || e.message || t('joinGathering.couldNotLoad'));
       } finally {
         if (active) setLoading(false);
       }
@@ -55,7 +57,7 @@ export default function JoinGathering() {
         setTimeout(() => navigate(`/gathering/${gatheringId}/journey`, { replace: true }), 700);
       }
     } catch (e) {
-      setError(e.response?.data?.error || e.message || 'Could not join');
+      setError(e.response?.data?.error || e.message || t('joinGathering.couldNotJoin'));
     } finally {
       setActing(false);
     }
@@ -71,9 +73,9 @@ export default function JoinGathering() {
   if (error || !info) {
     return (
       <div className="min-h-screen bg-ink flex flex-col items-center justify-center text-cream px-6 text-center">
-        <p className="font-display text-3xl mb-2">Couldn't open this invite</p>
-        <p className="text-cream/60 mb-6">{error || 'This gathering may have been removed.'}</p>
-        <Link to="/" className="px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">Back to gatherings</Link>
+        <p className="font-display text-3xl mb-2">{t('joinGathering.couldntOpen')}</p>
+        <p className="text-cream/60 mb-6">{error || t('joinGathering.mayRemoved')}</p>
+        <Link to="/" className="px-5 py-2.5 rounded-full bg-terra text-cream font-semibold">{t('joinGathering.backToGatherings')}</Link>
       </div>
     );
   }
@@ -103,8 +105,8 @@ export default function JoinGathering() {
           </div>
           <div className="p-6">
             <div className="flex items-center gap-2 mb-2">
-              {asViewer && <span className="tt-stamp bg-transparent text-ink-deep/55 border-ink-charcoal/25 border-dashed">Viewer invite</span>}
-              {!asViewer && <span className="tt-stamp bg-transparent text-ink-deep/55 border-ink-charcoal/25 border-dashed">Member invite</span>}
+              {asViewer && <span className="tt-stamp bg-transparent text-ink-deep/55 border-ink-charcoal/25 border-dashed">{t('joinGathering.viewerInvite')}</span>}
+              {!asViewer && <span className="tt-stamp bg-transparent text-ink-deep/55 border-ink-charcoal/25 border-dashed">{t('joinGathering.memberInvite')}</span>}
             </div>
             <h1 className="font-display text-3xl sm:text-4xl font-bold text-ink-deep leading-tight">{g.name}</h1>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-ink-deep/70 text-sm">
@@ -120,26 +122,26 @@ export default function JoinGathering() {
           {result === 'joined' ? (
             <div className="text-center py-4">
               <div className="w-12 h-12 rounded-full bg-terra/15 text-terra-deep flex items-center justify-center mx-auto mb-3"><Check className="w-6 h-6" /></div>
-              <p className="font-display text-2xl text-ink-deep mb-1">You're in!</p>
-              <p className="text-ink-deep/60 text-sm">Taking you to the gathering…</p>
+              <p className="font-display text-2xl text-ink-deep mb-1">{t('joinGathering.youreIn')}</p>
+              <p className="text-ink-deep/60 text-sm">{t('joinGathering.takingYou')}</p>
             </div>
           ) : (
             <div>
               <p className="text-ink-deep/70 text-sm mb-4">
                 {asViewer
-                  ? "You'll join as a Viewer with read-only access to the journey and members — no expenses or agent."
-                  : "You'll join as a Member and can take part in the journey, expenses, and the agent."}
+                  ? t('joinGathering.viewerJoinDesc')
+                  : t('joinGathering.memberJoinDesc')}
               </p>
               <Button onClick={handleJoin} disabled={acting} className="w-full bg-terra hover:bg-terra-deep text-cream rounded-full h-11">
                 {acting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : (asViewer ? <Eye className="w-5 h-5 mr-2" /> : <Users className="w-5 h-5 mr-2" />)}
-                {asViewer ? 'Join as Viewer' : 'Join gathering'}
+                {asViewer ? t('joinGathering.joinAsViewer') : t('joinGathering.joinGathering')}
               </Button>
             </div>
           )}
         </div>
 
         <div className="mt-6 text-center">
-          <Link to="/" className="inline-flex items-center gap-1 text-cream/55 hover:text-cream text-sm">Back to gatherings <ArrowRight className="w-4 h-4" /></Link>
+          <Link to="/" className="inline-flex items-center gap-1 text-cream/55 hover:text-cream text-sm">{t('joinGathering.backToGatherings')} <ArrowRight className="w-4 h-4" /></Link>
         </div>
       </main>
     </div>

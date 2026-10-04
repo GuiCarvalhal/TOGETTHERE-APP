@@ -29,11 +29,23 @@ import Profile from '@/pages/Profile';
 import ProfileRedirect from '@/components/ProfileRedirect';
 import JoinGathering from '@/pages/JoinGathering';
 import { useOfflinePruneOnMount } from '@/lib/useOfflineSync';
+import { LocaleProvider } from '@/lib/i18n';
+import { registerOfflineSW } from '@/lib/registerSW';
+import { useAuth } from '@/lib/AuthContext';
+import { useEffect } from 'react';
+
+function SWRegistrar() {
+  const { user } = useAuth();
+  useEffect(() => { if (user) registerOfflineSW(); }, [user]);
+  return null;
+}
 
 function App() {
   useOfflinePruneOnMount();
   return (
     <AuthProvider>
+      <LocaleProvider>
+      <SWRegistrar />
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
@@ -69,6 +81,7 @@ function App() {
           <Toaster />
         </Router>
       </QueryClientProvider>
+      </LocaleProvider>
     </AuthProvider>
   )
 }

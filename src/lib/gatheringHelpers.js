@@ -90,29 +90,34 @@ export function legacyViewerAllocationIds(participants, splits, payerMemberId) {
 // scoped to a specific gathering. Visibility is role-based: participants see
 // full member detail, viewers see limited — no per-pair sharing level.
 
-export function formatCurrency(amount, currency = 'USD') {
+// All formatters accept an optional locale (Intl string, e.g. 'en-US', 'pt-BR')
+// as the LAST argument, defaulting to 'en-US'. The browser locale never changes
+// stored amounts or dates — only the display format. Date-only strings parse as
+// local calendar dates (not UTC) so the day is stable in every timezone.
+
+export function formatCurrency(amount, currency = 'USD', locale = 'en-US') {
   const n = Number(amount || 0);
   try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(n);
   } catch {
-    return `$${n.toFixed(2)}`;
+    return `${currency} ${n.toFixed(2)}`;
   }
 }
 
-export function formatDate(d, opts = { month: 'short', day: 'numeric' }) {
+export function formatDate(d, opts = { month: 'short', day: 'numeric' }, locale = 'en-US') {
   if (!d) return '';
   try {
     const s = String(d);
     // Date-only strings parse as UTC and shift a day in western timezones;
     // parse as a local calendar date so the date is stable everywhere.
     const dt = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T00:00:00') : new Date(s);
-    return dt.toLocaleDateString('en-US', opts);
+    return dt.toLocaleDateString(locale, opts);
   } catch { return d; }
 }
 
-export function formatDateRange(start, end) {
-  const s = formatDate(start);
-  const e = formatDate(end);
+export function formatDateRange(start, end, locale = 'en-US') {
+  const s = formatDate(start, { month: 'short', day: 'numeric' }, locale);
+  const e = formatDate(end, { month: 'short', day: 'numeric' }, locale);
   if (s && e) return `${s} – ${e}`;
   return s || e;
 }
@@ -120,21 +125,24 @@ export function formatDateRange(start, end) {
 // Trip status from dates. Returns { key, label, tone }.
 // key: 'upcoming' | 'active' | 'completed' | 'planning' (undated).
 // tone: 'terra' | 'green' | 'muted' — mapped to classes in the UI.
-export function getGatheringStatus(g, now = new Date()) {
-  if (!g.start_date && !g.end_date) return { key: 'planning', label: 'Planning', tone: 'muted' };
+// Labels are localized via the t function when provided (for the GatheringCard
+// date label). Falls back to English when t is not provided.
+export function getGatheringStatus(g, now = new Date(), t) {
+  const L = (k, p) => t ? t(k, p) : null;
+  if (!g.start_date && !g.end_date) return { key: 'planning', label: L('gatheringStatus.planning') || 'Planning', tone: 'muted' };
   const start = g.start_date ? new Date(g.start_date + 'T00:00:00') : null;
   const end = g.end_date ? new Date(g.end_date + 'T23:59:59') : (start ? new Date(start.getTime() + 86400000 - 1) : null);
   if (start && now < start) {
     const days = Math.ceil((start - now) / 86400000);
     return {
       key: 'upcoming',
-      label: days <= 0 ? 'Starts today' : days === 1 ? 'Tomorrow' : `In ${days} days`,
+      label: days <= 0 ? (L('gatheringStatus.startsToday') || 'Starts today') : days === 1 ? (L('gatheringStatus.tomorrow') || 'Tomorrow') : (L('gatheringStatus.inDays', { count: days }) || `In ${days} days`),
       tone: 'terra',
     };
   }
-  if (start && end && now >= start && now <= end) return { key: 'active', label: 'In progress', tone: 'green' };
-  if (end && now > end) return { key: 'completed', label: 'Completed', tone: 'muted' };
-  return { key: 'planning', label: 'Planning', tone: 'muted' };
+  if (start && end && now >= start && now <= end) return { key: 'active', label: L('gatheringStatus.inProgress') || 'In progress', tone: 'green' };
+  if (end && now > end) return { key: 'completed', label: L('gatheringStatus.completed') || 'Completed', tone: 'muted' };
+  return { key: 'planning', label: L('gatheringStatus.planning') || 'Planning', tone: 'muted' };
 }
 
 // ---- Expense math ----
@@ -379,19 +387,20 @@ export const JOURNEY_TYPES = [
   { key: 'other', label: 'Other', icon: 'MapPin', color: '#64748B' },
 ];
 
-export function timeAgo(date) {
+export function timeAgo(date, locale = 'en-US') {
   const d = new Date(date);
   const s = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (s < 45) return 'just now';
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (s < 45) return rtf.format(0, 'second');
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return rtf.format(-m, 'minute');
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return rtf.format(-h, 'hour');
   const days = Math.floor(h / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return rtf.format(-days, 'day');
   const w = Math.floor(days / 7);
-  if (w < 5) return `${w}w ago`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (w < 5) return rtf.format(-w, 'week');
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
 export const EXPENSE_CATEGORIES = [

@@ -19,11 +19,11 @@ import { Button } from '@/components/ui/button';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
+import { useI18n } from '@/lib/i18n';
 
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
-const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
 const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
-const TYPE_FILTER_OPTIONS = [{ key: 'all', label: 'All' }, ...JOURNEY_TYPES.map((t) => ({ key: t.key, label: t.label }))];
+const TYPE_FILTER_KEYS = [{ key: 'all', tk: 'common.all' }, ...JOURNEY_TYPES.map((t) => ({ key: t.key, tk: `journeyTypes.${t.key}` }))];
 
 function dayKey(d, tz) { return d ? tzDateKey(d, tz) : 'unscheduled'; }
 
@@ -44,7 +44,9 @@ function itemParticipants(item, memberById) {
 }
 
 export default function GatheringJourney() {
+  const { t } = useI18n();
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
+  const TYPE_FILTER_OPTIONS = TYPE_FILTER_KEYS.map((o) => ({ key: o.key, label: t(o.tk) }));
   const { scope, setScope, images, setImages, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -211,9 +213,9 @@ export default function GatheringJourney() {
   if (error) return (
     <div className="tt-card p-10 text-center max-w-md mx-auto">
       <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
-      <p className="font-display text-2xl mb-2 text-ink-deep">Couldn't load the journey</p>
-      <p className="text-ink-deep/60 mb-6 text-sm">{error.message || 'Something went wrong.'}</p>
-      <Button onClick={load}>Try again</Button>
+      <p className="font-display text-2xl mb-2 text-ink-deep">{t('journey.couldNotLoad')}</p>
+      <p className="text-ink-deep/60 mb-6 text-sm">{error.message || t('common.error')}</p>
+      <Button onClick={load}>{t('common.tryAgain')}</Button>
     </div>
   );
 
@@ -222,11 +224,11 @@ export default function GatheringJourney() {
       {filteredItems.length === 0 ? (
         <EmptyState
           icon={Compass}
-          title={typeFilter !== 'all' ? 'No segments of this type' : (effectiveScope === 'mine' ? 'No segments from you yet' : 'No segments yet')}
-          body={typeFilter !== 'all' ? 'Switch to All to see every segment, or pick another type.' : (effectiveScope === 'mine' ? 'Add your own flights, stays and activities to see them here.' : "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together.")}
+          title={typeFilter !== 'all' ? t('journey.noSegmentsType') : (effectiveScope === 'mine' ? t('journey.noSegmentsMine') : t('journey.noSegments'))}
+          body={typeFilter !== 'all' ? t('journey.noSegmentsTypeBody') : (effectiveScope === 'mine' ? t('journey.noSegmentsMineBody') : t('journey.noSegmentsBody'))}
           action={canAdd && typeFilter === 'all' ? (
             <Button onClick={() => navigate(`/gathering/${gatheringId}/journey/new`)}>
-              <Plus /> Add the first segment
+              <Plus /> {t('journey.addFirstSegment')}
             </Button>
           ) : undefined}
         />

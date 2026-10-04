@@ -15,6 +15,7 @@ import ExpenseGraphPanel from '@/components/expenses/ExpenseGraphPanel';
 import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, Scale, FileText } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
+import { useI18n } from '@/lib/i18n';
 
 // Journey-style timeline skeleton: dashboard + nav placeholders, then the rail
 // with day markers and rows (medallion + amount block + card) so loading reads
@@ -60,10 +61,12 @@ function ExpenseTimelineSkeleton() {
   );
 }
 
-const CAT_FILTER_OPTIONS = [{ key: 'all', label: 'All' }, ...EXPENSE_CATEGORIES.map((c) => ({ key: c.key, label: c.label }))];
+const CAT_FILTER_KEYS = [{ key: 'all', tk: 'common.all' }, ...EXPENSE_CATEGORIES.map((c) => ({ key: c.key, tk: `expenseCategories.${c.key}` }))];
 
 export default function GatheringExpenses() {
+  const { t, fmt } = useI18n();
   const d = useExpensesData();
+  const CAT_FILTER_OPTIONS = CAT_FILTER_KEYS.map((o) => ({ key: o.key, label: t(o.tk) }));
   const { gatheringId, setFab, role, currentMember } = d;
   const { scope, setScope, images, setImages, graphOpen, setGraphOpen } = useViewPrefs(gatheringId);
   const [open, setOpen] = useState(false);
@@ -78,8 +81,8 @@ export default function GatheringExpenses() {
     return (
       <div className="tt-card p-10 text-center max-w-md mx-auto">
         <ReceiptIcon className="w-10 h-10 text-terra mx-auto mb-4" />
-        <p className="font-display text-2xl mb-2 text-ink-deep">Viewers aren't part of expenses</p>
-        <p className="text-ink-deep/60 text-sm">Expenses are only for trip participants. Ask the organizer to change your role to Member.</p>
+        <p className="font-display text-2xl mb-2 text-ink-deep">{t('expenses.viewersExcluded')}</p>
+        <p className="text-ink-deep/60 text-sm">{t('expenses.viewersExcludedBody')}</p>
       </div>
     );
   }
@@ -87,9 +90,9 @@ export default function GatheringExpenses() {
   if (d.error) return (
     <div className="tt-card p-10 text-center max-w-md mx-auto">
       <ReceiptIcon className="w-10 h-10 text-terra mx-auto mb-4" />
-      <p className="font-display text-2xl mb-2 text-ink-deep">Couldn't load expenses</p>
-      <p className="text-ink-deep/60 mb-6 text-sm">{d.error.message || 'Something went wrong.'}</p>
-      <Button onClick={d.reload}>Try again</Button>
+      <p className="font-display text-2xl mb-2 text-ink-deep">{t('expenses.couldNotLoad')}</p>
+      <p className="text-ink-deep/60 mb-6 text-sm">{d.error.message || t('common.error')}</p>
+      <Button onClick={d.reload}>{t('common.tryAgain')}</Button>
     </div>
   );
 
@@ -163,9 +166,9 @@ export default function GatheringExpenses() {
       <section className="tt-card p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="tt-label text-ink-deep/40">Group total</p>
-            <p className="font-display text-xl font-bold text-ink-deep truncate">{formatCurrency(groupTotal, baseCurrency)}</p>
-            <p className="text-xs text-ink-deep/50 mt-0.5">{expenses.length} expense{expenses.length === 1 ? '' : 's'}</p>
+            <p className="tt-label text-ink-deep/40">{t('expenses.groupTotal')}</p>
+            <p className="font-display text-xl font-bold text-ink-deep truncate">{fmt.formatCurrency(groupTotal, baseCurrency)}</p>
+            <p className="text-xs text-ink-deep/50 mt-0.5">{t('expenses.expenseCount', { count: expenses.length })}</p>
           </div>
           <CurrencySelect value={baseCurrency} onChange={changeBaseCurrency} options={currencyOptions} triggerClass="w-36 h-9 shrink-0" />
         </div>
@@ -173,40 +176,40 @@ export default function GatheringExpenses() {
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-ink-charcoal/10">
           <div className="flex items-center gap-2 min-w-0">
             <Wallet className="w-4 h-4 text-terra-deep shrink-0" />
-            <span className="text-sm font-semibold text-ink-deep whitespace-nowrap">Your balance</span>
+            <span className="text-sm font-semibold text-ink-deep whitespace-nowrap">{t('expenses.yourBalance')}</span>
           </div>
           <p className={`font-display text-lg font-bold truncate ${myBalance > 0.01 ? 'text-terra-deep' : myBalance < -0.01 ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
-            {myBalance > 0.01 ? '+' : ''}{formatCurrency(myBalance, baseCurrency)}
+            {myBalance > 0.01 ? '+' : ''}{fmt.formatCurrency(myBalance, baseCurrency)}
           </p>
         </div>
 
         <p className="text-[0.6875rem] text-ink-deep/45 flex items-center gap-1">
-          {ratesLoading ? 'Loading live rates…' :
-            ratesAvailable ? `Live rates as of ${ratesAsOf ? new Date(ratesAsOf).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'now'}` :
-            (<><AlertTriangle className="w-3 h-3" /> Exchange rates unavailable — showing original amounts.</>)}
+          {ratesLoading ? t('expenses.loadingRates') :
+            ratesAvailable ? t('expenses.liveRatesAsOf', { time: ratesAsOf ? new Date(ratesAsOf).toLocaleString(fmt.locale, { dateStyle: 'medium', timeStyle: 'short' }) : 'now' }) :
+            (<><AlertTriangle className="w-3 h-3" /> {t('expenses.ratesUnavailable')}</>)}
         </p>
 
         <div className="grid grid-cols-2 gap-2.5">
           <Button asChild variant="outline" size="sm" className="w-full">
-            <Link to={`/gathering/${gatheringId}/expenses/balance`}><Scale /> Balance</Link>
+            <Link to={`/gathering/${gatheringId}/expenses/balance`}><Scale /> {t('expenses.balance')}</Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="w-full">
-            <Link to={`/gathering/${gatheringId}/expenses/statement/${currentMember?.id || ''}`}><FileText /> Individual Statement</Link>
+            <Link to={`/gathering/${gatheringId}/expenses/statement/${currentMember?.id || ''}`}><FileText /> {t('expenses.individualStatement')}</Link>
           </Button>
         </div>
       </section>
 
       {/* Expense timeline — same rail, day markers and card rhythm as Journey */}
       <section>
-        <h3 className="tt-label text-foreground/50 mb-2.5">{scope === 'mine' ? 'Your expenses' : 'All expenses'}</h3>
+        <h3 className="tt-label text-foreground/50 mb-2.5">{scope === 'mine' ? t('expenses.yourExpenses') : t('expenses.allExpenses')}</h3>
         {filteredExpenses.length === 0 ? (
           <EmptyState
             icon={ReceiptIcon}
-            title={catFilter !== 'all' ? 'No expenses of this type' : (scope === 'mine' ? 'None involving you yet' : 'No expenses yet')}
-            body={catFilter !== 'all' ? 'Switch to All to see every expense, or pick another category.' : (scope === 'mine' ? 'Expenses you pay or are split on will appear here.' : 'Add the first shared cost — dinner, gas, a rental — and TOGETTHERE splits it fairly and tracks who owes whom.')}
+            title={catFilter !== 'all' ? t('expenses.noExpensesType') : (scope === 'mine' ? t('expenses.noExpensesMine') : t('expenses.noExpenses'))}
+            body={catFilter !== 'all' ? t('expenses.noExpensesTypeBody') : (scope === 'mine' ? t('expenses.noExpensesMineBody') : t('expenses.noExpensesBody'))}
             action={canAddExpense(role) && catFilter === 'all' ? (
               <Button onClick={() => { setEditing(null); setOpen(true); }}>
-                <Plus /> Add expense
+                <Plus /> {t('expenses.addExpense')}
               </Button>
             ) : undefined}
           />

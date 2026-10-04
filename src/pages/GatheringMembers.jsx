@@ -16,6 +16,7 @@ import { UserPlus, Loader2, Users, X, User, Link2, Eye, Copy, Check } from 'luci
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 import Skeleton from '@/components/tt/Skeleton';
+import { useI18n } from '@/lib/i18n';
 
 // Compact row skeleton — same surface/rhythm as the rendered rows so the
 // loading state reads identically to Journey/Expenses.
@@ -50,13 +51,15 @@ function MemberSection({ title, count, icon, children }) {
   );
 }
 
-const ROLE_FILTER_OPTIONS = [
-  { key: 'all', label: 'All' },
-  ...['owner', 'admin', 'member', 'viewer'].map((r) => ({ key: r, label: ROLES[r] })),
+const ROLE_FILTER_KEYS = [
+  { key: 'all', tk: 'common.all' },
+  ...['owner', 'admin', 'member', 'viewer'].map((r) => ({ key: r, tk: `roles.${r}` })),
 ];
 
 export default function GatheringMembers() {
+  const { t } = useI18n();
   const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh, loading } = useGathering();
+  const ROLE_FILTER_OPTIONS = ROLE_FILTER_KEYS.map((o) => ({ key: o.key, label: t(o.tk) }));
   const [detailMode, setDetailMode] = useState('summary');
   const [families, setFamilies] = useState([]);
   const [shareOpen, setShareOpen] = useState(false);
@@ -129,18 +132,18 @@ export default function GatheringMembers() {
       await base44.functions.invoke('updateMemberRole', { gathering_id: gatheringId, member_id: member.id, role: newRole });
       refresh();
     } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Could not change role');
+      alert(e.response?.data?.error || e.message || t('members.couldNotChangeRole'));
     }
   }
 
   async function handleRemove(member) {
-    if (!confirm(`Remove ${member.full_name} from this gathering?`)) return;
+    if (!confirm(t('members.removeConfirm', { name: member.full_name }))) return;
     setSheetOpen(false);
     try {
       await base44.functions.invoke('removeMember', { gathering_id: gatheringId, member_id: member.id });
       refresh();
     } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Could not remove member');
+      alert(e.response?.data?.error || e.message || t('members.couldNotRemove'));
     }
   }
 
@@ -158,8 +161,8 @@ export default function GatheringMembers() {
     <PageToolbar showImagesToggle={false} switcher={<DetailSwitcher mode={detailMode} setMode={setDetailMode} />} action={canInvite ? (
       <Button variant="default" size="sm" onClick={() => setShareOpen(true)} className="shrink-0">
         <UserPlus />
-        <span className="hidden sm:inline">Invite</span>
-        <span className="sm:hidden">Invite</span>
+        <span className="hidden sm:inline">{t('members.invite')}</span>
+        <span className="sm:hidden">{t('members.invite')}</span>
       </Button>
     ) : undefined} filterRow={<FilterChips options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={setRoleFilter} />}>
       {loading ? (
@@ -167,18 +170,18 @@ export default function GatheringMembers() {
       ) : roleFiltered.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={roleFilter !== 'all' ? 'No members with this role' : 'No members yet'}
-          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : 'Invite your crew to start coordinating — share a Member link so people can participate, or a Viewer link for read-only access.'}
+          title={roleFilter !== 'all' ? t('members.noMembersRole') : t('members.noMembers')}
+          body={roleFilter !== 'all' ? t('members.noMembersRoleBody') : t('members.noMembersBody')}
           action={canInvite && roleFilter === 'all' ? (
             <Button onClick={() => setShareOpen(true)}>
-              <UserPlus /> Share invite link
+              <UserPlus /> {t('members.shareInviteLink')}
             </Button>
           ) : undefined}
         />
       ) : (
         <div className="space-y-6">
           {selfMember && (
-            <MemberSection title="You" count={1} icon={<User className="w-3.5 h-3.5 text-terra-deep" />}>
+            <MemberSection title={t('members.you')} count={1} icon={<User className="w-3.5 h-3.5 text-terra-deep" />}>
               {detailMode === 'details' ? (
                 <MemberDetailsCard key={selfMember.id} member={selfMember} family={familyByUid[selfMember.user_id] || null} isSelf gatheringId={gatheringId} onOpen={() => { setActiveMember(selfMember); setSheetOpen(true); }} />
               ) : (
@@ -186,7 +189,7 @@ export default function GatheringMembers() {
               )}
             </MemberSection>
           )}
-          <MemberSection title="Everyone" count={others.length} icon={<Users className="w-3.5 h-3.5 text-terra-deep" />}>
+          <MemberSection title={t('members.everyone')} count={others.length} icon={<Users className="w-3.5 h-3.5 text-terra-deep" />}>
             {others.map((m) => (
               detailMode === 'details' ? (
                 <MemberDetailsCard key={m.id} member={m} family={familyByUid[m.user_id] || null} isSelf={m.id === currentMember?.id} gatheringId={gatheringId} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
@@ -211,31 +214,31 @@ export default function GatheringMembers() {
         onRemove={() => active && handleRemove(active)}
       />
 
-      <FormSheet open={shareOpen} onOpenChange={setShareOpen} title="Invite to this gathering" maxWidth="max-w-md">
+      <FormSheet open={shareOpen} onOpenChange={setShareOpen} title={t('members.inviteTitle')} maxWidth="max-w-md">
         <div className="space-y-5">
-          <p className="text-sm text-ink-deep/70">Sharing a link is the only way to add people. Anyone who opens a link signs in and joins immediately with the role the link grants — no approval, no form to fill out.</p>
+          <p className="text-sm text-ink-deep/70">{t('members.inviteDesc')}</p>
           <div className="space-y-2">
-            <Label className="text-ink-deep flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" /> Member link</Label>
+            <Label className="text-ink-deep flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" /> {t('members.memberLink')}</Label>
             <div className="flex gap-2">
               <Input readOnly value={inviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
-              <Button type="button" size="sm" onClick={() => copy(inviteUrl, 'member')} className="shrink-0" aria-label="Copy member link">
+              <Button type="button" size="sm" onClick={() => copy(inviteUrl, 'member')} className="shrink-0" aria-label={t('members.copyMemberLink')}>
                 {copied === 'member' ? <Check /> : <Copy />}
               </Button>
             </div>
-            <p className="text-xs text-ink-deep/50">Members participate fully — journey, expenses, and the agent.</p>
+            <p className="text-xs text-ink-deep/50">{t('members.memberLinkDesc')}</p>
           </div>
           <div className="space-y-2">
-            <Label className="text-ink-deep flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> Viewer link</Label>
+            <Label className="text-ink-deep flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> {t('members.viewerLink')}</Label>
             <div className="flex gap-2">
               <Input readOnly value={viewerInviteUrl} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep text-sm min-w-0 truncate" />
-              <Button type="button" variant="outline" size="sm" onClick={() => copy(viewerInviteUrl, 'viewer')} className="shrink-0" aria-label="Copy viewer link">
+              <Button type="button" variant="outline" size="sm" onClick={() => copy(viewerInviteUrl, 'viewer')} className="shrink-0" aria-label={t('members.copyViewerLink')}>
                 {copied === 'viewer' ? <Check /> : <Copy />}
               </Button>
             </div>
-            <p className="text-xs text-ink-deep/50">Viewers get a read-only look at the journey and members — no expenses or agent.</p>
+            <p className="text-xs text-ink-deep/50">{t('members.viewerLinkDesc')}</p>
           </div>
           <div className="flex justify-end pt-1">
-            <Button type="button" variant="outline" onClick={() => setShareOpen(false)}><X /> Done</Button>
+            <Button type="button" variant="outline" onClick={() => setShareOpen(false)}><X /> {t('common.done')}</Button>
           </div>
         </div>
       </FormSheet>

@@ -14,6 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useI18n } from '@/lib/i18n';
 
 const SAMPLE_COVERS = [
   'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
@@ -22,6 +23,7 @@ const SAMPLE_COVERS = [
 ];
 
 export default function GatheringSettings() {
+  const { t } = useI18n();
   const { gatheringId, gathering, role, refresh, setFab } = useGathering();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -58,8 +60,8 @@ export default function GatheringSettings() {
     return (
       <div className="tt-card p-10 text-center max-w-md mx-auto">
         <AlertTriangle className="w-10 h-10 text-terra mx-auto mb-4" />
-        <p className="font-display text-2xl mb-2 text-ink-deep">Owner only</p>
-        <p className="text-ink-deep/60 text-sm">Gathering settings are managed by the trip owner.</p>
+        <p className="font-display text-2xl mb-2 text-ink-deep">{t('settings.ownerOnly')}</p>
+        <p className="text-ink-deep/60 text-sm">{t('settings.ownerOnlyBody')}</p>
       </div>
     );
   }
@@ -86,7 +88,7 @@ export default function GatheringSettings() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2200);
     } catch (err) {
-      alert(err.response?.data?.error || err.message || 'Could not save settings');
+      alert(err.response?.data?.error || err.message || t('settings.couldNotSave'));
     } finally {
       setSaving(false);
     }
@@ -101,7 +103,7 @@ export default function GatheringSettings() {
       const data = res.data || res;
       setPhotoResults(data.photos || []);
     } catch (err) {
-      alert(err.response?.data?.error || err.message || 'Photo search failed');
+      alert(err.response?.data?.error || err.message || t('settings.photoSearchFailed'));
     } finally {
       setPhotoLoading(false);
     }
@@ -114,42 +116,42 @@ export default function GatheringSettings() {
       navigate('/');
     } catch (err) {
       setDeleting(false);
-      alert(err.response?.data?.error || err.message || 'Could not delete gathering');
+      alert(err.response?.data?.error || err.message || t('settings.couldNotDelete'));
     }
   }
 
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
-        <h2 className="font-display text-3xl font-bold">Settings</h2>
-        <p className="text-muted-foreground text-sm mt-1">Tune the trip details and cover image.</p>
+        <h2 className="font-display text-3xl font-bold">{t('settings.settings')}</h2>
+        <p className="text-muted-foreground text-sm mt-1">{t('settings.settingsDesc')}</p>
       </div>
 
       {/* Details form */}
       <form onSubmit={handleSave} className="tt-card p-6 space-y-5">
         <div className="flex items-center gap-2 mb-1">
           <Save className="w-5 h-5 text-terra-deep" />
-          <h3 className="font-display text-xl font-bold text-ink-deep">Trip details</h3>
+          <h3 className="font-display text-xl font-bold text-ink-deep">{t('settings.tripDetails')}</h3>
         </div>
         <div className="space-y-2">
-          <Label className="text-ink-deep">Name</Label>
+          <Label className="text-ink-deep">{t('settings.name')}</Label>
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
         </div>
         <div className="space-y-2">
-          <Label className="text-ink-deep">Destinations</Label>
+          <Label className="text-ink-deep">{t('settings.destinations')}</Label>
           <DestinationPicker
             places={form.destination_places}
             onChange={(places) => setForm({ ...form, destination_places: places })}
-            placeholder="Search a destination on Google Maps"
+            placeholder={t('settings.destPlaceholder')}
           />
-          <p className="text-xs text-ink-deep/50">Pick real places so we can link them to Google Maps. Trip dates are derived from your itinerary segments.</p>
+          <p className="text-xs text-ink-deep/50">{t('settings.destHint')}</p>
         </div>
         <div className="space-y-2">
-          <Label className="text-ink-deep">Description</Label>
+          <Label className="text-ink-deep">{t('settings.description')}</Label>
           <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
         </div>
         <div className="space-y-2">
-          <Label className="text-ink-deep">Cover image</Label>
+          <Label className="text-ink-deep">{t('settings.coverImage')}</Label>
           <div className="flex gap-2 flex-wrap">
             {SAMPLE_COVERS.map((url) => (
               <button type="button" key={url} onClick={() => setForm({ ...form, cover_image: url })}
@@ -159,8 +161,8 @@ export default function GatheringSettings() {
             ))}
           </div>
           <div className="flex gap-2 mt-2">
-            <Input value={photoQuery} onChange={(e) => setPhotoQuery(e.target.value)} placeholder={`Search Pexels (e.g. ${gatheringDestinations(gathering)[0]?.name || 'Amalfi'})`} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPhotos(); } }} />
-            <Button type="button" variant="outline" size="sm" onClick={searchPhotos} className="shrink-0" aria-label="Search photos">
+            <Input value={photoQuery} onChange={(e) => setPhotoQuery(e.target.value)} placeholder={t('settings.searchPexels', { example: gatheringDestinations(gathering)[0]?.name || 'Amalfi' })} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPhotos(); } }} />
+            <Button type="button" variant="outline" size="sm" onClick={searchPhotos} className="shrink-0" aria-label={t('settings.searchPhotos')}>
               {photoLoading ? <Loader2 className="animate-spin" /> : <Search />}
             </Button>
           </div>
@@ -174,14 +176,14 @@ export default function GatheringSettings() {
               ))}
             </div>
           )}
-          <Input value={form.cover_image} onChange={(e) => setForm({ ...form, cover_image: e.target.value })} placeholder="Or paste an image URL" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep mt-2" />
+          <Input value={form.cover_image} onChange={(e) => setForm({ ...form, cover_image: e.target.value })} placeholder={t('settings.pasteUrl')} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep mt-2" />
         </div>
         <div className="flex items-center gap-3 pt-2">
           <Button type="submit" disabled={saving}>
             {saving ? <Loader2 className="animate-spin" /> : <Check />}
-            Save changes
+            {t('settings.saveChanges')}
           </Button>
-          {saved && <span className="inline-flex items-center gap-1 text-sm text-terra-deep font-semibold"><Check className="w-4 h-4" /> Saved</span>}
+          {saved && <span className="inline-flex items-center gap-1 text-sm text-terra-deep font-semibold"><Check className="w-4 h-4" /> {t('settings.saved')}</span>}
         </div>
       </form>
 
@@ -191,31 +193,31 @@ export default function GatheringSettings() {
       <section className="tt-card p-6 border-destructive/30">
         <div className="flex items-center gap-2 mb-3">
           <AlertTriangle className="w-5 h-5 text-destructive" />
-          <h3 className="font-display text-xl font-bold text-ink-deep">Danger zone</h3>
+          <h3 className="font-display text-xl font-bold text-ink-deep">{t('settings.dangerZone')}</h3>
         </div>
-        <p className="text-sm text-ink-deep/60 mb-4">Permanently delete this gathering and everything in it — journey segments, expenses, splits, members, tasks, activity, and join requests. This cannot be undone.</p>
+        <p className="text-sm text-ink-deep/60 mb-4">{t('settings.dangerDesc')}</p>
         <Button variant="destructive" onClick={() => setDeleteOpen(true)} className="rounded-full">
-          <Trash2 /> Delete gathering
+          <Trash2 /> {t('settings.deleteGathering')}
         </Button>
       </section>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{gathering.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.deleteConfirm', { name: gathering.name })}</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes “{gathering.name}” and all of its journey segments, expenses, splits, members, tasks, activity, and join requests. This action cannot be undone.
+              {t('settings.deleteConfirmDesc', { name: gathering.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteGathering}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-              Delete gathering
+              {t('settings.deleteGathering')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
