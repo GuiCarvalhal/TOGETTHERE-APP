@@ -203,6 +203,8 @@ export const en = {
   },
 
   toolbar: {
+    scopeLabel: 'View scope',
+    detailLabel: 'Detail level',
     mine: 'Mine',
     group: 'Group',
     images: 'Images',
@@ -341,6 +343,7 @@ export const en = {
     catInfo: 'Info',
     short: 'Short',
     long: 'Long',
+    lengthLabel: 'Recommendation length',
     reload: 'Reload',
     reloadHint: 'Reload to fetch more places',
   },

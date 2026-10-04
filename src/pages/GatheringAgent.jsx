@@ -19,6 +19,7 @@ import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyIt
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays, Users } from 'lucide-react';
 import { ListChevronsDownUp, ListChevronsUpDown } from '@/components/tt/ListChevronsIcons';
+import SegmentedControl from '@/components/tt/SegmentedControl';
 import { useI18n } from '@/lib/i18n';
 import { sliceAgentData, shouldShowReloadHint } from '@/lib/agentSlice';
 
@@ -250,30 +251,15 @@ export default function GatheringAgent() {
     </Button>
   );
   const lengthSwitcher = (
-    <div className="flex items-center gap-2">
-      <Button
-        variant={agentLength === 'short' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => setAgentLength('short')}
-        aria-pressed={agentLength === 'short'}
-        aria-label={t('agent.short')}
-        title={t('agent.short')}
-        className={agentLength === 'short' ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
-      >
-        <ListChevronsDownUp />
-      </Button>
-      <Button
-        variant={agentLength === 'long' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => setAgentLength('long')}
-        aria-pressed={agentLength === 'long'}
-        aria-label={t('agent.long')}
-        title={t('agent.long')}
-        className={agentLength === 'long' ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
-      >
-        <ListChevronsUpDown />
-      </Button>
-    </div>
+    <SegmentedControl
+      ariaLabel={t('agent.lengthLabel')}
+      value={agentLength}
+      onChange={setAgentLength}
+      options={[
+        { key: 'short', ariaLabel: t('agent.short'), icon: <ListChevronsDownUp /> },
+        { key: 'long', ariaLabel: t('agent.long'), icon: <ListChevronsUpDown /> },
+      ]}
+    />
   );
 
   const filterRow = data && phase !== 'ended' && phase !== 'no_participants' ? (

@@ -2,10 +2,12 @@ import React from 'react';
 import { User, Users } from 'lucide-react';
 import { useOptionalGathering } from '@/lib/gatheringContext';
 import { useI18n } from '@/lib/i18n';
+import SegmentedControl from '@/components/tt/SegmentedControl';
 
 // Shared Mine/Group scope switcher used by every toolbar page (Journey,
-// Expenses, Members, Agent). Extracted from PageToolbar so the Agent page can
-// compose it into its own sticky bar without duplicating the pill markup.
+// Expenses, Members, Agent). Delegates to the shared SegmentedControl so the
+// pill capsule, button dimensions and selected/unselected treatment are
+// identical to DetailSwitcher and the Agent length switcher.
 //
 // Viewers get Group view only — no participation scope selector — since the
 // Close/Casual friendship model has been retired and viewers don't own/attend
@@ -18,21 +20,14 @@ export default function ScopeSwitcher({ scope, setScope }) {
   if (isViewer) return null;
 
   return (
-    <div className="inline-flex rounded-full bg-foreground/5 p-1 border border-foreground/10">
-      <button
-        onClick={() => setScope('mine')}
-        aria-pressed={scope === 'mine'}
-        className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 transition-colors ${scope === 'mine' ? 'bg-terra text-cream' : 'text-foreground/60 hover:text-foreground'}`}
-      >
-        <User className="w-3.5 h-3.5" /> {t('toolbar.mine')}
-      </button>
-      <button
-        onClick={() => setScope('group')}
-        aria-pressed={scope === 'group'}
-        className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 transition-colors ${scope === 'group' ? 'bg-terra text-cream' : 'text-foreground/60 hover:text-foreground'}`}
-      >
-        <Users className="w-3.5 h-3.5" /> {t('toolbar.group')}
-      </button>
-    </div>
+    <SegmentedControl
+      ariaLabel={t('toolbar.scopeLabel')}
+      value={scope}
+      onChange={setScope}
+      options={[
+        { key: 'mine', label: t('toolbar.mine'), icon: <User /> },
+        { key: 'group', label: t('toolbar.group'), icon: <Users /> },
+      ]}
+    />
   );
 }

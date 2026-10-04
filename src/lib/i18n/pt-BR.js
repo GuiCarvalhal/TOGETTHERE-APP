@@ -199,6 +199,8 @@ export const ptBR = {
   },
 
   toolbar: {
+    scopeLabel: 'Escopo de visualização',
+    detailLabel: 'Nível de detalhe',
     mine: 'Minhas',
     group: 'Grupo',
     images: 'Imagens',
@@ -337,6 +339,7 @@ export const ptBR = {
     catInfo: 'Info',
     short: 'Curto',
     long: 'Longo',
+    lengthLabel: 'Tamanho das recomendações',
     reload: 'Recarregar',
     reloadHint: 'Recarregar para buscar mais lugares',
   },

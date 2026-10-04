@@ -44,7 +44,7 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
     <div>
       <StickyBar footer={filterRow} mapRow={overlayRow}>
         {switcher != null ? switcher : <ScopeSwitcher scope={scope} setScope={setScope} />}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
           {showMapToggle && (
             <Button
               variant={mapOpen ? 'default' : 'outline'}
