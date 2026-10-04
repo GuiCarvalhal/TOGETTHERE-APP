@@ -10,6 +10,7 @@ import {
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
 import { alpha2ToAlpha3 } from '@/lib/isoCountries';
+import { useI18n } from '@/lib/i18n';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
@@ -33,6 +34,7 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // where the timing row wraps, the card grows instead of clipping.
 export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber }) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isFlight = item.type === 'flight';
   const startTz = useItemStartTz(item, isFlight);
   const endTz = useItemEndTz(item, isFlight);
@@ -112,7 +114,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
         </div>
         {allDay ? (
           <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded relative z-10">
-            <p className="text-[0.625rem] font-bold text-foreground/70 whitespace-nowrap">All day</p>
+            <p className="text-[0.625rem] font-bold text-foreground/70 whitespace-nowrap">{t('journeyCard.allDay')}</p>
           </div>
         ) : railTime ? (
           <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded relative z-10">
@@ -152,14 +154,14 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
               <>
                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[0.625rem] font-semibold ${legBadgeBase}`}>
                   {leg === 'check-in' ? <LogIn className="w-3 h-3" /> : <LogOut className="w-3 h-3" />}
-                  {leg === 'check-in' ? 'Check-in' : 'Check-out'}
+                  {leg === 'check-in' ? t('journeyCard.checkIn') : t('journeyCard.checkOut')}
                 </span>
                 {(leg === 'check-out' ? endFull : startFull) && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{leg === 'check-out' ? endFull : startFull}</span>}
               </>
             ) : allDay ? (
               <span className="inline-flex items-center gap-1">
                 <CalendarDays className="w-3 h-3" />
-                {formatDateTz(item.start_datetime, startTz) ? `${formatDateTz(item.start_datetime, startTz)} · All day` : 'All day'}
+                {formatDateTz(item.start_datetime, startTz) ? `${formatDateTz(item.start_datetime, startTz)} · ${t('journeyCard.allDay')}` : t('journeyCard.allDay')}
               </span>
             ) : (
               <>
@@ -188,7 +190,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
                 {participants.length > 4 && <span className={`text-[0.625rem] ml-1.5 ${subText}`}>+{participants.length - 4}</span>}
               </div>
             ) : (
-              <span className={`text-xs italic ${subText}`}>No one joined yet</span>
+              <span className={`text-xs italic ${subText}`}>{t('journeyCard.noOneJoined')}</span>
             )}
             {hasAttachments && (
               <span className={`inline-flex items-center gap-1 text-[0.625rem] px-1.5 py-0.5 rounded-full ml-auto border ${onCover ? 'border-transparent bg-white/15 text-white' : 'border-ink-charcoal/10 bg-cream-pale text-ink-deep/50'}`}>

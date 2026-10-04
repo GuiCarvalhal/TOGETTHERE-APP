@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 import { isoToWallInput, isoToLocalInput, startLocation, endLocation, arrowFirst } from '@/lib/formatPlaceTime';
 import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
@@ -31,6 +32,7 @@ const TYPE_META = {
 
 export default function JourneyItemForm({ gatheringId, gatheringStartDate, currentMember, members, item, initial, inline, onClose, onSaved }) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   // Participant selection (attendee_user_ids). Fresh add: default to the
   // current signed-in user (they can uncheck themselves). Edit: preserve the
   // existing explicit attendee list — even an empty legacy list stays empty
@@ -136,22 +138,22 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     e.preventDefault();
     if (isFlight) {
       if (!manual && !flightReady) {
-        toast({ title: 'Pick a flight', description: 'Search and choose a flight, or tap "Enter manually instead".', variant: 'destructive' });
+        toast({ title: t('journeyForm.pickFlight'), description: t('journeyForm.pickFlightDesc'), variant: 'destructive' });
         return;
       }
       if (manual) {
         const missing = [];
-        if (!form.title.trim()) missing.push('a title');
-        if (!form.start_datetime) missing.push('a departure time');
-        if (!form.location_from.trim()) missing.push('an origin');
-        if (!form.location_to.trim()) missing.push('a destination');
+        if (!form.title.trim()) missing.push(t('journeyForm.missingTitle'));
+        if (!form.start_datetime) missing.push(t('journeyForm.missingDeparture'));
+        if (!form.location_from.trim()) missing.push(t('journeyForm.missingOrigin'));
+        if (!form.location_to.trim()) missing.push(t('journeyForm.missingDestination'));
         if (missing.length) {
-          toast({ title: 'Add the missing details', description: `Please add ${missing.join(', ')}.`, variant: 'destructive' });
+          toast({ title: t('journeyForm.addMissing'), description: t('journeyForm.pleaseAdd', { items: missing.join(', ') }), variant: 'destructive' });
           return;
         }
       }
     } else if (!form.title.trim()) {
-      toast({ title: 'Add a title', description: 'Give the segment a title to save.', variant: 'destructive' });
+      toast({ title: t('journeyForm.addTitle'), description: t('journeyForm.addTitleDesc'), variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -161,7 +163,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
       onSaved();
       onClose();
     } catch (err) {
-      toast({ title: 'Could not save segment', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: t('journeyForm.couldNotSave'), description: err.message || t('common.error'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -175,12 +177,12 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     <>
       {!inline && (
         <div className="space-y-2">
-          <Label className="text-ink-deep">Type</Label>
+          <Label className="text-ink-deep">{t('journeyForm.type')}</Label>
           <Select value={form.type} onValueChange={onTypeChange}>
             <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {JOURNEY_TYPES.map((t) => (
-                <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
+              {JOURNEY_TYPES.map((jt) => (
+                <SelectItem key={jt.key} value={jt.key}>{t('journeyTypes.' + jt.key)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -200,38 +202,38 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
       ) : (
         <>
           <div className="space-y-2">
-            <Label htmlFor="j-title" className="text-ink-deep">Title</Label>
-            <Input id="j-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Flight to Naples" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            <Label htmlFor="j-title" className="text-ink-deep">{t('journeyForm.title')}</Label>
+            <Input id="j-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t('journeyForm.titlePlaceholder')} required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="j-start" className="text-ink-deep">Start</Label>
+              <Label htmlFor="j-start" className="text-ink-deep">{t('journeyForm.start')}</Label>
               <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => { setStartTouched(true); setForm({ ...form, start_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="j-end" className="text-ink-deep">End</Label>
+              <Label htmlFor="j-end" className="text-ink-deep">{t('journeyForm.end')}</Label>
               <Input id="j-end" type="datetime-local" value={form.end_datetime} onChange={(e) => { setEndTouched(true); setForm({ ...form, end_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
           </div>
           {meta.fromTo && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-ink-deep">From</Label>
+                <Label className="text-ink-deep">{t('journeyForm.from')}</Label>
                 <PlaceAutocomplete
                   value={form.location_from}
                   onText={(v) => setForm((f) => ({ ...f, location_from: v, from_place: null }))}
                   onSelect={(p) => setForm((f) => ({ ...f, from_place: p }))}
-                  placeholder="Pickup point"
+                  placeholder={t('journeyForm.fromPlaceholder')}
                   className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-ink-deep">To</Label>
+                <Label className="text-ink-deep">{t('journeyForm.to')}</Label>
                 <PlaceAutocomplete
                   value={form.location_to}
                   onText={(v) => setForm((f) => ({ ...f, location_to: v, to_place: null }))}
                   onSelect={(p) => setForm((f) => ({ ...f, to_place: p }))}
-                  placeholder="Destination"
+                  placeholder={t('journeyForm.toPlaceholder')}
                   className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
                 />
               </div>
@@ -239,30 +241,30 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
           )}
           {meta.place && (
             <div className="space-y-2">
-              <Label className="text-ink-deep">Location</Label>
+              <Label className="text-ink-deep">{t('journeyForm.location')}</Label>
               <PlaceAutocomplete
                 value={form.location_name}
                 onText={(v) => setForm((f) => ({ ...f, location_name: v, place: null }))}
                 onSelect={(p) => setForm((f) => ({ ...f, place: p }))}
-                placeholder="Hotel Santa Caterina, Amalfi"
+                placeholder={t('journeyForm.locationPlaceholder')}
                 className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
               />
             </div>
           )}
           <div className="space-y-2">
-            <Label className="text-ink-deep">Confirmation #</Label>
-            <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder="ABC123" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
+            <Label className="text-ink-deep">{t('journeyForm.confirmation')}</Label>
+            <Input value={form.confirmation_number} onChange={(e) => setForm({ ...form, confirmation_number: e.target.value })} placeholder={t('journeyForm.confirmationPlaceholder')} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
           </div>
           {optionalFields}
         </>
       )}
       {flightNeedsSelection && (
-        <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap "Enter manually instead".</p>
+        <p className="text-xs text-terra-deep text-center">{t('journeyForm.searchPickOrManual')}</p>
       )}
     </>
   );
 
-  const submitLabel = item ? 'Save changes' : 'Add segment';
+  const submitLabel = item ? t('common.saveChanges') : t('journeyForm.addSegment');
 
   if (inline) {
     return (
@@ -272,7 +274,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
           actions={
             <>
               <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={saving} className="shrink-0">
-                <X /> Cancel
+                <X /> {t('common.cancel')}
               </Button>
               <Button type="submit" form="journey-item-form" size="sm" disabled={saving || flightNeedsSelection} className="shrink-0">
                 {saving ? <Loader2 className="animate-spin" /> : item ? <Check /> : <Plus />}
@@ -291,11 +293,11 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
   }
 
   return (
-    <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={item ? 'Edit segment' : 'Add segment'}>
+    <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={item ? t('journeyForm.editSegment') : t('journeyForm.addSegment')}>
       <form onSubmit={handleSave} className="space-y-4">
         {formFields}
         <DialogFooter className="pt-2 gap-2">
-          <Button type="button" variant="outline" onClick={onClose}><X /> Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose}><X /> {t('common.cancel')}</Button>
           <Button type="submit" disabled={saving || flightNeedsSelection}>
             {saving ? <Loader2 className="animate-spin" /> : item ? <Check /> : <Plus />}
             {submitLabel}

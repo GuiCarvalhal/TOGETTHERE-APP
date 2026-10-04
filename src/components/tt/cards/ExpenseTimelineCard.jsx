@@ -1,12 +1,12 @@
 import React from 'react';
 import { ChevronRight, UtensilsCrossed, Hotel, Car, Compass, Receipt } from 'lucide-react';
-import { formatCurrency, EXPENSE_CATEGORIES, isParticipant } from '@/lib/gatheringHelpers';
+import { EXPENSE_CATEGORIES, isParticipant } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 import { Image } from '@/components/ui/image';
 import AvatarStack from '@/components/tt/AvatarStack';
 
 const CAT_ICON = { food: UtensilsCrossed, lodging: Hotel, transport: Car, activities: Compass, other: Receipt };
 const CAT_COLOR = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.key, c.color]));
-const SPLIT_LABEL = { equal: 'Equal', custom: 'Custom', by_share: 'By share' };
 
 // Timeline expense row — structural twin of JourneyCard. The left rail column
 // carries ONLY the circular category medallion (the amount no longer fits on
@@ -21,6 +21,7 @@ const SPLIT_LABEL = { equal: 'Equal', custom: 'Custom', by_share: 'By share' };
 // The whole card opens the editor (chevron signals it); deleting happens on the
 // detail/edit view, not inline.
 export default function ExpenseTimelineCard({ exp, payer, splits, members, canEdit, onEdit, displayAmount, displayCurrency, showImages = true }) {
+  const { t, fmt } = useI18n();
   const memberById = Object.fromEntries((members || []).map((m) => [m.id, m]));
   const catColor = CAT_COLOR[exp.category] || '#7a8290';
   const CatIcon = CAT_ICON[exp.category] || Receipt;
@@ -30,7 +31,7 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
     .map((s) => memberById[s.member_id])
     .filter((m) => m && isParticipant(m.role));
   const displayPayer = payer && isParticipant(payer.role) ? payer : null;
-  const splitLabel = SPLIT_LABEL[exp.split_method] || 'Split';
+  const splitLabel = t('splitMethods.' + exp.split_method) || t('expenseCard.split');
   // Card image: prefer a receipt image; fall back to the persisted place photo
   // when there is no receipt or the receipt is a PDF (PDFs can't render as
   // <img>). No render-time API calls — both URLs are stored on the expense at
@@ -75,18 +76,18 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
         {/* Line 2: title (left, truncates) + display-currency amount (right, never wraps) */}
         <div className="flex items-baseline gap-2 mt-0.5 pr-5">
           <h3 className="font-display text-[0.95rem] font-bold leading-tight text-ink-deep truncate min-w-0 flex-1">{exp.title}</h3>
-          <span className="font-display text-[0.95rem] font-bold leading-tight text-ink-deep whitespace-nowrap shrink-0">{formatCurrency(displayAmount, displayCurrency)}</span>
+          <span className="font-display text-[0.95rem] font-bold leading-tight text-ink-deep whitespace-nowrap shrink-0">{fmt.formatCurrency(displayAmount, displayCurrency)}</span>
         </div>
 
         {/* Line 3: original amount · split method */}
-        <p className="text-xs text-ink-deep/55 mt-1 truncate">{formatCurrency(exp.amount, exp.currency)} · Split {splitLabel.toLowerCase()}</p>
+        <p className="text-xs text-ink-deep/55 mt-1 truncate">{fmt.formatCurrency(exp.amount, exp.currency)} · {t('expenseCard.splitSuffix', { method: splitLabel.toLowerCase() })}</p>
 
         {/* Line 4: participant avatar stack — sits directly below, no separator rule */}
         <div className="flex items-center gap-2 mt-2 min-h-[2.5rem]">
           {splitMembers.length > 0 ? (
             <AvatarStack people={splitMembers} ringClass="ring-card" />
           ) : (
-            <span className="text-xs italic text-ink-deep/55">No one split yet</span>
+            <span className="text-xs italic text-ink-deep/55">{t('expenseCard.noOneSplit')}</span>
           )}
         </div>
         </div>

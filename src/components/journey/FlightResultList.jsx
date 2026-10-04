@@ -1,11 +1,13 @@
 import React from 'react';
 import { formatOffsetTime } from '@/lib/formatPlaceTime';
+import { useI18n } from '@/lib/i18n';
 import { Clock, ArrowRight } from 'lucide-react';
 
 // Selectable list of flight search results. Each row shows airline + number,
 // the origin/destination IATA with airport-local times (and tz abbreviation),
 // duration, and an overnight badge. Tapping a row calls onSelect(result).
 export default function FlightResultList({ results, selectedId, onSelect }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
       {results.map((r) => {
@@ -35,7 +37,7 @@ export default function FlightResultList({ results, selectedId, onSelect }) {
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-ink-deep/55">
               {dur && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{dur}</span>}
-              {r.overnight && <span className="text-terra-deep font-semibold">+{r.day_shift} day{r.day_shift > 1 ? 's' : ''}</span>}
+              {r.overnight && <span className="text-terra-deep font-semibold">{t('flightEditor.overnightSuffix', { count: r.day_shift })}</span>}
               {r.is_codeshare && <span>codeshare</span>}
             </div>
           </button>

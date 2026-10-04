@@ -3,6 +3,7 @@ import MemberAvatar from '@/components/tt/MemberAvatar';
 import RoleStamp from '@/components/tt/RoleStamp';
 import ProfileChips from '@/components/profile/ProfileChips';
 import { INTERESTS } from '@/lib/profileOptions';
+import { useI18n } from '@/lib/i18n';
 import { MapPin, Users, Mail } from 'lucide-react';
 
 // Expanded member card for the Members page Details mode. Shows everything
@@ -18,6 +19,7 @@ import { MapPin, Users, Mail } from 'lucide-react';
 //
 // `onOpen`: opens the MemberDetailSheet (same as Summary mode tap).
 export default function MemberDetailsCard({ member, family, isSelf, gatheringId, onOpen }) {
+  const { t } = useI18n();
   const interests = member.interests || [];
   return (
     <div
@@ -31,8 +33,8 @@ export default function MemberDetailsCard({ member, family, isSelf, gatheringId,
         <MemberAvatar member={member} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <h3 className="font-display text-sm font-bold text-ink-deep leading-tight truncate">{member.full_name || 'Unnamed member'}</h3>
-            {isSelf && <span className="tt-label text-ink-deep/40 shrink-0">You</span>}
+            <h3 className="font-display text-sm font-bold text-ink-deep leading-tight truncate">{member.full_name || t('memberDetails.unnamedMember')}</h3>
+            {isSelf && <span className="tt-label text-ink-deep/40 shrink-0">{t('members.you')}</span>}
           </div>
           {member.email && (
             <p className="inline-flex items-center gap-1 text-xs text-ink-deep/55 mt-0.5 truncate">
@@ -46,8 +48,8 @@ export default function MemberDetailsCard({ member, family, isSelf, gatheringId,
       <div className="mt-2.5 space-y-2 pt-2 border-t border-ink-charcoal/10">
         {interests.length > 0 && (
           <div>
-            <p className="tt-label text-ink-deep/40 mb-1.5">Interests</p>
-            <ProfileChips values={interests} catalog={INTERESTS} />
+            <p className="tt-label text-ink-deep/40 mb-1.5">{t('memberDetails.interests')}</p>
+            <ProfileChips values={interests} catalog={INTERESTS} dictPrefix="interests" />
           </div>
         )}
         {family && (
@@ -61,7 +63,7 @@ export default function MemberDetailsCard({ member, family, isSelf, gatheringId,
           </div>
         )}
         {!interests.length && !family && (
-          <p className="text-xs text-ink-deep/40 italic">No additional details stored.</p>
+          <p className="text-xs text-ink-deep/40 italic">{t('memberDetails.noAdditionalDetails')}</p>
         )}
       </div>
     </div>

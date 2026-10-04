@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { BarChart3, AlertTriangle } from 'lucide-react';
-import { formatCurrency, EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
+import { EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 
 const CAT_COLOR = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.key, c.color]));
 const CAT_LABEL = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.key, c.label]));
@@ -26,7 +27,9 @@ const PALETTE = ['#e05c48', '#1e2633', '#f07865', '#c8493a', '#7a8290', '#0ea5e9
 // Layout: chart area is a FIXED height (h-32); legend flows BELOW it in
 // natural flow with a bounded scrollable area (max-h-20). No overflow/clipping.
 export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase, displayFor, baseCurrency, ratesAvailable, scope }) {
-  const scopeLabel = scope === 'mine' ? 'Your paid expenses' : 'All expenses';
+  const { t, fmt } = useI18n();
+  const scopeLabel = scope === 'mine' ? t('expenseGraph.yourPaid') : t('expenseGraph.allExpenses');
+  const catLabel = (key) => t('expenseCategories.' + key) || t('expenseCategories.other');
 
   // Validate amounts finite/nonnegative.
   const valid = (expenses || []).filter((e) => {
@@ -48,11 +51,11 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
   if (!withDisplay.length) {
     return (
       <div className="tt-card p-3">
-        <Header label={scopeLabel} total={0} currency={base} />
+        <Header label={scopeLabel} total={0} currency={base} fmt={fmt} />
         <div className="flex flex-col items-center justify-center text-center py-5 px-4">
           <BarChart3 className="w-6 h-6 text-terra/40 mb-1.5" />
-          <p className="text-xs text-ink-deep/70">No expenses to chart yet.</p>
-          <p className="text-[11px] text-ink-deep/50 mt-0.5">Add expenses to see the breakdown.</p>
+          <p className="text-xs text-ink-deep/70">{t('expenseGraph.noExpensesChart')}</p>
+          <p className="text-[11px] text-ink-deep/50 mt-0.5">{t('expenseGraph.noExpensesChartBody')}</p>
         </div>
       </div>
     );
@@ -64,7 +67,7 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
     withDisplay.forEach(({ e, disp }) => {
       const amt = Number(disp.amount) || 0;
       const key = e.payer_member_id;
-      if (!byPayer[key]) byPayer[key] = { name: memberById[key]?.full_name || 'Unknown', value: 0 };
+      if (!byPayer[key]) byPayer[key] = { name: memberById[key]?.full_name || t('expenseGraph.unknown') || 'Unknown', value: 0 };
       byPayer[key].value += amt;
     });
     const payerData = Object.values(byPayer).filter((d) => d.value > 0.005).sort((a, b) => b.value - a.value);
@@ -73,7 +76,7 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
     withDisplay.forEach(({ e, disp }) => {
       const amt = Number(disp.amount) || 0;
       const key = e.category || 'other';
-      if (!byCat[key]) byCat[key] = { key, name: CAT_LABEL[key] || 'Other', value: 0 };
+      if (!byCat[key]) byCat[key] = { key, name: catLabel(key), value: 0 };
       byCat[key].value += amt;
     });
     const catData = Object.values(byCat).filter((d) => d.value > 0.005).sort((a, b) => b.value - a.value);
@@ -81,18 +84,18 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
     const total = payerData.reduce((s, d) => s + d.value, 0);
 
     if (payerData.length === 0 && catData.length === 0) {
-      return <EmptyChart label={scopeLabel} currency={base} message="No amounts to chart yet." />;
+      return <EmptyChart label={scopeLabel} currency={base} message={t('expenseGraph.noAmounts')} fmt={fmt} />;
     }
 
     return (
       <div className="tt-card p-3">
-        <Header label={scopeLabel} total={total} currency={base} />
+        <Header label={scopeLabel} total={total} currency={base} fmt={fmt} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ChartCard title="Paid by member" currency={base}>
-            <PieChartMini data={payerData} colors={PALETTE} currency={base} />
+          <ChartCard title={t('expenseGraph.paidByMember')} currency={base}>
+            <PieChartMini data={payerData} colors={PALETTE} currency={base} fmt={fmt} t={t} />
           </ChartCard>
-          <ChartCard title="By category" currency={base}>
-            <PieChartMini data={catData.map((d) => ({ ...d, name: d.name }))} colors={catData.map((d) => CAT_COLOR[d.key] || '#7a8290')} currency={base} />
+          <ChartCard title={t('expenseGraph.byCategory')} currency={base}>
+            <PieChartMini data={catData.map((d) => ({ ...d, name: d.name }))} colors={catData.map((d) => CAT_COLOR[d.key] || '#7a8290')} currency={base} fmt={fmt} t={t} />
           </ChartCard>
         </div>
       </div>
@@ -115,16 +118,16 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
   curExpenses.forEach((e) => {
     const amt = Number(e.amount) || 0;
     const key = e.payer_member_id;
-    if (!byPayer[key]) byPayer[key] = { name: memberById[key]?.full_name || 'Unknown', value: 0 };
-    byPayer[key].value += amt;
-  });
-  const payerData = Object.values(byPayer).filter((d) => d.value > 0.005).sort((a, b) => b.value - a.value);
+    if (!byPayer[key]) byPayer[key] = { name: memberById[key]?.full_name || t('expenseGraph.unknown') || 'Unknown', value: 0 };
+      byPayer[key].value += amt;
+    });
+    const payerData = Object.values(byPayer).filter((d) => d.value > 0.005).sort((a, b) => b.value - a.value);
 
-  const byCat = {};
-  curExpenses.forEach((e) => {
-    const amt = Number(e.amount) || 0;
-    const key = e.category || 'other';
-    if (!byCat[key]) byCat[key] = { key, name: CAT_LABEL[key] || 'Other', value: 0 };
+    const byCat = {};
+    curExpenses.forEach((e) => {
+      const amt = Number(e.amount) || 0;
+      const key = e.category || 'other';
+      if (!byCat[key]) byCat[key] = { key, name: catLabel(key), value: 0 };
     byCat[key].value += amt;
   });
   const catData = Object.values(byCat).filter((d) => d.value > 0.005).sort((a, b) => b.value - a.value);
@@ -132,15 +135,15 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
   const total = payerData.reduce((s, d) => s + d.value, 0);
 
   if (payerData.length === 0 && catData.length === 0) {
-    return <EmptyChart label={scopeLabel} currency={activeCur} message="No amounts to chart for this currency." />;
+    return <EmptyChart label={scopeLabel} currency={activeCur} message={t('expenseGraph.noAmountsCurrency')} fmt={fmt} />;
   }
 
   return (
     <div className="tt-card p-3">
-      <Header label={scopeLabel} total={total} currency={activeCur} />
+      <Header label={scopeLabel} total={total} currency={activeCur} fmt={fmt} />
       <p className="text-[11px] text-ink-deep/55 flex items-center gap-1 px-1 mb-2">
         <AlertTriangle className="w-3 h-3 shrink-0 text-amber-600" />
-        Rates unavailable for some currencies — showing original amounts per currency.
+        {t('expenseGraph.ratesUnavailableMixed')}
       </p>
       {currencies.length > 1 && (
         <div className="flex gap-1.5 mb-2 px-0.5 flex-wrap">
@@ -157,31 +160,31 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <ChartCard title="Paid by member" currency={activeCur}>
-          <PieChartMini data={payerData} colors={PALETTE} currency={activeCur} />
+        <ChartCard title={t('expenseGraph.paidByMember')} currency={activeCur}>
+          <PieChartMini data={payerData} colors={PALETTE} currency={activeCur} fmt={fmt} t={t} />
         </ChartCard>
-        <ChartCard title="By category" currency={activeCur}>
-          <PieChartMini data={catData.map((d) => ({ ...d, name: d.name }))} colors={catData.map((d) => CAT_COLOR[d.key] || '#7a8290')} currency={activeCur} />
+        <ChartCard title={t('expenseGraph.byCategory')} currency={activeCur}>
+          <PieChartMini data={catData.map((d) => ({ ...d, name: d.name }))} colors={catData.map((d) => CAT_COLOR[d.key] || '#7a8290')} currency={activeCur} fmt={fmt} t={t} />
         </ChartCard>
       </div>
     </div>
   );
 }
 
-function Header({ label, total, currency }) {
+function Header({ label, total, currency, fmt }) {
   return (
     <div className="flex items-center gap-2 mb-2 px-1">
       <BarChart3 className="w-4 h-4 text-terra-deep" />
       <h3 className="font-display text-sm font-bold text-ink-deep">{label}</h3>
-      <span className="text-[0.6875rem] text-ink-deep/45 ml-auto">{formatCurrency(total, currency)}</span>
+      <span className="text-[0.6875rem] text-ink-deep/45 ml-auto">{fmt.formatCurrency(total, currency)}</span>
     </div>
   );
 }
 
-function EmptyChart({ label, currency, message }) {
+function EmptyChart({ label, currency, message, fmt }) {
   return (
     <div className="tt-card p-3">
-      <Header label={label} total={0} currency={currency} />
+      <Header label={label} total={0} currency={currency} fmt={fmt} />
       <div className="flex flex-col items-center justify-center text-center py-5 px-4">
         <BarChart3 className="w-6 h-6 text-terra/40 mb-1.5" />
         <p className="text-xs text-ink-deep/70">{message}</p>
@@ -190,7 +193,7 @@ function EmptyChart({ label, currency, message }) {
   );
 }
 
-function ChartCard({ title, currency, children }) {
+function ChartCard({ title, currency, children, fmt: _fmt }) {
   return (
     <div className="rounded-xl border border-ink-charcoal/10 bg-cream-pale/30 p-2 overflow-hidden">
       <p className="tt-label text-ink-deep/50 mb-1.5 px-0.5">{title} · {currency}</p>
@@ -201,10 +204,10 @@ function ChartCard({ title, currency, children }) {
 
 // Chart area is a FIXED height (h-32 = 128px). Legend flows BELOW it in
 // natural flow with a bounded scrollable area (max-h-20). No overflow/clipping.
-function PieChartMini({ data, colors, currency }) {
+function PieChartMini({ data, colors, currency, fmt, t }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   if (total === 0 || data.length === 0) {
-    return <div className="h-32 flex items-center justify-center text-xs text-ink-deep/40">No data</div>;
+    return <div className="h-32 flex items-center justify-center text-xs text-ink-deep/40">{t ? t('expenseGraph.noData') : 'No data'}</div>;
   }
   return (
     <div>
@@ -224,8 +227,8 @@ function PieChartMini({ data, colors, currency }) {
                 return (
                   <div className="rounded-lg border border-ink-charcoal/15 bg-card px-2.5 py-1.5 shadow-md text-xs">
                     <p className="font-semibold text-ink-deep">{d.name}</p>
-                    <p className="text-ink-deep/60">{formatCurrency(d.value, currency)}</p>
-                    <p className="text-ink-deep/45">{pct}% of total</p>
+                    <p className="text-ink-deep/60">{fmt.formatCurrency(d.value, currency)}</p>
+                    <p className="text-ink-deep/45">{t('expenseGraph.pctOfTotal', { pct })}</p>
                   </div>
                 );
               }}
@@ -242,7 +245,7 @@ function PieChartMini({ data, colors, currency }) {
             <li key={i} className="flex items-center gap-1.5 text-[11px] text-ink-deep/70">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
               <span className="truncate flex-1 min-w-0">{d.name}</span>
-              <span className="shrink-0 tabular-nums">{formatCurrency(d.value, currency)}</span>
+              <span className="shrink-0 tabular-nums">{fmt.formatCurrency(d.value, currency)}</span>
               <span className="shrink-0 text-ink-deep/45 tabular-nums w-8 text-right">{pct}%</span>
             </li>
           );

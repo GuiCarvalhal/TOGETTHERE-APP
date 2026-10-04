@@ -4,6 +4,7 @@ import { Star, ChevronRight, Plus, MapPin, UtensilsCrossed, Compass, Sparkles } 
 import { Image } from '@/components/ui/image';
 import { Button } from '@/components/ui/button';
 import { useAgentPlacePhoto } from '@/lib/useAgentPlacePhoto';
+import { useI18n } from '@/lib/i18n';
 
 // Per-category medallion (icon + color), matching the Journey card's
 // type-medallion treatment. The medallion lives in the left rail column.
@@ -29,6 +30,7 @@ const DEFAULT_META = { icon: MapPin, color: '#64748B' };
 // (two compact lines), so it no longer duplicates in the meta line.
 export default function AgentPlaceCard({ place, categoryLabel, gatheringId, onAdd, to, showImages = true, routeNumber }) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const photo = useAgentPlacePhoto(place);
   const onCover = showImages ? !!photo : false;
   const { icon: Icon, color } = CAT_META[categoryLabel] || DEFAULT_META;
@@ -113,7 +115,7 @@ export default function AgentPlaceCard({ place, categoryLabel, gatheringId, onAd
           {/* Single Add-to-journey action (preserves existing behavior) */}
           <div className={`flex items-center gap-2 mt-2 pt-2 border-t min-h-[2.5rem] ${dividerClass}`} onClick={(e) => e.stopPropagation()}>
             <Button size="sm" onClick={() => onAdd && onAdd()} className="shrink-0">
-              <Plus /> Add to journey
+              <Plus /> {t('agentPlaceCard.addToJourney')}
             </Button>
           </div>
         </div>

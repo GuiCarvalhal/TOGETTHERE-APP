@@ -4,6 +4,7 @@ import { CalendarDays, MapPin } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import AvatarStack from '@/components/tt/AvatarStack';
 import { gatheringDestinations } from '@/lib/gatheringDates';
+import { useI18n } from '@/lib/i18n';
 
 // Home gathering card — image with a dark scrim and the info overlaid on top,
 // matching the Journey card treatment so the experience is consistent. The
@@ -12,6 +13,7 @@ import { gatheringDestinations } from '@/lib/gatheringDates';
 // the gathering's journey items and passed in as strings; the card is pure
 // display. No status pill — the relative-time label is plain text.
 export default function GatheringCard({ gathering, dateLabel, dateRange, role, people, to }) {
+  const { t } = useI18n();
   const g = gathering;
   const destNames = gatheringDestinations(g).slice(0, 2).map((d) => d.name).join(', ');
   return (
@@ -33,7 +35,7 @@ export default function GatheringCard({ gathering, dateLabel, dateRange, role, p
           {dateLabel && <span className="text-white/90 text-xs font-semibold">{dateLabel}</span>}
           {role && (
             <span className={`tt-stamp capitalize ${role === 'owner' ? 'bg-terra text-white border-terra' : 'bg-white/15 text-white border-white/25'}`}>
-              {role}
+              {t('roles.' + role)}
             </span>
           )}
         </div>

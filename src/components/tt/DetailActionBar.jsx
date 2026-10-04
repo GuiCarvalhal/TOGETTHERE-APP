@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowLeft, Pencil, Trash2, Loader2 } from 'lucide-react';
 import StickyBar from '@/components/tt/StickyBar';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n';
 
 // Journey item detail action strip — reuses StickyBar so it shares the exact
 // sticky offset, background and border of the Journey page's filter bar.
@@ -12,10 +13,11 @@ import { Button } from '@/components/ui/button';
 //  - Delete: icon-only trash, destructive (solid red) — compact sticky bar
 //    exception. Keeps its confirmation dialog (caller's onDelete).
 export default function DetailActionBar({ onBack, canEdit, canDelete, onEdit, onDelete, deleting, actions, backDisabled }) {
+  const { t } = useI18n();
   const showActions = actions || canEdit || canDelete;
   return (
     <StickyBar>
-      <Button variant="default" size="icon" onClick={onBack} disabled={backDisabled} aria-label="Back to journey" className="shrink-0">
+      <Button variant="default" size="icon" onClick={onBack} disabled={backDisabled} aria-label={t('detailActionBar.backToJourney')} className="shrink-0">
         <ArrowLeft />
       </Button>
 
@@ -25,11 +27,11 @@ export default function DetailActionBar({ onBack, canEdit, canDelete, onEdit, on
             <>
               {canEdit && (
                 <Button variant="secondary" size="sm" onClick={onEdit} className="shrink-0">
-                  <Pencil /> Edit
+                  <Pencil /> {t('detailActionBar.edit')}
                 </Button>
               )}
               {canDelete && (
-                <Button variant="destructive" size="icon" onClick={onDelete} disabled={deleting} aria-label="Delete" className="shrink-0">
+                <Button variant="destructive" size="icon" onClick={onDelete} disabled={deleting} aria-label={t('detailActionBar.delete')} className="shrink-0">
                   {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
                 </Button>
               )}

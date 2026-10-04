@@ -1,6 +1,7 @@
 import React from 'react';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import RoleStamp from '@/components/tt/RoleStamp';
+import { useI18n } from '@/lib/i18n';
 import { MapPin, ChevronRight } from 'lucide-react';
 
 // Compact member row — the list equivalent of a Journey/Expense card: same
@@ -9,6 +10,7 @@ import { MapPin, ChevronRight } from 'lucide-react';
 // row opens the member's gathering detail sheet — the way a Journey card
 // opens its detail. No inline action buttons; management lives in the sheet.
 export default function MemberRow({ member, gatheringId, isSelf, onOpen }) {
+  const { t } = useI18n();
   return (
     <div
       onClick={onOpen}
@@ -20,8 +22,8 @@ export default function MemberRow({ member, gatheringId, isSelf, onOpen }) {
       <MemberAvatar member={member} size="sm" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <h3 className="font-display text-sm font-bold text-ink-deep leading-tight truncate">{member.full_name || 'Unnamed member'}</h3>
-          {isSelf && <span className="tt-label text-ink-deep/40 shrink-0">You</span>}
+          <h3 className="font-display text-sm font-bold text-ink-deep leading-tight truncate">{member.full_name || t('memberRow.unnamedMember')}</h3>
+          {isSelf && <span className="tt-label text-ink-deep/40 shrink-0">{t('members.you')}</span>}
         </div>
         {member.home_city ? (
           <p className="inline-flex items-center gap-1 text-xs text-ink-deep/55 mt-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" />{member.home_city}</p>

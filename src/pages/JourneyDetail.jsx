@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { JOURNEY_TYPES, canEditJourneyItem, canDeleteJourneyItem } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 import { formatFullDateTz, formatTimeWithCountry, startLocation, endLocation } from '@/lib/formatPlaceTime';
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { itemMapPoints } from '@/lib/journeyMap';
@@ -45,6 +46,7 @@ export default function JourneyDetail() {
   const { itemId } = useParams();
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -72,17 +74,17 @@ export default function JourneyDetail() {
   useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   async function handleDelete() {
-    if (!confirm('Delete this segment?')) return;
+    if (!confirm(t('journeyDetail.deleteConfirm'))) return;
     setDeleting(true);
     try {
       const res = await base44.functions.invoke('deleteJourneyItem', { gathering_id: gatheringId, item_id: itemId });
       const data = res?.data || res;
       if (data?.error) throw { message: data.error };
-      toast({ title: 'Segment deleted', description: `"${item?.title || 'Segment'}" was removed from the journey.` });
+      toast({ title: t('journeyDetail.segmentDeleted'), description: t('journeyDetail.segmentDeletedDesc', { title: item?.title || t('journeyTypes.other') }) });
       navigate(`/gathering/${gatheringId}/journey`);
     } catch (e) {
-      const msg = e?.response?.data?.error || e?.data?.error || e?.message || 'Could not delete this segment.';
-      toast({ variant: 'destructive', title: 'Delete failed', description: msg });
+      const msg = e?.response?.data?.error || e?.data?.error || e?.message || t('journeyDetail.couldNotDelete');
+      toast({ variant: 'destructive', title: t('journeyDetail.deleteFailed'), description: msg });
       setDeleting(false);
     }
   }
@@ -127,15 +129,15 @@ export default function JourneyDetail() {
         <DetailActionBar onBack={back} />
         <div className="tt-card p-10 text-center max-w-md mx-auto">
           <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
-          <p className="font-display text-2xl mb-2 text-ink-deep">Segment not found</p>
-          <p className="text-ink-deep/60 text-sm">This segment may have been removed or you don't have access.</p>
+          <p className="font-display text-2xl mb-2 text-ink-deep">{t('journeyDetail.segmentNotFound')}</p>
+          <p className="text-ink-deep/60 text-sm">{t('journeyDetail.segmentNotFoundBody')}</p>
         </div>
       </div>
     );
   }
 
   const Icon = ICONS[item.type] || MapPin;
-  const typeLabel = TYPE_LABEL[item.type] || 'Segment';
+  const typeLabel = t('journeyTypes.' + item.type) || t('journeyTypes.other');
   const typeStyle = TYPE_STYLE[item.type] || TYPE_STYLE.other;
   const typeColor = TYPE_COLOR[item.type] || TYPE_COLOR.other;
   const q = mapsQuery(item);
@@ -170,7 +172,7 @@ export default function JourneyDetail() {
             <span className="tt-label" style={{ color: typeColor }}>{typeLabel}</span>
             <h1 className="font-display text-2xl font-bold text-ink-deep leading-tight tt-text-balance">{item.title}</h1>
             {item.confirmation_number && (
-              <p className="text-xs text-ink-deep/45 mt-1">Confirmation #{item.confirmation_number}</p>
+              <p className="text-xs text-ink-deep/45 mt-1">{t('journeyDetail.confirmation', { code: item.confirmation_number })}</p>
             )}
           </div>
         </div>
@@ -188,18 +190,18 @@ export default function JourneyDetail() {
       {/* Dates / times — Start / End side by side; collapses to one column if no end */}
       {(start || end) && (
         <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40 mb-2.5">When</p>
+          <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.when')}</p>
           <div className={`grid gap-3 ${start && end ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {start && (
               <div>
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-deep/40 mb-1">Start</p>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-deep/40 mb-1">{t('journeyDetail.start')}</p>
                 <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(start, startTz)}</p>
                 <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(start, startTz, startCc)}</p>
               </div>
             )}
             {end && (
               <div>
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-deep/40 mb-1">End</p>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-deep/40 mb-1">{t('journeyDetail.end')}</p>
                 <p className="text-sm font-semibold text-ink-deep">{formatFullDateTz(end, endTz)}</p>
                 <p className="text-xs text-ink-deep/55 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeWithCountry(end, endTz, endCc)}</p>
               </div>
@@ -211,7 +213,7 @@ export default function JourneyDetail() {
       {/* Locations */}
       {(item.location_from || item.location_to || item.location_name) && (
         <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40 mb-2.5">Where</p>
+          <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.where')}</p>
           <div className="space-y-2 text-sm text-ink-deep">
             {item.location_from && item.location_to && (
               <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-terra-coral shrink-0" /><span className="truncate">{item.location_from} → {item.location_to}</span></p>
@@ -243,13 +245,13 @@ export default function JourneyDetail() {
       {/* People — participants only (owner display removed; owner field still drives permissions) */}
       <div className="tt-card p-4">
         <div className="flex items-center justify-between mb-2.5">
-          <p className="tt-label text-ink-deep/40">People</p>
-          {attendees.length > 0 && <span className="text-xs text-ink-deep/45">{attendees.length} on this segment</span>}
+          <p className="tt-label text-ink-deep/40">{t('journeyDetail.people')}</p>
+          {attendees.length > 0 && <span className="text-xs text-ink-deep/45">{t('journeyDetail.onSegment', { count: attendees.length })}</span>}
         </div>
         {attendees.length > 0 ? (
           <AvatarStack people={attendees} max={8} size="sm" />
         ) : (
-          <p className="text-sm text-ink-deep/50">No one has joined this segment yet.</p>
+          <p className="text-sm text-ink-deep/50">{t('journeyDetail.noOneJoined')}</p>
         )}
         <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
           <JoinSegmentButton item={item} currentMember={currentMember} onJoined={() => load(true)} />
@@ -259,7 +261,7 @@ export default function JourneyDetail() {
       {/* Notes */}
       {item.notes && (
         <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40 mb-2">Notes</p>
+          <p className="tt-label text-ink-deep/40 mb-2">{t('journeyDetail.notes')}</p>
           <p className="text-sm text-ink-deep/80 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
         </div>
       )}
@@ -269,12 +271,12 @@ export default function JourneyDetail() {
       {/* Attachments */}
       {(images.length > 0 || docs.length > 0) && (
         <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40 mb-2.5">Attachments</p>
+          <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.attachments')}</p>
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-2.5 mb-3">
               {images.map((url, i) => (
                 <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-xl overflow-hidden border border-ink-charcoal/10 bg-cream-pale">
-                  <Image src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover" fittingType="fill" />
+                  <Image src={url} alt={t('journeyDetail.attachmentAlt', { n: i + 1 })} className="w-full h-full object-cover" fittingType="fill" />
                 </a>
               ))}
             </div>

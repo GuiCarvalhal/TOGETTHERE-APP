@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COMMON_CURRENCIES, currencyLabel } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { MapPin, Globe, Sparkles, Camera, UtensilsCrossed } from 'lucide-react';
 
@@ -26,6 +27,7 @@ import { MapPin, Globe, Sparkles, Camera, UtensilsCrossed } from 'lucide-react';
 const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, userId, onSaved, onSaveDone, onDirtyChange, onSavingChange, openMore }, ref) {
   const { user, member, families } = data;
   const { toast } = useToast();
+  const { t } = useI18n();
   const [form, setForm] = useState({
     full_name: member?.full_name || user?.full_name || '',
     photo: user?.photo || member?.photo || '',
@@ -56,7 +58,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
       const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
       setForm((f) => ({ ...f, photo: file_url }));
     } catch {
-      toast({ title: 'Upload failed', variant: 'destructive' });
+      toast({ title: t('profileEdit.uploadFailed'), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -78,11 +80,11 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
         gathering_id: gatheringId,
         fields: { full_name: form.full_name.trim(), photo: form.photo },
       });
-      toast({ title: 'Profile saved' });
+      toast({ title: t('profileEdit.profileSaved') });
       onSaved();
       onSaveDone?.();
     } catch (e) {
-      toast({ title: e.response?.data?.error || e.message || 'Could not save', variant: 'destructive' });
+      toast({ title: e.response?.data?.error || e.message || t('profileEdit.couldNotSave'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -103,7 +105,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
             </label>
           </div>
           <div className="flex-1 min-w-0">
-            <Label className="text-xs text-ink-deep/50">Display name</Label>
+            <Label className="text-xs text-ink-deep/50">{t('profileEdit.displayName')}</Label>
             <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1 bg-cream-pale border-ink-charcoal/20 text-ink-deep font-display text-lg" />
           </div>
         </div>
@@ -111,10 +113,10 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
 
       {/* Universal profile fields */}
       <div className="tt-card p-5 space-y-4">
-        <p className="tt-label text-ink-deep/40">About me</p>
+        <p className="tt-label text-ink-deep/40">{t('profileEdit.aboutMe')}</p>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><MapPin className="w-3 h-3" /> Home city</Label>
+            <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><MapPin className="w-3 h-3" /> {t('profileEdit.homeCity')}</Label>
             <HomePlaceField
               value={form.home_city}
               place={form.home_place}
@@ -123,7 +125,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><Globe className="w-3 h-3" /> Home currency</Label>
+            <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><Globe className="w-3 h-3" /> {t('profileEdit.homeCurrency')}</Label>
             <Select value={form.home_currency} onValueChange={(v) => setForm({ ...form, home_currency: v })}>
               <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -133,16 +135,16 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-ink-deep/60">Short bio</Label>
-          <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="A few lines about you — your travel style, what you love…" rows={3} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep resize-none" />
+          <Label className="text-xs text-ink-deep/60">{t('profileEdit.shortBio')}</Label>
+          <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder={t('profileEdit.shortBioPlaceholder')} rows={3} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep resize-none" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Interests</Label>
-          <ChipPicker catalog={INTERESTS} value={form.interests} onChange={(v) => setForm({ ...form, interests: v })} max={8} emptyHint="Tap a few — hiking, beaches, museums… these shape your Agent picks." />
+          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><Sparkles className="w-3 h-3" /> {t('profileEdit.interests')}</Label>
+          <ChipPicker catalog={INTERESTS} value={form.interests} onChange={(v) => setForm({ ...form, interests: v })} max={8} dictPrefix="interests" emptyHint={t('profileEdit.interestsHint')} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><UtensilsCrossed className="w-3 h-3" /> Cuisine preferences</Label>
-          <ChipPicker catalog={CUISINE} value={form.dietary_preferences} onChange={(v) => setForm({ ...form, dietary_preferences: v })} max={10} emptyHint="Tap the cuisines you love — italian, sushi, thai… plus vegan or vegetarian." />
+          <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><UtensilsCrossed className="w-3 h-3" /> {t('profileEdit.cuisinePreferences')}</Label>
+          <ChipPicker catalog={CUISINE} value={form.dietary_preferences} onChange={(v) => setForm({ ...form, dietary_preferences: v })} max={10} dictPrefix="cuisine" emptyHint={t('profileEdit.cuisineHint')} />
         </div>
       </div>
 
@@ -151,7 +153,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
 
       {/* Save lives in the sticky ProfileActionBar. */}
       {openMore && (
-        <Button variant="outline" onClick={openMore} className="rounded-full">Account settings</Button>
+        <Button variant="outline" onClick={openMore} className="rounded-full">{t('profileEdit.accountSettings')}</Button>
       )}
     </div>
   );

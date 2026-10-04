@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGathering } from '@/lib/gatheringContext';
 import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 import DetailActionBar from '@/components/tt/DetailActionBar';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin } from 'lucide-react';
@@ -18,6 +19,7 @@ const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: C
 export default function AddSegmentPage() {
   const { gatheringId, gathering, members, currentMember, role } = useGathering();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [selectedType, setSelectedType] = useState(null);
 
   const back = () => {
@@ -40,8 +42,8 @@ export default function AddSegmentPage() {
       <div className="space-y-4">
         <DetailActionBar onBack={back} />
         <div className="tt-card p-10 text-center max-w-md mx-auto">
-          <p className="font-display text-2xl mb-2 text-ink-deep">Not allowed</p>
-          <p className="text-ink-deep/60 text-sm">You don't have permission to add segments here.</p>
+          <p className="font-display text-2xl mb-2 text-ink-deep">{t('common.notAllowed')}</p>
+          <p className="text-ink-deep/60 text-sm">{t('common.notAllowedBody')}</p>
         </div>
       </div>
     );
@@ -67,22 +69,22 @@ export default function AddSegmentPage() {
     <div className="space-y-4">
       <DetailActionBar onBack={back} />
       <div className="mt-5">
-        <h1 className="font-display text-2xl font-bold text-ink-deep mb-1">Add a segment</h1>
-        <p className="text-sm text-ink-deep/55 mb-5">What would you like to add to the journey?</p>
+        <h1 className="font-display text-2xl font-bold text-ink-deep mb-1">{t('journeyForm.addSegment')}</h1>
+        <p className="text-sm text-ink-deep/55 mb-5">{t('journeyForm.addSegmentQ')}</p>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-          {JOURNEY_TYPES.map((t) => {
-            const Icon = ICONS[t.key] || MapPin;
+          {JOURNEY_TYPES.map((jt) => {
+            const Icon = ICONS[jt.key] || MapPin;
             return (
               <button
-                key={t.key}
+                key={jt.key}
                 type="button"
-                onClick={() => pickType(t.key)}
+                onClick={() => pickType(jt.key)}
                 className="tt-card p-4 flex flex-col items-center gap-2.5 hover:scale-[1.02] active:scale-[0.98] transition-transform"
               >
-                <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: t.color }}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: jt.color }}>
                   <Icon className="w-6 h-6 text-white" strokeWidth={2} />
                 </div>
-                <span className="text-xs font-semibold text-ink-deep text-center leading-tight">{t.label}</span>
+                <span className="text-xs font-semibold text-ink-deep text-center leading-tight">{t('journeyTypes.' + jt.key)}</span>
               </button>
             );
           })}

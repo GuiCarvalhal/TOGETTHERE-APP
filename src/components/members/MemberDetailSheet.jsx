@@ -6,7 +6,7 @@ import RoleStamp from '@/components/tt/RoleStamp';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, CalendarDays, Phone, StickyNote, Trash2, User } from 'lucide-react';
-import { formatDate } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 
 // Member detail + actions sheet, opened by tapping a member row. It carries
 // the full gathering-scoped content the old oversized card showed inline
@@ -16,6 +16,7 @@ import { formatDate } from '@/lib/gatheringHelpers';
 // compact. A "View full profile" button opens the universal profile page.
 export default function MemberDetailSheet({ member, gatheringId, isOwner, canManage, isSelf, visibility, open, onOpenChange, onRoleChange, onRemove }) {
   const navigate = useNavigate();
+  const { t, fmt } = useI18n();
   if (!member) return null;
   const profileUrl = member.user_id ? `/profile/${member.user_id}?g=${gatheringId}` : null;
   const canChangeRole = canManage && !isSelf && !(member.role === 'owner' && !isOwner);
@@ -30,9 +31,9 @@ export default function MemberDetailSheet({ member, gatheringId, isOwner, canMan
             <MemberAvatar member={member} size="md" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <p className="font-display text-lg font-bold text-foreground truncate">{member.full_name || 'Unnamed member'}</p>
+                <p className="font-display text-lg font-bold text-foreground truncate">{member.full_name || t('memberDetails.unnamedMember')}</p>
                 <RoleStamp role={member.role} size="xs" />
-                {isSelf && <span className="tt-label text-foreground/40">You</span>}
+                {isSelf && <span className="tt-label text-foreground/40">{t('members.you')}</span>}
               </div>
               {member.home_city && (
                 <p className="inline-flex items-center gap-1 text-xs text-foreground/55 mt-0.5"><MapPin className="w-3 h-3" />{member.home_city}</p>
@@ -44,12 +45,12 @@ export default function MemberDetailSheet({ member, gatheringId, isOwner, canMan
           <div className="px-4 pb-3 space-y-2 border-t border-foreground/8 pt-3">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <p className="tt-label text-foreground/40 mb-0.5">Arrival</p>
-                <p className="text-foreground flex items-center gap-1"><CalendarDays className="w-3 h-3 text-terra-deep" />{member.arrival_date ? formatDate(member.arrival_date, { month: 'short', day: 'numeric' }) : '—'}</p>
+                <p className="tt-label text-foreground/40 mb-0.5">{t('memberSheet.arrival')}</p>
+                <p className="text-foreground flex items-center gap-1"><CalendarDays className="w-3 h-3 text-terra-deep" />{member.arrival_date ? fmt.formatDate(member.arrival_date, { month: 'short', day: 'numeric' }) : '—'}</p>
               </div>
               <div>
-                <p className="tt-label text-foreground/40 mb-0.5">Departure</p>
-                <p className="text-foreground flex items-center gap-1"><CalendarDays className="w-3 h-3 text-terra-deep" />{member.departure_date ? formatDate(member.departure_date, { month: 'short', day: 'numeric' }) : '—'}</p>
+                <p className="tt-label text-foreground/40 mb-0.5">{t('memberSheet.departure')}</p>
+                <p className="text-foreground flex items-center gap-1"><CalendarDays className="w-3 h-3 text-terra-deep" />{member.departure_date ? fmt.formatDate(member.departure_date, { month: 'short', day: 'numeric' }) : '—'}</p>
               </div>
             </div>
             {visibility === 'full' ? (
@@ -62,7 +63,7 @@ export default function MemberDetailSheet({ member, gatheringId, isOwner, canMan
                   </div>
                 )}
                 {member.interests?.length > 0 && (
-                  <p className="text-[0.625rem] text-foreground/60"><span className="tt-label text-foreground/40 mr-1.5">Interests</span>{member.interests.join(' · ')}</p>
+                  <p className="text-[0.625rem] text-foreground/60"><span className="tt-label text-foreground/40 mr-1.5">{t('memberDetails.interests')}</span>{member.interests.map((k) => t('interests.' + k) || k).join(' · ')}</p>
                 )}
                 {member.contact_info && (
                   <p className="text-[0.625rem] text-foreground/70 flex items-center gap-1"><Phone className="w-3 h-3 text-terra-deep" />{member.contact_info}</p>
@@ -72,21 +73,21 @@ export default function MemberDetailSheet({ member, gatheringId, isOwner, canMan
                 )}
               </>
             ) : (
-              <p className="text-[0.625rem] text-foreground/45 italic">Viewers see limited member details.</p>
+              <p className="text-[0.625rem] text-foreground/45 italic">{t('memberSheet.viewersLimited')}</p>
             )}
             </div>
 
             {/* Role (managers) */}
           {canChangeRole && (
             <div className="px-4 py-3 border-t border-foreground/8">
-              <p className="tt-label text-foreground/50 mb-2">Role</p>
+              <p className="tt-label text-foreground/50 mb-2">{t('memberSheet.role')}</p>
               <Select value={member.role} onValueChange={(r) => onRoleChange(r)}>
                 <SelectTrigger className="h-10 bg-foreground/5 border-foreground/15 text-foreground"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {isOwner && <SelectItem value="owner">Owner</SelectItem>}
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
+                  {isOwner && <SelectItem value="owner">{t('roles.owner')}</SelectItem>}
+                  <SelectItem value="admin">{t('roles.admin')}</SelectItem>
+                  <SelectItem value="member">{t('roles.member')}</SelectItem>
+                  <SelectItem value="viewer">{t('roles.viewer')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -96,12 +97,12 @@ export default function MemberDetailSheet({ member, gatheringId, isOwner, canMan
           <div className="px-4 py-3 border-t border-foreground/8 space-y-2">
             {profileUrl && (
               <Button variant="secondary" className="w-full" onClick={() => { onOpenChange(false); navigate(profileUrl); }}>
-                <User /> View full profile
+                <User /> {t('memberSheet.viewFullProfile')}
               </Button>
             )}
             {canChangeRole && (
               <Button variant="destructive" className="w-full" onClick={() => { onOpenChange(false); onRemove(); }}>
-                <Trash2 /> Remove from gathering
+                <Trash2 /> {t('memberSheet.removeFromGathering')}
               </Button>
             )}
           </div>

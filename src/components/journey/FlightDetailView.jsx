@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image } from '@/components/ui/image';
+import { useI18n } from '@/lib/i18n';
 import { itemMapPoints } from '@/lib/journeyMap';
 import AttachmentChip from '@/components/tt/AttachmentChip';
 import AvatarStack from '@/components/tt/AvatarStack';
@@ -18,6 +19,7 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // panel with inline Join/Leave. No "When" section (redundant with flight
 // status). No "More Flight Details" expandable (removed from FlightStatusCard).
 export default function FlightDetailView({ item, members, currentMember, onReload }) {
+  const { t } = useI18n();
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
   const attendees = (item.attendee_user_ids || []).map((uid) => memberById[uid]).filter(Boolean);
   const { origin, destination, point } = itemMapPoints(item);
@@ -40,7 +42,7 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
       {/* Where — map only, no redundant text labels around the route */}
       {(origin || destination || point) && (
         <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40 mb-2.5">Where</p>
+          <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.where')}</p>
           <SegmentMap key={item.id} origin={origin} destination={destination} point={point} isFlight />
         </div>
       )}
@@ -49,11 +51,11 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
       <div className="tt-card p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="tt-label text-ink-deep/40 mb-2">People</p>
+            <p className="tt-label text-ink-deep/40 mb-2">{t('journeyDetail.people')}</p>
             {attendees.length > 0 ? (
               <AvatarStack people={attendees} max={8} size="sm" />
             ) : (
-              <p className="text-sm text-ink-deep/50">No one has joined this flight yet.</p>
+              <p className="text-sm text-ink-deep/50">{t('journeyDetail.noOneJoinedFlight')}</p>
             )}
           </div>
           <div className="shrink-0">
@@ -65,7 +67,7 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
       {/* Notes */}
       {item.notes && (
         <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40 mb-2">Notes</p>
+          <p className="tt-label text-ink-deep/40 mb-2">{t('journeyDetail.notes')}</p>
           <p className="text-sm text-ink-deep/80 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
         </div>
       )}
@@ -75,12 +77,12 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
       {/* Attachments */}
       {(images.length > 0 || docs.length > 0) && (
         <div className="tt-card p-4">
-          <p className="tt-label text-ink-deep/40 mb-2.5">Attachments</p>
+          <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.attachments')}</p>
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-2.5 mb-3">
               {images.map((url, i) => (
                 <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-xl overflow-hidden border border-ink-charcoal/10 bg-cream-pale">
-                  <Image src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover" fittingType="fill" />
+                  <Image src={url} alt={t('journeyDetail.attachmentAlt', { n: i + 1 })} className="w-full h-full object-cover" fittingType="fill" />
                 </a>
               ))}
             </div>

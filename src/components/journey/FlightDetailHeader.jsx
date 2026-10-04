@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plane, Clock } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 import { journeyMeta, formatTimeAbbrAlpha3, formatDuration } from '@/lib/formatPlaceTime';
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { alpha2ToAlpha3 } from '@/lib/isoCountries';
@@ -10,6 +11,7 @@ import { alpha2ToAlpha3 } from '@/lib/isoCountries';
 // scheduled times with DST-aware abbreviation + ISO alpha-3 country. Stored
 // metadata only — no render-time API calls (isFlight=true on all place hooks).
 export default function FlightDetailHeader({ item }) {
+  const { t } = useI18n();
   const startTz = useItemStartTz(item, true);
   const endTz = useItemEndTz(item, true);
   const startCc = useItemStartCountry(item, true);
@@ -17,7 +19,7 @@ export default function FlightDetailHeader({ item }) {
 
   const meta = journeyMeta(item);
   const flightDur = (item.start_datetime && item.end_datetime) ? formatDuration(item.start_datetime, item.end_datetime) : '';
-  const metaLine = [meta, flightDur && `${flightDur} duration`].filter(Boolean).join(' · ');
+  const metaLine = [meta, flightDur && `${flightDur} ${t('flightEditor.duration')}`].filter(Boolean).join(' · ');
 
   const fromCity = item.from_place?.city || item.from_place?.name || item.location_from || '';
   const toCity = item.to_place?.city || item.to_place?.name || item.location_to || '';

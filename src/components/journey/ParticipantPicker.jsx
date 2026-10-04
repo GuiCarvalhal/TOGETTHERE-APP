@@ -1,5 +1,6 @@
 import React from 'react';
 import MemberAvatar from '@/components/tt/MemberAvatar';
+import { useI18n } from '@/lib/i18n';
 import { Check } from 'lucide-react';
 
 // Selects which gathering members are participants in a journey item. The
@@ -7,6 +8,7 @@ import { Check } from 'lucide-react';
 // never member_user_ids (the ACL list). Only gathering members appear; the
 // creator is always included and shown as "(you)" when it's the current user.
 export default function ParticipantPicker({ members, selected, onToggle, currentUserId }) {
+  const { t } = useI18n();
   // Only participants (owner/member) can be segment attendees — viewers are
   // read-only and never appear in attendee selection.
   const pickable = (members || []).filter((m) => m.role === 'owner' || m.role === 'admin' || m.role === 'member');
@@ -25,8 +27,8 @@ export default function ParticipantPicker({ members, selected, onToggle, current
           >
             <MemberAvatar member={m} size="xs" />
             <span className="flex-1 min-w-0">
-              <span className="block text-sm font-semibold text-ink-deep truncate">{m.full_name}{isMe ? ' (you)' : ''}</span>
-              <span className="block text-[0.625rem] uppercase tracking-wide text-ink-deep/45 capitalize">{m.role}</span>
+              <span className="block text-sm font-semibold text-ink-deep truncate">{m.full_name}{isMe ? ' ' + t('participantPicker.youSuffix') : ''}</span>
+              <span className="block text-[0.625rem] uppercase tracking-wide text-ink-deep/45 capitalize">{t('roles.' + m.role)}</span>
             </span>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isOn ? 'bg-terra text-cream' : 'border border-ink-charcoal/25'}`}>
               {isOn && <Check className="w-3 h-3" />}

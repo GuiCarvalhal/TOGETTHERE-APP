@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { canAddJourney, canEditJourneyItem } from '@/lib/gatheringHelpers';
+import { useI18n } from '@/lib/i18n';
 import { isoToWallInput, arrowFirst } from '@/lib/formatPlaceTime';
 import { usePlaceTimezone } from '@/lib/usePlaceTimezone';
 import FlightEditor from '@/components/journey/FlightEditor';
@@ -35,6 +36,7 @@ export default function FlightPage() {
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(isEdit);
@@ -83,8 +85,8 @@ export default function FlightPage() {
         const data = await base44.entities.JourneyItem.get(itemId);
         if (!alive) return;
         // Guard: the routed item must belong to THIS gathering and be a flight.
-        if (data.gathering_id !== gatheringId) { setError(new Error('This flight belongs to a different gathering.')); return; }
-        if (data.type !== 'flight') { setError(new Error('This journey item is not a flight.')); return; }
+        if (data.gathering_id !== gatheringId) { setError(new Error(t('journeyForm.differentGathering'))); return; }
+        if (data.type !== 'flight') { setError(new Error(t('journeyForm.notAFlight'))); return; }
         setItem(data);
         const sTz = data.from_place?.tz || null;
         const eTz = data.to_place?.tz || null;
@@ -143,17 +145,17 @@ export default function FlightPage() {
     e.preventDefault();
     if (isFlight) {
       if (!manual && !flightReady) {
-        toast({ title: 'Pick a flight', description: 'Search and choose a flight, or tap "Enter manually instead".', variant: 'destructive' });
+        toast({ title: t('journeyForm.pickFlight'), description: t('journeyForm.pickFlightDesc'), variant: 'destructive' });
         return;
       }
       if (manual) {
         const missing = [];
-        if (!form.title.trim()) missing.push('a title');
-        if (!form.start_datetime) missing.push('a departure time');
-        if (!form.location_from.trim()) missing.push('an origin');
-        if (!form.location_to.trim()) missing.push('a destination');
+        if (!form.title.trim()) missing.push(t('journeyForm.missingTitle'));
+        if (!form.start_datetime) missing.push(t('journeyForm.missingDeparture'));
+        if (!form.location_from.trim()) missing.push(t('journeyForm.missingOrigin'));
+        if (!form.location_to.trim()) missing.push(t('journeyForm.missingDestination'));
         if (missing.length) {
-          toast({ title: 'Add the missing details', description: `Please add ${missing.join(', ')}.`, variant: 'destructive' });
+          toast({ title: t('journeyForm.addMissing'), description: t('journeyForm.pleaseAdd', { items: missing.join(', ') }), variant: 'destructive' });
           return;
         }
       }
@@ -162,11 +164,11 @@ export default function FlightPage() {
     try {
       const payload = buildJourneyPayload({ form, attendeeIds, startTz, endTz, meta: TYPE_META_FLIGHT, currentMember, item, gatheringId });
       await submitJourneyItem({ isEdit, gatheringId, itemId, payload });
-      toast({ title: isEdit ? 'Flight updated' : 'Flight added' });
+      toast({ title: isEdit ? t('journeyForm.flightUpdated') : t('journeyForm.flightAdded') });
       if (isEdit) navigate(`/gathering/${gatheringId}/journey/${itemId}`, { replace: true });
       else navigate(`/gathering/${gatheringId}/journey`, { replace: true });
     } catch (err) {
-      toast({ title: 'Could not save flight', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: t('journeyForm.couldNotSaveFlight'), description: err.message || t('common.error'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -192,9 +194,9 @@ export default function FlightPage() {
         <DetailActionBar onBack={back} />
         <div className="tt-card p-10 text-center max-w-md mx-auto">
           <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
-          <p className="font-display text-2xl mb-2 text-ink-deep">Couldn't load this flight</p>
-          <p className="text-ink-deep/60 mb-6 text-sm">{error.message || 'Something went wrong.'}</p>
-          <Button onClick={back}>Back to journey</Button>
+          <p className="font-display text-2xl mb-2 text-ink-deep">{t('journeyForm.couldNotLoadFlight')}</p>
+          <p className="text-ink-deep/60 mb-6 text-sm">{error.message || t('common.error')}</p>
+          <Button onClick={back}>{t('journeyDetail.backToJourney')}</Button>
         </div>
       </div>
     );
@@ -206,9 +208,9 @@ export default function FlightPage() {
       <div className="space-y-4">
         <DetailActionBar onBack={back} />
         <div className="tt-card p-10 text-center max-w-md mx-auto">
-          <p className="font-display text-2xl mb-2 text-ink-deep">Not allowed</p>
-          <p className="text-ink-deep/60 mb-6 text-sm">You don't have permission to {isEdit ? 'edit' : 'add'} a flight here.</p>
-          <Button onClick={back}>Back to journey</Button>
+          <p className="font-display text-2xl mb-2 text-ink-deep">{t('common.notAllowed')}</p>
+          <p className="text-ink-deep/60 mb-6 text-sm">{t('journeyForm.notAllowedFlight', { action: isEdit ? t('journeyForm.notAllowedFlightEdit') : t('journeyForm.notAllowedFlightAdd') })}</p>
+          <Button onClick={back}>{t('journeyDetail.backToJourney')}</Button>
         </div>
       </div>
     );
@@ -222,11 +224,11 @@ export default function FlightPage() {
         actions={
           <>
             <Button type="button" variant="secondary" size="sm" onClick={back} disabled={saving} className="shrink-0">
-              <X /> Cancel
+              <X /> {t('common.cancel')}
             </Button>
             <Button type="submit" form="flight-form" size="sm" disabled={saving || resolving || flightNeedsSelection} className="shrink-0">
               {saving ? <Loader2 className="animate-spin" /> : isEdit ? <Check /> : <Plus />}
-              {isEdit ? 'Save changes' : 'Add flight'}
+              {isEdit ? t('common.saveChanges') : t('journeyForm.addFlight')}
             </Button>
           </>
         }
@@ -235,9 +237,9 @@ export default function FlightPage() {
         <div className="tt-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Plane className="w-4 h-4 text-terra-deep" />
-            <span className="tt-label text-ink-deep/50">{isEdit ? 'Edit flight' : 'Add a flight'}</span>
+            <span className="tt-label text-ink-deep/50">{isEdit ? t('journeyForm.editFlight') : t('journeyForm.addFlight')}</span>
           </div>
-          <p className="text-xs text-ink-deep/55">Search by flight number or route, pick a result to fill the details, or enter them manually. Your draft stays put until you save.</p>
+          <p className="text-xs text-ink-deep/55">{t('journeyForm.flightIntro')}</p>
         </div>
         <form id="flight-form" onSubmit={handleSave} className="tt-card p-4 space-y-4">
           <FlightEditor
@@ -252,7 +254,7 @@ export default function FlightPage() {
             onResolvingChange={setResolving}
           />
           {flightNeedsSelection && (
-            <p className="text-xs text-terra-deep text-center">Search and pick a flight, or tap “Enter manually instead”.</p>
+            <p className="text-xs text-terra-deep text-center">{t('journeyForm.searchPickOrManual')}</p>
           )}
         </form>
       </div>

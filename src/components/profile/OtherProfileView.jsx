@@ -3,6 +3,7 @@ import MemberAvatar from '@/components/tt/MemberAvatar';
 import GroupsInCommon from '@/components/profile/GroupsInCommon';
 import ProfileChips from '@/components/profile/ProfileChips';
 import { INTERESTS, CUISINE } from '@/lib/profileOptions';
+import { useI18n } from '@/lib/i18n';
 import { MapPin, Globe, Lock, Users, UtensilsCrossed, Sparkles, Mail } from 'lucide-react';
 
 // Read-only view of another user's UNIVERSAL profile. The page looks the same
@@ -15,6 +16,7 @@ import { MapPin, Globe, Lock, Users, UtensilsCrossed, Sparkles, Mail } from 'luc
 // Sections are self-contained with headings so new person-level sections can be
 // added later without a redesign.
 export default function OtherProfileView({ data, gatheringId, userId, onChanged }) {
+  const { t } = useI18n();
   const { user, visibility, groupsInCommon, families } = data;
   const full = visibility === 'full';
 
@@ -25,7 +27,7 @@ export default function OtherProfileView({ data, gatheringId, userId, onChanged 
         <div className="flex items-center gap-4">
           <MemberAvatar member={{ photo: user.photo, full_name: user.full_name }} size="xl" />
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-xl font-bold text-ink-deep truncate">{user.full_name || 'Member'}</h2>
+            <h2 className="font-display text-xl font-bold text-ink-deep truncate">{user.full_name || t('profileView.member')}</h2>
             {full && user.home_city && (
               user.home_place?.lat != null ? (
                 <a href={`https://www.google.com/maps/search/?api=1&query=${user.home_place.lat},${user.home_place.lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-ink-deep/55 mt-1 hover:text-terra transition-colors">
@@ -44,7 +46,7 @@ export default function OtherProfileView({ data, gatheringId, userId, onChanged 
           {/* About */}
           {user.bio && (
             <div className="tt-card p-5">
-              <p className="tt-label text-ink-deep/40 mb-2">About</p>
+              <p className="tt-label text-ink-deep/40 mb-2">{t('profileView.about')}</p>
               <p className="text-sm text-ink-deep/80 leading-relaxed whitespace-pre-wrap">{user.bio}</p>
             </div>
           )}
@@ -52,34 +54,34 @@ export default function OtherProfileView({ data, gatheringId, userId, onChanged 
           {/* Interests */}
           {user.interests?.length > 0 && (
             <div className="tt-card p-5">
-              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Interests</p>
-              <ProfileChips values={user.interests} catalog={INTERESTS} />
+              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> {t('profileView.interests')}</p>
+              <ProfileChips values={user.interests} catalog={INTERESTS} dictPrefix="interests" />
             </div>
           )}
 
           {/* Cuisine preferences */}
           {user.dietary_preferences?.length > 0 && (
             <div className="tt-card p-5">
-              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><UtensilsCrossed className="w-3.5 h-3.5" /> Cuisine preferences</p>
-              <ProfileChips values={user.dietary_preferences} catalog={CUISINE} />
+              <p className="tt-label text-ink-deep/40 mb-2 flex items-center gap-1.5"><UtensilsCrossed className="w-3.5 h-3.5" /> {t('profileView.cuisinePreferences')}</p>
+              <ProfileChips values={user.dietary_preferences} catalog={CUISINE} dictPrefix="cuisine" />
             </div>
           )}
 
           {/* Details — person-level facts, growable */}
           <div className="tt-card p-5 grid sm:grid-cols-2 gap-4">
             <div>
-              <p className="tt-label text-ink-deep/40 mb-1 flex items-center gap-1"><Globe className="w-3 h-3" /> Home currency</p>
+              <p className="tt-label text-ink-deep/40 mb-1 flex items-center gap-1"><Globe className="w-3 h-3" /> {t('profileView.homeCurrency')}</p>
               <p className="text-sm text-ink-deep">{user.home_currency || '—'}</p>
             </div>
             {user.email && (
               <div className="min-w-0">
-                <p className="tt-label text-ink-deep/40 mb-1 flex items-center gap-1"><Mail className="w-3 h-3" /> Email</p>
+                <p className="tt-label text-ink-deep/40 mb-1 flex items-center gap-1"><Mail className="w-3 h-3" /> {t('profileView.email')}</p>
                 <p className="text-sm text-ink-deep truncate">{user.email}</p>
               </div>
             )}
             {families?.length > 0 && (
               <div>
-                <p className="tt-label text-ink-deep/40 mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Family</p>
+                <p className="tt-label text-ink-deep/40 mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> {t('profileView.family')}</p>
                 <p className="text-sm text-ink-deep">{families.map((f) => f.name).join(', ')}</p>
               </div>
             )}
@@ -92,9 +94,9 @@ export default function OtherProfileView({ data, gatheringId, userId, onChanged 
           <div className="w-12 h-12 rounded-2xl bg-cream-pale border border-ink-charcoal/15 flex items-center justify-center mx-auto mb-3">
             <Lock className="w-5 h-5 text-ink-deep/40" />
           </div>
-          <p className="font-display text-lg text-ink-deep mb-1">Limited profile</p>
+          <p className="font-display text-lg text-ink-deep mb-1">{t('profileView.limitedProfile')}</p>
           <p className="text-sm text-ink-deep/60 max-w-sm mx-auto">
-            You're seeing a limited profile. Full profiles are visible to participants of this gathering.
+            {t('profileView.limitedProfileBody')}
           </p>
         </div>
       )}

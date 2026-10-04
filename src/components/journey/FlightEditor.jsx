@@ -7,6 +7,7 @@ import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
 import FlightResultList from '@/components/journey/FlightResultList';
 import { isoToWallInput } from '@/lib/formatPlaceTime';
 import { parseUtcIso, normalizeNumber, extractIata } from '@/lib/flightSearch';
+import { useI18n } from '@/lib/i18n';
 import { Loader2, Plane, Search, X, Pencil, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -30,6 +31,7 @@ import { toast } from '@/components/ui/use-toast';
 // `onResolvingChange(boolean)` lifts the resolving flag to the parent so the
 // Save button can be disabled while airport metadata is being resolved.
 export default function FlightEditor({ form, setForm, setStartTouched, setEndTouched, gatheringStartDate, optionalFields, manual, setManual, onResolvingChange }) {
+  const { t, fmt } = useI18n();
   const today = new Date().toISOString().slice(0, 10);
   const [mode, setMode] = useState('number');
   const [searchDate, setSearchDate] = useState(gatheringStartDate || (form.start_datetime ? form.start_datetime.slice(0, 10) : today));
@@ -78,11 +80,11 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
 
   async function runSearch() {
     setError(null); setResolveWarning(null); setResults([]); setSelected(null);
-    if (!searchDate) { toast({ title: 'Pick a departure date', variant: 'destructive' }); return; }
+    if (!searchDate) { toast({ title: t('flightEditor.pickDepartureDate'), variant: 'destructive' }); return; }
     const seq = ++reqSeq.current;
     if (mode === 'number') {
       const fn = flightNumber.trim();
-      if (!fn) { toast({ title: 'Enter a flight number', description: 'e.g. AA123', variant: 'destructive' }); return; }
+      if (!fn) { toast({ title: t('flightEditor.enterFlightNumber'), description: t('flightEditor.enterFlightNumberDesc'), variant: 'destructive' }); return; }
       setSearching(true);
       try {
         const res = await base44.functions.invoke('searchFlights', { flight_number: fn, date: searchDate });
@@ -90,16 +92,16 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
         const data = res.data || res;
         if (data.error) { setError(data.error); return; }
         setResults(data.results || []);
-        if (!data.results?.length) setError(`No flights found for ${fn.toUpperCase()} on ${searchDate}. Check the number and date, or try searching by route.`);
+        if (!data.results?.length) setError(t('flightEditor.noFlightsNumber', { fn: fn.toUpperCase(), date: searchDate }));
       } catch (e) {
         if (seq !== reqSeq.current) return;
-        setError(e.response?.data?.error || e.message || 'Search failed. You can still enter the details manually.');
+        setError(e.response?.data?.error || e.message || t('flightEditor.searchFailed'));
       } finally {
         if (seq === reqSeq.current) setSearching(false);
       }
     } else {
       const o = searchFromPlace, d = searchToPlace;
-      if (!o?.lat || !d?.lat) { toast({ title: 'Choose both airports', description: 'Pick an origin and destination airport from the suggestions.', variant: 'destructive' }); return; }
+      if (!o?.lat || !d?.lat) { toast({ title: t('flightEditor.chooseBothAirports'), description: t('flightEditor.chooseBothAirportsDesc'), variant: 'destructive' }); return; }
       setSearching(true);
       try {
         const res = await base44.functions.invoke('searchFlights', {
@@ -111,10 +113,10 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
         const data = res.data || res;
         if (data.error) { setError(data.error); return; }
         setResults(data.results || []);
-        if (!data.results?.length) setError(`No flights found from ${searchFromText} to ${searchToText} on ${searchDate}.`);
+        if (!data.results?.length) setError(t('flightEditor.noFlightsRoute', { from: searchFromText, to: searchToText, date: searchDate }));
       } catch (e) {
         if (seq !== reqSeq.current) return;
-        setError(e.response?.data?.error || e.message || 'Search failed. You can still enter the details manually.');
+        setError(e.response?.data?.error || e.message || t('flightEditor.searchFailed'));
       } finally {
         if (seq === reqSeq.current) setSearching(false);
       }
@@ -157,7 +159,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
     }
     if (seq !== reqSeq.current) return; // stale after awaits
     if (degraded) {
-      setResolveWarning('Airport details incomplete — the city may be missing on the card. You can edit manually if needed.');
+      setResolveWarning(t('flightEditor.airportIncomplete'));
     }
     // Airline: replace with the new result's known airline, or clear the stale
     // value (never keep the old carrier when changing flights).
@@ -198,8 +200,8 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
   const dispToIata = form.to_place?.iata || '';
   const dispFromName = form.from_place?.name || form.location_from || '';
   const dispToName = form.to_place?.name || form.location_to || '';
-  const dispDepTime = fmtWall(form.start_datetime);
-  const dispArrTime = fmtWall(form.end_datetime);
+  const dispDepTime = fmtWall(form.start_datetime, fmt.locale);
+  const dispArrTime = fmtWall(form.end_datetime, fmt.locale);
   const overnight = selected?.overnight || false;
   const dayShift = selected?.day_shift || 0;
 
@@ -214,10 +216,10 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
           <div className="tt-ink-panel p-3 space-y-3">
             <div className="flex items-center gap-2 text-ink-deep">
               <Plane className="w-4 h-4 text-terra" />
-              <span className="font-display font-semibold text-sm">Find a flight</span>
+              <span className="font-display font-semibold text-sm">{t('flightEditor.findFlight')}</span>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-ink-deep text-xs">Departure date</Label>
+              <Label className="text-ink-deep text-xs">{t('flightEditor.departureDate')}</Label>
               <Input type="date" value={searchDate} onChange={(e) => setSearchDate(e.target.value)} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
             </div>
             <div className="flex gap-1 p-1 rounded-lg bg-ink-soft">
@@ -228,17 +230,17 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
                   onClick={() => { setMode(m); setResults([]); setError(null); setResolveWarning(null); }}
                   className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition ${mode === m ? 'bg-card text-ink-deep shadow-sm' : 'text-ink-deep/55'}`}
                 >
-                  {m === 'number' ? 'By flight number' : 'By route'}
+                  {m === 'number' ? t('flightEditor.byNumber') : t('flightEditor.byRoute')}
                 </button>
               ))}
             </div>
             {mode === 'number' && (
               <div className="space-y-1.5">
-                <Label className="text-ink-deep text-xs">Flight number</Label>
+                <Label className="text-ink-deep text-xs">{t('flightEditor.flightNumber')}</Label>
                 <Input
                   value={flightNumber}
                   onChange={(e) => setFlightNumber(e.target.value)}
-                  placeholder="AA123"
+                  placeholder={t('flightEditor.flightNumberPlaceholder')}
                   className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } }}
                 />
@@ -247,23 +249,23 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
             {mode === 'route' && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-ink-deep text-xs">From</Label>
+                  <Label className="text-ink-deep text-xs">{t('flightEditor.from')}</Label>
                   <PlaceAutocomplete
                     value={searchFromText}
                     onText={onSearchFromText}
                     onSelect={onSearchFromSelect}
-                    placeholder="Origin airport"
+                    placeholder={t('flightEditor.originAirport')}
                     types="airport"
                     className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-ink-deep text-xs">To</Label>
+                  <Label className="text-ink-deep text-xs">{t('flightEditor.to')}</Label>
                   <PlaceAutocomplete
                     value={searchToText}
                     onText={onSearchToText}
                     onSelect={onSearchToSelect}
-                    placeholder="Destination airport"
+                    placeholder={t('flightEditor.destinationAirport')}
                     types="airport"
                     className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
                   />
@@ -272,26 +274,26 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
             )}
             <Button type="button" onClick={runSearch} disabled={searching} className="w-full bg-terra hover:bg-terra-deep text-cream rounded-full">
               {searching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-              {searching ? 'Searching…' : 'Search flights'}
+              {searching ? t('flightEditor.searching') : t('flightEditor.searchFlights')}
             </Button>
             {error && <p className="text-xs text-terra-deep">{error}</p>}
-            {resolving && <p className="text-xs text-ink-deep/60 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Resolving airport details…</p>}
+            {resolving && <p className="text-xs text-ink-deep/60 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> {t('flightEditor.resolvingAirports')}</p>}
             {warningNode}
           </div>
           {results.length > 0 && (
             <div className="space-y-2">
-              <p className="tt-label text-ink-deep/60">{results.length} flight{results.length > 1 ? 's' : ''} found — tap to fill</p>
+              <p className="tt-label text-ink-deep/60">{t('flightEditor.flightsFound', { count: results.length })}</p>
               <FlightResultList results={results} selectedId={selected?.id} onSelect={applyFlight} />
             </div>
           )}
           <div className="flex flex-wrap gap-3">
             {searchAgain && (hasFlight || selected) && (
               <button type="button" onClick={() => setSearchAgain(false)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
-                <X className="w-3 h-3" /> Back to current flight
+                <X className="w-3 h-3" /> {t('flightEditor.backToCurrent')}
               </button>
             )}
             <button type="button" onClick={() => setManual(true)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
-              <Pencil className="w-3 h-3" /> Enter manually instead
+              <Pencil className="w-3 h-3" /> {t('flightEditor.enterManually')}
             </button>
           </div>
         </>
@@ -305,37 +307,37 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
                 {dispAirline ? `${dispAirline} · ` : ''}{dispNumber}
               </p>
               <p className="text-xs text-ink-deep/60">
-                {dispFromIata || dispFromName} → {dispToIata || dispToName}{overnight ? ` · +${dayShift} day${dayShift > 1 ? 's' : ''}` : ''}
+                {dispFromIata || dispFromName} → {dispToIata || dispToName}{overnight ? ` · ${t('flightEditor.overnightSuffix', { count: dayShift })}` : ''}
               </p>
               <p className="text-xs text-ink-deep/60 mt-0.5">{dispDepTime} → {dispArrTime}</p>
             </div>
           </div>
           {warningNode}
           <div className="space-y-1.5">
-            <Label className="text-ink-deep">Title <span className="text-ink-deep/40 font-normal">(optional)</span></Label>
+            <Label className="text-ink-deep">{t('flightEditor.titleOptional')} <span className="text-ink-deep/40 font-normal">{t('flightEditor.optionalSuffix')}</span></Label>
             <Input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder="Flight to Naples"
+              placeholder={t('journeyForm.titlePlaceholder')}
               className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-ink-deep">Booking ref</Label>
+            <Label className="text-ink-deep">{t('journeyForm.bookingRef')}</Label>
             <Input
               value={form.booking_reference || ''}
               onChange={(e) => setForm((f) => ({ ...f, booking_reference: e.target.value }))}
-              placeholder="PNR"
+              placeholder={t('journeyForm.bookingRefPlaceholder')}
               className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
             />
           </div>
           {optionalFields}
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => { setSearchAgain(true); setResults([]); setError(null); setResolveWarning(null); }} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
-              <Search className="w-3 h-3" /> Search another flight
+              <Search className="w-3 h-3" /> {t('flightEditor.searchAnother')}
             </button>
             <button type="button" onClick={() => setManual(true)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
-              <Pencil className="w-3 h-3" /> Edit flight details manually
+              <Pencil className="w-3 h-3" /> {t('flightEditor.editManually')}
             </button>
           </div>
         </>
@@ -344,17 +346,17 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
       {manual && (
         <>
           <div className="space-y-1.5">
-            <Label className="text-ink-deep">Title</Label>
+            <Label className="text-ink-deep">{t('journeyForm.title')}</Label>
             <Input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder="Flight to Naples"
+              placeholder={t('journeyForm.titlePlaceholder')}
               className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-ink-deep">Departure</Label>
+              <Label className="text-ink-deep">{t('flightEditor.departure')}</Label>
               <Input
                 type="datetime-local"
                 value={form.start_datetime}
@@ -363,7 +365,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-ink-deep">Arrival</Label>
+              <Label className="text-ink-deep">{t('flightEditor.arrival')}</Label>
               <Input
                 type="datetime-local"
                 value={form.end_datetime}
@@ -374,23 +376,23 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-ink-deep">From</Label>
+              <Label className="text-ink-deep">{t('flightEditor.from')}</Label>
               <PlaceAutocomplete
                 value={form.location_from}
                 onText={onFromText}
                 onSelect={onFromSelect}
-                placeholder="Origin airport"
+                placeholder={t('flightEditor.originAirport')}
                 types="airport"
                 className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-ink-deep">To</Label>
+              <Label className="text-ink-deep">{t('flightEditor.to')}</Label>
               <PlaceAutocomplete
                 value={form.location_to}
                 onText={onToText}
                 onSelect={onToSelect}
-                placeholder="Destination airport"
+                placeholder={t('flightEditor.destinationAirport')}
                 types="airport"
                 className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
               />
@@ -398,27 +400,27 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-ink-deep">Flight #</Label>
+              <Label className="text-ink-deep">{t('flightEditor.flightNum')}</Label>
               <Input
                 value={form.confirmation_number}
                 onChange={(e) => { setForm((f) => ({ ...f, confirmation_number: e.target.value })); setSelected(null); }}
-                placeholder="BA208"
+                placeholder={t('flightEditor.flightNumPlaceholder')}
                 className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-ink-deep">Booking ref</Label>
+              <Label className="text-ink-deep">{t('journeyForm.bookingRef')}</Label>
               <Input
                 value={form.booking_reference || ''}
                 onChange={(e) => setForm((f) => ({ ...f, booking_reference: e.target.value }))}
-                placeholder="PNR"
+                placeholder={t('journeyForm.bookingRefPlaceholder')}
                 className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
               />
             </div>
           </div>
           {optionalFields}
           <button type="button" onClick={() => setManual(false)} className="text-xs text-terra-deep hover:underline flex items-center gap-1">
-            <Search className="w-3 h-3" /> Use flight search instead
+            <Search className="w-3 h-3" /> {t('flightEditor.useSearch')}
           </button>
         </>
       )}
@@ -426,9 +428,9 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
   );
 }
 
-function fmtWall(s) {
+function fmtWall(s, locale) {
   if (!s) return '';
   const d = new Date(s);
   if (isNaN(d.getTime())) return s;
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(locale || 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
