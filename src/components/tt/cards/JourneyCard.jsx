@@ -26,9 +26,11 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // Stays (hotel) render twice on the timeline via the `leg` prop: a check-in
 // entry at the start and a check-out entry at the end — one underlying record.
 //
-// Card height is stable: identical content box whether Images is ON or OFF
-// (same border + padding), and a reserved min-height participant slot so the
-// height never depends on whether avatars are present.
+// Card height is content-driven with a min-h floor (131.5px): identical
+// content box whether Images is ON or OFF (same border + padding), and a
+// reserved min-height participant slot pushed to the bottom via mt-auto so
+// the height never depends on whether avatars are present. On narrow screens
+// where the timing row wraps, the card grows instead of clipping.
 export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber }) {
   const navigate = useNavigate();
   const isFlight = item.type === 'flight';
@@ -92,7 +94,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
 
   return (
     <div
-      className="flex gap-2 items-stretch cursor-pointer rounded-2xl h-[131.5px] focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
+      className="flex gap-2 items-stretch cursor-pointer rounded-2xl min-h-[131.5px] focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
       role="link"
       tabIndex={to ? 0 : undefined}
       onClick={open}
@@ -134,7 +136,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
             <div className="absolute inset-0 bg-gradient-to-br from-ink-scrim/90 via-ink-scrim/60 to-ink-scrim/35" />
           </>
         )}
-        <div className="relative p-3 flex flex-col">
+        <div className="relative p-3 flex flex-col h-full">
           <ChevronRight className="absolute top-3 right-3 w-4 h-4 shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
 
           {/* Metadata line — the first line of the card (no item-type label) */}
@@ -174,7 +176,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           {/* Reserved participant slot (fixed min-height) so card height never
               depends on whether avatars are present. Shows only the actual
               participants of this item; "No one joined yet" honest fallback. */}
-          <div className="flex items-center gap-2 mt-2 min-h-[2.5rem]">
+          <div className="flex items-center gap-2 mt-auto min-h-[2.5rem]">
             {participants?.length > 0 ? (
               <div className="flex items-center min-w-0">
                 {participants.slice(0, 4).map((m, i) => (
