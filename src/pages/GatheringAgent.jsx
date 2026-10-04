@@ -280,22 +280,6 @@ export default function GatheringAgent() {
   return (
     <PageToolbar switcher={lengthSwitcher} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
       <div className="space-y-5">
-        {/* Brief header */}
-        <div className="tt-card p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-terra/15 border border-terra/30 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-terra-deep" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-display text-lg font-bold text-ink-deep">{t('agent.personalized')}</h3>
-              <p className="text-sm text-ink-deep/60 mt-0.5 truncate">
-                {t('agent.participants', { count: members.filter((m) => m.role !== 'viewer').length })} · {gathering?.destinations?.join(', ') || ''}
-              </p>
-              {data && !loading && <p className="text-[0.625rem] text-ink-deep/40 mt-1">{t('agent.updatedAgo', { time: fmt.timeAgo(data.generatedAt) })}</p>}
-            </div>
-          </div>
-        </div>
-
         {showReloadHint && (
           <p className="text-xs text-ink-deep/50 flex items-center gap-1.5 px-1">
             <Sparkles className="w-3 h-3 text-terra-deep shrink-0" />
