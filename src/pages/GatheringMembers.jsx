@@ -11,7 +11,7 @@ import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UserPlus, Loader2, Users, X, Handshake, HeartHandshake, User, Link2, Eye, Copy, Check } from 'lucide-react';
+import { UserPlus, Loader2, Users, X, User, Link2, Eye, Copy, Check } from 'lucide-react';
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 import Skeleton from '@/components/tt/Skeleton';
@@ -84,15 +84,6 @@ export default function GatheringMembers() {
     } catch { /* ignore */ }
   }
 
-  async function handleRelationshipChange(targetUserId, rel) {
-    try {
-      await base44.functions.invoke('setRelationship', { gathering_id: gatheringId, target_user_id: targetUserId, level: rel });
-      refresh();
-    } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Could not update relationship');
-    }
-  }
-
   async function handleRoleChange(member, newRole) {
     try {
       await base44.functions.invoke('updateMemberRole', { gathering_id: gatheringId, member_id: member.id, role: newRole });
@@ -113,28 +104,21 @@ export default function GatheringMembers() {
     }
   }
 
-  // Scope filter. Members: "Mine" = just the signed-in user. For viewers, the
-  // control becomes "Close" — the close-friends membership scope (members the
-  // viewer marked Close), not the viewer's own participation (viewers don't
-  // participate). The signed-in user's own row is always kept so the "You"
-  // section still renders under Close.
-  const scopedMembers = scope === 'mine'
-    ? (isViewer
-        ? members.filter((m) => m.id === currentMember?.id || m.myRelationship === 'close')
-        : members.filter((m) => m.id === currentMember?.id))
+  // Scope filter. Members: "Mine" = just the signed-in user. Viewers get Group
+  // view only (no participation scope selector) now that the Close/Casual
+  // friendship model is retired, so the scope is forced to Group for viewers
+  // regardless of any stale stored preference.
+  const effectiveScope = isViewer ? 'group' : scope;
+  const scopedMembers = effectiveScope === 'mine'
+    ? members.filter((m) => m.id === currentMember?.id)
     : members;
   // Role filter composes with scope: narrows the visible members by gathering
   // role (owner/admin/member/viewer) — never inferred from friendship.
   const roleFiltered = roleFilter === 'all' ? scopedMembers : scopedMembers.filter((m) => m.role === roleFilter);
-  // Friendship split uses myRelationship (close | casual). The app's
-  // documented default is 'casual', so null — only the current user's own row
-  // — is treated as casual. No member disappears; no Uncategorized section.
   const others = roleFiltered.filter((m) => m.id !== currentMember?.id);
   const selfMember = roleFiltered.find((m) => m.id === currentMember?.id) || null;
-  const closeMembers = others.filter((m) => m.myRelationship === 'close');
-  const casualMembers = others.filter((m) => m.myRelationship !== 'close');
-  // Re-derive the open sheet's member from fresh data so role/relationship
-  // edits reflect immediately; falls back to the stored object if it's gone.
+  // Re-derive the open sheet's member from fresh data so role edits reflect
+  // immediately; falls back to the stored object if it's gone.
   const active = activeMember ? (members.find((m) => m.id === activeMember.id) || activeMember) : null;
 
   return (
@@ -150,8 +134,8 @@ export default function GatheringMembers() {
       ) : roleFiltered.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={roleFilter !== 'all' ? 'No members with this role' : (scope === 'mine' ? (isViewer ? 'No close friends yet' : 'Nothing to show') : 'No members yet')}
-          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : (scope === 'mine' ? (isViewer ? 'Mark members as Close from their profile to see them here, or switch to Group.' : 'Switch to Group to see everyone in this gathering.') : 'Invite your crew to start coordinating — share a Member link so people can participate, or a Viewer link for read-only access.')}
+          title={roleFilter !== 'all' ? 'No members with this role' : (effectiveScope === 'mine' ? 'Nothing to show' : 'No members yet')}
+          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : (effectiveScope === 'mine' ? 'Switch to Group to see everyone in this gathering.' : 'Invite your crew to start coordinating — share a Member link so people can participate, or a Viewer link for read-only access.')}
           action={canManage && scope !== 'mine' && roleFilter === 'all' ? (
             <Button onClick={() => setShareOpen(true)}>
               <UserPlus /> Share invite link
@@ -165,13 +149,8 @@ export default function GatheringMembers() {
               <MemberRow key={selfMember.id} member={selfMember} gatheringId={gatheringId} isSelf onOpen={() => { setActiveMember(selfMember); setSheetOpen(true); }} />
             </MemberSection>
           )}
-          <MemberSection title="Close Friendship" count={closeMembers.length} icon={<HeartHandshake className="w-3.5 h-3.5 text-terra-deep" />}>
-            {closeMembers.map((m) => (
-              <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
-            ))}
-          </MemberSection>
-          <MemberSection title="Casual Friendship" count={casualMembers.length} icon={<Handshake className="w-3.5 h-3.5 text-ink-deep/45" />}>
-            {casualMembers.map((m) => (
+          <MemberSection title="Everyone" count={others.length} icon={<Users className="w-3.5 h-3.5 text-terra-deep" />}>
+            {others.map((m) => (
               <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
             ))}
           </MemberSection>
@@ -184,11 +163,9 @@ export default function GatheringMembers() {
         isOwner={isOwner}
         canManage={canManage}
         isSelf={active ? active.id === currentMember?.id : false}
-        myRelationship={active?.myRelationship}
         visibility={active?.visibility}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        onRelationshipChange={(rel) => active && handleRelationshipChange(active.user_id, rel)}
         onRoleChange={(r) => active && handleRoleChange(active, r)}
         onRemove={() => active && handleRemove(active)}
       />

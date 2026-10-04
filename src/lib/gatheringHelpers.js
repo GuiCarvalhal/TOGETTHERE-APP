@@ -63,54 +63,10 @@ export function legacyViewerAllocationIds(participants, splits, payerMemberId) {
   };
 }
 
-// User ids the current user has marked Close within a gathering (the
-// close-friends membership scope). Excludes the user themself. Used by viewers'
-// "Close" tab, since viewers don't own/attend items themselves.
-export function closeFriendUserIds(members, currentMember) {
-  const selfId = currentMember?.id;
-  return new Set((members || [])
-    .filter((m) => m.id !== selfId && m.myRelationship === 'close' && m.user_id)
-    .map((m) => m.user_id));
-}
-
-// Items visible under the "Close" scope (viewers): items a close-friend created
-// or is an attendee of. Pure so it can be unit-tested and reused.
-export function itemsByCloseFriends(items, closeUids) {
-  const uids = closeUids instanceof Set ? closeUids : new Set(closeUids || []);
-  return (items || []).filter((it) =>
-    (it.owner_id && uids.has(it.owner_id)) ||
-    (it.attendee_user_ids || []).some((id) => uids.has(id))
-  );
-}
-
-// Relationship visibility: returns 'full' | 'limited'
-// Owners always see full detail for coordination. Otherwise depends on the
-// private relationship the viewer set toward the target ('close' | 'casual').
-export function visibilityFor(viewerRole, viewerRelationshipToTarget) {
-  if (viewerRole === 'owner') return 'full';
-  return viewerRelationshipToTarget === 'close' ? 'full' : 'limited';
-}
-
-export function relationshipLabel(rel) {
-  if (rel === 'close') return 'Close';
-  if (rel === 'casual') return 'Casual';
-  return '—';
-}
-
-// Reciprocal trust from two one-directional sharing levels.
-// 'deep' = both close; 'asymmetric' = exactly one close; 'none' = neither.
-export function computeTrust(myLevel, theirLevel) {
-  if (myLevel === 'close' && theirLevel === 'close') return 'deep';
-  if (myLevel === 'close' || theirLevel === 'close') return 'asymmetric';
-  return 'none';
-}
-
-// Visibility for a target given the viewer's gathering role + trust.
-// Owners always see full (coordination); otherwise deep trust => full.
-export function visibilityForTrust(viewerRole, trust) {
-  if (viewerRole === 'owner') return 'full';
-  return trust === 'deep' ? 'full' : 'limited';
-}
+// The Casual/Close friendship model has been retired. Membership roles
+// (owner/admin/member/viewer) are the only relationship dimension, always
+// scoped to a specific gathering. Visibility is role-based: participants see
+// full member detail, viewers see limited — no per-pair sharing level.
 
 export function formatCurrency(amount, currency = 'USD') {
   const n = Number(amount || 0);

@@ -100,15 +100,6 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
     } finally { setSavingPref(null); }
   }
 
-  async function setRelationship(targetUserId, rel) {
-    try {
-      await base44.functions.invoke('setRelationship', { gathering_id: gatheringId, target_user_id: targetUserId, level: rel });
-      refresh();
-    } catch (e) {
-      alert(e.response?.data?.error || e.message || 'Could not update relationship');
-    }
-  }
-
   async function sendTest() {
     setTesting(true);
     setTestResult(null);
@@ -124,7 +115,6 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
   const granted = permission === 'granted';
   const isViewer = role === 'viewer';
   const visiblePrefs = PREFS.filter((p) => !(p.participantsOnly && isViewer));
-  const others = (members || []).filter((m) => m.id !== currentMember?.id);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -186,33 +176,6 @@ export default function MoreMenu({ open, onOpenChange, onesignal }) {
                 {testResult === 'sent' && <p className="text-xs text-terra-deep text-center mt-1">Test sent — check your device.</p>}
                 {testResult === 'no_device' && <p className="text-xs text-foreground/50 text-center mt-1">No subscribed device yet.</p>}
                 {testResult === 'error' && <p className="text-xs text-destructive text-center mt-1">Could not send.</p>}
-              </div>
-            )}
-          </Section>
-          )}
-
-          {/* Sharing depth — gathering-scoped */}
-          {gctx && (
-          <Section icon={Heart} title="Sharing depth">
-            <p className="text-xs text-foreground/55 mb-2">Mark members as Close to share your contact info, precise times and private notes with them. Casual connections see a limited profile.</p>
-            {others.length === 0 ? (
-              <p className="text-xs text-foreground/45">No other members yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {others.map((m) => {
-                  const rel = m.myRelationship || 'casual';
-                  return (
-                    <div key={m.id} className="flex items-center gap-2">
-                      <MemberAvatar member={m} size="sm" />
-                      <span className="text-sm text-foreground min-w-0 truncate flex-1">{m.full_name}</span>
-                      <div className="inline-flex rounded-full bg-foreground/5 p-0.5 border border-foreground/10 shrink-0">
-                        {['casual', 'close'].map((r) => (
-                          <button key={r} onClick={() => setRelationship(m.user_id, r)} className={`px-3 py-1.5 rounded-full text-[0.6875rem] font-semibold capitalize transition-colors ${rel === r ? (r === 'close' ? 'bg-terra text-cream' : 'bg-foreground/15 text-foreground') : 'text-foreground/50'}`}>{r}</button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </Section>

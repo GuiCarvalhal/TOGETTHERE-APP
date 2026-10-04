@@ -94,7 +94,7 @@ export default function OtherProfileView({ data, gatheringId, userId, onChanged 
           </div>
           <p className="font-display text-lg text-ink-deep mb-1">Limited profile</p>
           <p className="text-sm text-ink-deep/60 max-w-sm mx-auto">
-            You're seeing a limited profile. Full profiles are shared only between close connections.
+            You're seeing a limited profile. Full profiles are visible to participants of this gathering.
           </p>
         </div>
       )}

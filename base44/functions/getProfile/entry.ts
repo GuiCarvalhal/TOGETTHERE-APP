@@ -3,10 +3,9 @@ import { getMyMember } from '../../shared/gatheringAcl.ts';
 
 // Returns a user's profile for the Profile page. For the current user (isSelf),
 // returns the full editable profile. For another user, returns a visibility-
-// gated view based on the reciprocal close/casual trust model:
-//   deep (both close) or viewer-is-owner -> full profile
-//   otherwise -> limited (name/avatar/role only)
-// Also returns the relationship status both directions and groups in common.
+// gated view based on gathering role (the Casual/Close friendship model is
+// retired): participants (owner/admin/member) see the full profile; viewers
+// see a limited profile (name/avatar/role only). Also returns groups in common.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,28 +21,18 @@ export default async function(req) {
     let targetUser = null;
     try { targetUser = await base44.asServiceRole.entities.User.get(user_id); } catch { /* may not exist */ }
 
-    // Gathering-scoped member records + relationship (requires a gathering).
-    let me = null, targetMember = null, myLevel = 'casual', theirLevel = 'casual', trust = 'none';
+    // Gathering-scoped member records (requires a gathering).
+    let me = null, targetMember = null;
     if (gathering_id) {
       me = await getMyMember(base44, gathering_id, user.id);
       if (!me) return Response.json({ error: 'Not a member of this gathering' }, { status: 403 });
       targetMember = await getMyMember(base44, gathering_id, user_id);
-
-      const [outRel, inRel] = await Promise.all([
-        base44.entities.Relationship.filter({ owner_user_id: user.id, target_user_id: user_id }).catch(() => []),
-        base44.entities.Relationship.filter({ owner_user_id: user_id, target_user_id: user.id }).catch(() => []),
-      ]);
-      myLevel = (outRel && outRel[0] && outRel[0].level) || (me.relationships || {})[user_id] || 'casual';
-      theirLevel = (inRel && inRel[0] && inRel[0].level) || (targetMember?.relationships || {})[user.id] || 'casual';
-      trust = (myLevel === 'close' && theirLevel === 'close') ? 'deep'
-        : (myLevel === 'close' || theirLevel === 'close') ? 'asymmetric' : 'none';
     }
 
-    const isOwner = me?.role === 'owner';
     // Viewers are read-only: never see another user's full profile (email,
-    // home city, interests, dietary, arrival/departure) regardless of trust.
+    // home city, interests, dietary, arrival/departure). Participants see full.
     const isViewer = me?.role === 'viewer';
-    const visibility = isSelf || (!isViewer && (isOwner || trust === 'deep')) ? 'full' : 'limited';
+    const visibility = isSelf || !isViewer ? 'full' : 'limited';
 
     // Groups in common: other gatherings both belong to (only for full view of others).
     let groupsInCommon = [];
@@ -97,7 +86,6 @@ export default async function(req) {
       isSelf,
       user: safeUser,
       member: safeMember,
-      relationship: isSelf ? null : { myLevel, theirLevel, trust },
       visibility,
       groupsInCommon,
       families,

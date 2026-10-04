@@ -14,7 +14,7 @@ import { formatDate } from '@/lib/gatheringHelpers';
 // plus the management actions (relationship, role, remove) that used to sit
 // as a wall of buttons on the card, now grouped here so the row stays
 // compact. A "View full profile" button opens the universal profile page.
-export default function MemberDetailSheet({ member, gatheringId, isOwner, canManage, isSelf, myRelationship, visibility, open, onOpenChange, onRelationshipChange, onRoleChange, onRemove }) {
+export default function MemberDetailSheet({ member, gatheringId, isOwner, canManage, isSelf, visibility, open, onOpenChange, onRoleChange, onRemove }) {
   const navigate = useNavigate();
   if (!member) return null;
   const profileUrl = member.user_id ? `/profile/${member.user_id}?g=${gatheringId}` : null;
@@ -72,26 +72,11 @@ export default function MemberDetailSheet({ member, gatheringId, isOwner, canMan
                 )}
               </>
             ) : (
-              <p className="text-[0.625rem] text-foreground/45 italic">Limited — mark Close to see contact details &amp; notes.</p>
+              <p className="text-[0.625rem] text-foreground/45 italic">Viewers see limited member details.</p>
             )}
-          </div>
-
-          {/* Relationship (non-self) */}
-          {!isSelf && (
-            <div className="px-4 py-3 border-t border-foreground/8">
-              <p className="tt-label text-foreground/50 mb-2">Your sharing level</p>
-              <div className="inline-flex rounded-full bg-foreground/5 p-0.5 border border-foreground/10">
-                {['casual', 'close'].map((rel) => (
-                  <button key={rel} onClick={() => onRelationshipChange(rel)}
-                    className={`px-4 py-1.5 min-h-[36px] rounded-full text-xs font-semibold capitalize transition-colors ${myRelationship === rel ? 'bg-terra text-cream' : 'text-foreground/60 hover:text-foreground'}`}>
-                    {rel}
-                  </button>
-                ))}
-              </div>
             </div>
-          )}
 
-          {/* Role (managers) */}
+            {/* Role (managers) */}
           {canChangeRole && (
             <div className="px-4 py-3 border-t border-foreground/8">
               <p className="tt-label text-foreground/50 mb-2">Role</p>
