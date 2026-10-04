@@ -226,6 +226,11 @@ export const en = {
     noSegmentsBody: "Add flights, hotel stays, activities and more to build the group's shared timeline — everyone stays in sync as the plan comes together.",
     addFirstSegment: 'Add the first segment',
     unscheduled: 'Unscheduled',
+    noSegmentsViewer: 'No segments to show',
+    noSegmentsViewerBody: 'Turn on a member above to see their segments.',
+    viewerFilterLabel: 'Filter journey by member',
+    viewerFilterOn: 'Showing segments from {name}. Click to hide.',
+    viewerFilterOff: 'Hidden segments from {name}. Click to show.',
   },
 
   journeyTypes: {

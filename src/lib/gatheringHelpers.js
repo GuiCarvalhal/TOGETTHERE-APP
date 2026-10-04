@@ -53,6 +53,45 @@ export function journeyViewerForcedPrefs() {
   return { scope: 'group', mapOpen: false, images: true };
 }
 
+// Per-item participant user_ids: the opt-in attendee_user_ids, or — when no
+// one has opted in (e.g. legacy items with empty attendee lists) — just the
+// creator (owner_id). Flights never fall back to the creator: an empty
+// attendee list means "no one joined yet". Never uses member_user_ids (the
+// ACL list) or owner_user_id (the gathering owner). Pure so it can be unit
+// tested and shared between card avatars and the viewer member filter.
+export function itemParticipantUserIds(item) {
+  if (!item) return [];
+  if (item.type === 'flight') return item.attendee_user_ids || [];
+  const attendees = item.attendee_user_ids || [];
+  return attendees.length ? attendees : (item.owner_id ? [item.owner_id] : []);
+}
+
+// Filter journey items by selected member user_ids (ANY/OR semantics: an
+// item matches when at least one of its participant user_ids is selected).
+// An empty selected set returns no items (NOT a fallback to all). Pure so
+// it can be unit-tested alongside itemParticipantUserIds.
+export function filterJourneyByMembers(items, selectedIds) {
+  if (!selectedIds || selectedIds.size === 0) return [];
+  return (items || []).filter((it) =>
+    itemParticipantUserIds(it).some((uid) => selectedIds.has(uid))
+  );
+}
+
+// Eligible roster for the viewer member filter: participating roles
+// (owner/admin/member), with a user_id, deduped by user_id. Viewers, unknown
+// roles, and members missing a user_id are excluded. Pure so it can be
+// unit-tested.
+export function eligibleRosterMembers(members) {
+  const seen = new Set();
+  return (members || []).filter((m) => {
+    if (!isParticipant(m.role)) return false;
+    if (!m.user_id) return false;
+    if (seen.has(m.user_id)) return false;
+    seen.add(m.user_id);
+    return true;
+  });
+}
+
 // participant member ids (exclude viewers)
 export function participantIds(members) {
   return members.filter((m) => isParticipant(m.role)).map((m) => m.id);

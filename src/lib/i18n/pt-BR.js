@@ -222,6 +222,11 @@ export const ptBR = {
     noSegmentsBody: 'Adicione voos, hospedagens, atividades e mais para construir a linha do tempo compartilhada do grupo — todos ficam em sincronia enquanto o plano se junta.',
     addFirstSegment: 'Adicionar o primeiro segmento',
     unscheduled: 'Sem data',
+    noSegmentsViewer: 'Nenhum segmento para mostrar',
+    noSegmentsViewerBody: 'Ative um membro acima para ver os segmentos dele.',
+    viewerFilterLabel: 'Filtrar roteiro por membro',
+    viewerFilterOn: 'Mostrando segmentos de {name}. Clique para ocultar.',
+    viewerFilterOff: 'Segmentos de {name} ocultos. Clique para mostrar.',
   },
 
   journeyTypes: {

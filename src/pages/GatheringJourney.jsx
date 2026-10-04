@@ -4,7 +4,7 @@ import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { JOURNEY_TYPES, canAddJourney, journeyViewerForcedPrefs } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canAddJourney, journeyViewerForcedPrefs, itemParticipantUserIds, filterJourneyByMembers, eligibleRosterMembers } from '@/lib/gatheringHelpers';
 import { tzDateKey } from '@/lib/formatPlaceTime';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
@@ -15,6 +15,7 @@ import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyIt
 import { useOfflineJourneyCache } from '@/lib/useOfflineSync';
 import PageToolbar from '@/components/tt/PageToolbar';
 import FilterChips from '@/components/tt/FilterChips';
+import ViewerMemberFilter from '@/components/tt/ViewerMemberFilter';
 import { Button } from '@/components/ui/button';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
@@ -27,20 +28,13 @@ const TYPE_FILTER_KEYS = [{ key: 'all', tk: 'common.all' }, ...JOURNEY_TYPES.map
 
 function dayKey(d, tz) { return d ? tzDateKey(d, tz) : 'unscheduled'; }
 
-// Per-item participants: the opt-in attendee_user_ids, or — when no one has
-// opted in (e.g. legacy items with empty attendee lists) — just the creator.
-// Never falls back to member_user_ids (the ACL list of all gathering members).
+const EMPTY_SET = new Set();
+
+// Per-item participants as member objects — maps the shared
+// itemParticipantUserIds helper (same logic drives card avatars and the
+// viewer member filter, so they never disagree).
 function itemParticipants(item, memberById) {
-  // Flights never fall back to the creator for avatar display — an empty
-  // attendee list means "no one joined yet", not the owner. Other types keep
-  // the existing creator fallback.
-  if (item.type === 'flight') {
-    return (item.attendee_user_ids || []).map((uid) => memberById[uid]).filter(Boolean);
-  }
-  const ids = (item.attendee_user_ids || []).length
-    ? item.attendee_user_ids
-    : (item.owner_id ? [item.owner_id] : []);
-  return ids.map((uid) => memberById[uid]).filter(Boolean);
+  return itemParticipantUserIds(item).map((uid) => memberById[uid]).filter(Boolean);
 }
 
 export default function GatheringJourney() {
@@ -54,14 +48,27 @@ export default function GatheringJourney() {
   const [error, setError] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
   const isViewer = role === 'viewer';
-  // Viewers get NO filter/action bar: forced Group scope, map OFF, images ON,
-  // regardless of any stale stored preference. The PageToolbar is hidden
-  // entirely (hideBar), so these effective values drive the content underneath
-  // without any visible controls.
+  // Viewers get forced Group scope, map OFF, images ON — the map/images
+  // toggles are hidden but the effective values still drive the content
+  // underneath (no stale map overlay, images always on).
   const forced = isViewer ? journeyViewerForcedPrefs() : null;
   const effectiveScope = forced ? forced.scope : scope;
   const effectiveMapOpen = forced ? forced.mapOpen : mapOpen;
   const effectiveImages = forced ? forced.images : images;
+
+  // Viewer member filter: in-memory off-ids keyed by gatheringId. A new
+  // gathering starts with an empty off-set (all ON) — no reset render race.
+  // New participating members default ON (not in the off-set); removed members
+  // simply don't match (not in the active roster). No backend writes, no
+  // shared Mine/Group pref changes.
+  const [viewerOffByKey, setViewerOffByKey] = useState({});
+  const viewerOff = viewerOffByKey[gatheringId] || EMPTY_SET;
+  const toggleViewerOff = (uid) => {
+    const cur = viewerOffByKey[gatheringId] || new Set();
+    const next = new Set(cur);
+    if (next.has(uid)) next.delete(uid); else next.add(uid);
+    setViewerOffByKey({ ...viewerOffByKey, [gatheringId]: next });
+  };
 
   async function load(silent) {
     if (!silent) { setLoading(true); setError(null); }
@@ -96,9 +103,19 @@ export default function GatheringJourney() {
   // owner_user_id is the gathering owner (set on every item), NOT the item
   // creator, so it is intentionally not used here. GROUP = the complete
   // combined journey for all participating members (everything the user reads).
-  const visibleItems = effectiveScope === 'mine'
-    ? items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid))
-    : items;
+  // VIEWER = items where at least one selected member participates (ANY/OR),
+  // using the shared itemParticipantUserIds helper — never member_user_ids
+  // (ACL) or owner_user_id (gathering owner). All OFF => no items.
+  let visibleItems;
+  if (isViewer) {
+    const roster = new Set(eligibleRosterMembers(members).map((m) => m.user_id));
+    const selectedIds = new Set([...roster].filter((id) => !viewerOff.has(id)));
+    visibleItems = filterJourneyByMembers(items, selectedIds);
+  } else if (effectiveScope === 'mine') {
+    visibleItems = items.filter((it) => it.owner_id === uid || (it.attendee_user_ids || []).includes(uid));
+  } else {
+    visibleItems = items;
+  }
   // Type filter composes with scope: narrows the visible set to a single
   // journey type (or all). Feeds both the timeline entries and the route map
   // so pins and card numbers reflect exactly the filtered visible list.
@@ -219,13 +236,17 @@ export default function GatheringJourney() {
     </div>
   );
 
+  const viewerSwitcher = isViewer ? (
+    <ViewerMemberFilter members={members} offIds={viewerOff} onToggle={toggleViewerOff} />
+  ) : undefined;
+
   return (
-    <PageToolbar hideBar={isViewer} scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} filterRow={isViewer ? null : <FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+    <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
       {filteredItems.length === 0 ? (
         <EmptyState
           icon={Compass}
-          title={typeFilter !== 'all' ? t('journey.noSegmentsType') : (effectiveScope === 'mine' ? t('journey.noSegmentsMine') : t('journey.noSegments'))}
-          body={typeFilter !== 'all' ? t('journey.noSegmentsTypeBody') : (effectiveScope === 'mine' ? t('journey.noSegmentsMineBody') : t('journey.noSegmentsBody'))}
+          title={typeFilter !== 'all' ? t('journey.noSegmentsType') : (isViewer ? t('journey.noSegmentsViewer') : (effectiveScope === 'mine' ? t('journey.noSegmentsMine') : t('journey.noSegments')))}
+          body={typeFilter !== 'all' ? t('journey.noSegmentsTypeBody') : (isViewer ? t('journey.noSegmentsViewerBody') : (effectiveScope === 'mine' ? t('journey.noSegmentsMineBody') : t('journey.noSegmentsBody')))}
           action={canAdd && typeFilter === 'all' ? (
             <Button onClick={() => navigate(`/gathering/${gatheringId}/journey/new`)}>
               <Plus /> {t('journey.addFirstSegment')}

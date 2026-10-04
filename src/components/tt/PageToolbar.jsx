@@ -28,11 +28,12 @@ import { useI18n } from '@/lib/i18n';
 // graph, Journey/Agent have map), so they never collide.
 //
 // `hideBar` (optional): when true, the sticky bar is not rendered at all —
-// only the children wrapper. Used by the Journey page for viewers, who get no
-// filter/action bar (forced Group scope, map OFF, images ON).
+// only the children wrapper. No longer used by the Journey page (viewers now
+// get a full toolbar with a member-avatar filter replacing Mine/Group).
 //
 // `switcher` (optional): replaces the default ScopeSwitcher on the left — used
-// by the Members page for its Summary/Details toggle.
+// by the Members page for its Summary/Details toggle, and by the Journey page
+// for the viewer's member-avatar filter (replaces Mine/Group).
 export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, graphOpen, setGraphOpen, showGraphToggle = false, graphRow = null, onAdd, canAdd, addLabel = 'item', action, filterRow, hideBar = false, switcher, children }) {
   const { t } = useI18n();
   if (hideBar) {
