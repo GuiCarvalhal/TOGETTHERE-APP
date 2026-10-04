@@ -17,7 +17,7 @@ export default function ViewerMemberFilter({ members, offIds, onToggle }) {
 
   return (
     <div
-      className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto overflow-y-hidden touch-pan-x tt-no-scrollbar"
+      className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto overflow-y-hidden touch-pan-x tt-no-scrollbar px-1.5 py-1.5"
       role="group"
       aria-label={t('journey.viewerFilterLabel')}
     >
@@ -34,12 +34,12 @@ export default function ViewerMemberFilter({ members, offIds, onToggle }) {
               ? t('journey.viewerFilterOff', { name })
               : t('journey.viewerFilterOn', { name })}
             title={name}
-            className="shrink-0 relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-opacity"
+            className="shrink-0 relative inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-opacity"
             style={{ minWidth: 44, minHeight: 44 }}
           >
             <MemberAvatar member={m} size="sm" ring={!isOff} className={isOff ? 'opacity-40' : ''} />
             {!isOff && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-terra text-cream flex items-center justify-center border-2 border-background">
+              <span className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-terra text-cream flex items-center justify-center border-2 border-background">
                 <Check className="w-3 h-3" strokeWidth={3} />
               </span>
             )}

@@ -18,6 +18,7 @@ import { useAgentPlaceCoords, agentPlaceKey } from '@/lib/useAgentPlaceCoords';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Plus, Check, UtensilsCrossed, Compass, ClipboardList, CalendarDays, Users } from 'lucide-react';
+import { ListChevronsDownUp, ListChevronsUpDown } from '@/components/tt/ListChevronsIcons';
 import { useI18n } from '@/lib/i18n';
 import { sliceAgentData, shouldShowReloadHint } from '@/lib/agentSlice';
 
@@ -249,23 +250,29 @@ export default function GatheringAgent() {
     </Button>
   );
   const lengthSwitcher = (
-    <div className="inline-flex items-center gap-0.5 bg-foreground/5 rounded-full p-0.5">
-      <button
-        type="button"
+    <div className="flex items-center gap-2">
+      <Button
+        variant={agentLength === 'short' ? 'default' : 'outline'}
+        size="sm"
         onClick={() => setAgentLength('short')}
         aria-pressed={agentLength === 'short'}
-        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${agentLength === 'short' ? 'bg-terra text-cream' : 'text-foreground/70 hover:text-foreground'}`}
+        aria-label={t('agent.short')}
+        title={t('agent.short')}
+        className={agentLength === 'short' ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
       >
-        {t('agent.short')}
-      </button>
-      <button
-        type="button"
+        <ListChevronsDownUp />
+      </Button>
+      <Button
+        variant={agentLength === 'long' ? 'default' : 'outline'}
+        size="sm"
         onClick={() => setAgentLength('long')}
         aria-pressed={agentLength === 'long'}
-        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${agentLength === 'long' ? 'bg-terra text-cream' : 'text-foreground/70 hover:text-foreground'}`}
+        aria-label={t('agent.long')}
+        title={t('agent.long')}
+        className={agentLength === 'long' ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
       >
-        {t('agent.long')}
-      </button>
+        <ListChevronsUpDown />
+      </Button>
     </div>
   );
 
