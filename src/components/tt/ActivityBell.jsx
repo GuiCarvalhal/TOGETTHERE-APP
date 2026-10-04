@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Bell, Receipt, Route, UserPlus, UserCheck, Heart, Settings as SettingsIcon } from 'lucide-react';
+import { Bell, Receipt, Route, UserPlus, UserCheck, Settings as SettingsIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { timeAgo } from '@/lib/gatheringHelpers';
 import usePolling from '@/hooks/usePolling';
@@ -10,16 +10,15 @@ const TYPE_ICON = {
   journey_added: Route,
   join_requested: UserPlus,
   join_approved: UserCheck,
-  relationship_close: Heart,
   member_added: UserPlus,
   gathering_updated: SettingsIcon,
-};
-const TYPE_TONE = {
+  };
+
+  const TYPE_TONE = {
   expense_added: 'bg-terra/10 text-terra-deep',
   journey_added: 'bg-terra/10 text-terra-coral',
   join_requested: 'bg-ink/5 text-ink-deep/60',
   join_approved: 'bg-[#4a8b6f]/15 text-[#3f7a5e]',
-  relationship_close: 'bg-terra/10 text-terra-deep',
   member_added: 'bg-ink/5 text-ink-deep/60',
   gathering_updated: 'bg-ink/5 text-ink-deep/60',
 };

@@ -65,9 +65,6 @@
     "private_notes": {
       "type": "string"
     },
-    "relationships": {
-      "type": "object"
-    },
     "owner_user_id": {
       "type": "string"
     },

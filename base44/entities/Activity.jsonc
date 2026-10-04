@@ -12,7 +12,6 @@
         "journey_added",
         "join_requested",
         "join_approved",
-        "relationship_close",
         "member_added",
         "gathering_updated"
       ]

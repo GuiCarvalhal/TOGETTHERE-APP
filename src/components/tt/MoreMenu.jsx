@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { timeAgo } from '@/lib/gatheringHelpers';
 import {
-  Sun, Moon, Monitor, Bell, BellRing, BellOff, Check, Loader2, Send, Users, Heart,
+  Sun, Moon, Monitor, Bell, BellRing, BellOff, Check, Loader2, Send, Users,
   Settings as SettingsIcon, LogOut, ChevronRight, Receipt, Route, UserPlus,
   UserCheck, Plane, Clock, Sparkles,
 } from 'lucide-react';
@@ -31,7 +31,7 @@ const PREFS = [
 ];
 const ACT_ICON = {
   expense_added: Receipt, journey_added: Route, join_requested: UserPlus,
-  join_approved: UserCheck, relationship_close: Heart, member_added: UserPlus,
+  join_approved: UserCheck, member_added: UserPlus,
   gathering_updated: SettingsIcon,
 };
 
