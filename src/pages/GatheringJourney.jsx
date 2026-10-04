@@ -12,6 +12,7 @@ import JourneyCard from '@/components/tt/cards/JourneyCard';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import { itemRouteNumbers } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
+import { useOfflineJourneyCache } from '@/lib/useOfflineSync';
 import PageToolbar from '@/components/tt/PageToolbar';
 import FilterChips from '@/components/tt/FilterChips';
 import { Button } from '@/components/ui/button';
@@ -72,6 +73,15 @@ export default function GatheringJourney() {
   }
   useEffect(() => { load(); }, [gatheringId]);
   usePolling(() => load(true), 25000);
+
+  // Save the FULL journey items to the offline cache after a successful load
+  // (the context's journeyItems are minimal date-range projections, not the
+  // complete data with notes/places/airline/attendees).
+  useOfflineJourneyCache({
+    userId: currentMember?.user_id,
+    gatheringId, role,
+    items, error, loading,
+  });
 
   // No floating Add button on the timeline — it's a terminal rail node below.
   useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);

@@ -45,7 +45,6 @@ function ShellInner() {
     gatheringId: id,
     role,
     gathering, members,
-    journeyItems,
     error, loading,
   });
 

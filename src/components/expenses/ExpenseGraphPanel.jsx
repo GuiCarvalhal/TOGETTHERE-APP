@@ -21,7 +21,10 @@ const PALETTE = ['#e05c48', '#1e2633', '#f07865', '#c8493a', '#7a8290', '#0ea5e9
 //
 // Amounts are validated finite/nonnegative. The legend is rendered as
 // accessible text with values + percentages (not hidden clipped recharts
-// labels). Empty/zero data shows a quiet empty state.
+// labels). Empty/zero/all-zero data shows a quiet empty state.
+//
+// Layout: chart area is a FIXED height (h-32); legend flows BELOW it in
+// natural flow with a bounded scrollable area (max-h-20). No overflow/clipping.
 export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase, displayFor, baseCurrency, ratesAvailable, scope }) {
   const scopeLabel = scope === 'mine' ? 'Your paid expenses' : 'All expenses';
 
@@ -77,6 +80,10 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
 
     const total = payerData.reduce((s, d) => s + d.value, 0);
 
+    if (payerData.length === 0 && catData.length === 0) {
+      return <EmptyChart label={scopeLabel} currency={base} message="No amounts to chart yet." />;
+    }
+
     return (
       <div className="tt-card p-3">
         <Header label={scopeLabel} total={total} currency={base} />
@@ -124,6 +131,10 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
 
   const total = payerData.reduce((s, d) => s + d.value, 0);
 
+  if (payerData.length === 0 && catData.length === 0) {
+    return <EmptyChart label={scopeLabel} currency={activeCur} message="No amounts to chart for this currency." />;
+  }
+
   return (
     <div className="tt-card p-3">
       <Header label={scopeLabel} total={total} currency={activeCur} />
@@ -167,44 +178,64 @@ function Header({ label, total, currency }) {
   );
 }
 
+function EmptyChart({ label, currency, message }) {
+  return (
+    <div className="tt-card p-3">
+      <Header label={label} total={0} currency={currency} />
+      <div className="flex flex-col items-center justify-center text-center py-5 px-4">
+        <BarChart3 className="w-6 h-6 text-terra/40 mb-1.5" />
+        <p className="text-xs text-ink-deep/70">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 function ChartCard({ title, currency, children }) {
   return (
-    <div className="rounded-xl border border-ink-charcoal/10 bg-cream-pale/30 p-2">
+    <div className="rounded-xl border border-ink-charcoal/10 bg-cream-pale/30 p-2 overflow-hidden">
       <p className="tt-label text-ink-deep/50 mb-1.5 px-0.5">{title} · {currency}</p>
       {children}
     </div>
   );
 }
 
+// Chart area is a FIXED height (h-32 = 128px). Legend flows BELOW it in
+// natural flow with a bounded scrollable area (max-h-20). No overflow/clipping.
 function PieChartMini({ data, colors, currency }) {
   const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0 || data.length === 0) {
+    return <div className="h-32 flex items-center justify-center text-xs text-ink-deep/40">No data</div>;
+  }
   return (
-    <div className="h-[180px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="70%" innerRadius="40%" paddingAngle={1}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={colors[i % colors.length]} stroke="hsl(var(--card))" strokeWidth={1.5} />
-            ))}
-          </Pie>
-          <Tooltip
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null;
-              const d = payload[0].payload;
-              const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
-              return (
-                <div className="rounded-lg border border-ink-charcoal/15 bg-card px-2.5 py-1.5 shadow-md text-xs">
-                  <p className="font-semibold text-ink-deep">{d.name}</p>
-                  <p className="text-ink-deep/60">{formatCurrency(d.value, currency)}</p>
-                  <p className="text-ink-deep/45">{pct}% of total</p>
-                </div>
-              );
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      {/* Accessible legend: values + percentages as real text, not clipped */}
-      <ul className="mt-1.5 space-y-1 px-0.5">
+    <div>
+      <div className="h-32 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="70%" innerRadius="40%" paddingAngle={1}>
+              {data.map((_, i) => (
+                <Cell key={i} fill={colors[i % colors.length]} stroke="hsl(var(--card))" strokeWidth={1.5} />
+              ))}
+            </Pie>
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload;
+                const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                return (
+                  <div className="rounded-lg border border-ink-charcoal/15 bg-card px-2.5 py-1.5 shadow-md text-xs">
+                    <p className="font-semibold text-ink-deep">{d.name}</p>
+                    <p className="text-ink-deep/60">{formatCurrency(d.value, currency)}</p>
+                    <p className="text-ink-deep/45">{pct}% of total</p>
+                  </div>
+                );
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      {/* Accessible legend: values + percentages as real text, in natural flow
+          below the fixed chart area with bounded scroll. No clipping. */}
+      <ul className="mt-1.5 space-y-1 px-0.5 max-h-20 overflow-y-auto tt-no-scrollbar">
         {data.map((d, i) => {
           const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
           return (
