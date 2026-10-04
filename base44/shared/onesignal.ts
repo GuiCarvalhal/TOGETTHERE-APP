@@ -24,6 +24,19 @@ export function isOneSignalConfigured() {
   return getConfig().configured;
 }
 
+// Pure predicate: is this member eligible to receive a notification for this
+// category? Checks master switch, category preference, and viewer exclusions.
+// `includeViewers` defaults true (targeted sends reach a viewer the caller
+// explicitly chose); broadcast sends pass false to omit viewers entirely.
+export function memberEligibleForCategory(m, { category, prefKey, includeViewers = true }) {
+  if (!m) return false;
+  if (m.notify_master === false) return false;
+  if (prefKey && m[prefKey] === false) return false;
+  if (category === 'expenses' && m.role === 'viewer') return false;
+  if (!includeViewers && m.role === 'viewer') return false;
+  return true;
+}
+
 function shouldDedup(key) {
   if (!key) return false;
   const now = Date.now();
@@ -83,14 +96,7 @@ async function filterByPrefs(base44, gatheringId, userIds, category) {
   const members = await base44.asServiceRole.entities.Member.filter({ gathering_id: gatheringId });
   const prefKey = CATEGORY_PREF[category];
   const byUid = new Map((members || []).map((m) => [m.user_id, m]));
-  return userIds.filter((uid) => {
-    const m = byUid.get(uid);
-    if (!m) return false;
-    if (m.notify_master === false) return false;
-    if (prefKey && m[prefKey] === false) return false;
-    if (category === 'expenses' && m.role === 'viewer') return false;
-    return true;
-  });
+  return userIds.filter((uid) => memberEligibleForCategory(byUid.get(uid), { category, prefKey }));
 }
 
 // Notify specific users (e.g. a join requester, a member whose role changed).
@@ -117,11 +123,7 @@ export async function notifyGatheringMembers(base44, opts) {
     .filter((m) => {
       if (!m.user_id || m.user_id.startsWith('pending-')) return false;
       if (exclude.has(m.user_id)) return false;
-      if (m.notify_master === false) return false;
-      if (prefKey && m[prefKey] === false) return false;
-      if (category === 'expenses' && m.role === 'viewer') return false;
-      if (!includeViewers && m.role === 'viewer') return false;
-      return true;
+      return memberEligibleForCategory(m, { category, prefKey, includeViewers });
     })
     .map((m) => m.user_id);
   return sendToUsers({ externalUserIds: targets, heading, message, data, dedupKey, url });
