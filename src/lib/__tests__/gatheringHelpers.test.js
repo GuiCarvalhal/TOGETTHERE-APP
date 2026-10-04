@@ -4,6 +4,9 @@ import {
   isParticipant,
   canSeeExpenses,
   canAddJourney,
+  canInviteMembers,
+  mineExpenses,
+  journeyViewerForcedPrefs,
   legacyViewerAllocationIds,
   computeBalances,
   settleUp,
@@ -85,6 +88,43 @@ describe('computeBalances — viewer debt is not discarded', () => {
     expect(bal['m-alice']).toBe(60);
     expect(bal['m-bob']).toBe(-30);
     expect(bal['m-carol']).toBe(-30); // debt preserved, not discarded
+  });
+});
+
+describe('mineExpenses — Mine = payer only, NOT split membership', () => {
+  const expenses = [
+    { id: 'e1', payer_member_id: 'm-alice', amount: 90, currency: 'USD' },
+    { id: 'e2', payer_member_id: 'm-bob', amount: 50, currency: 'USD' },
+    { id: 'e3', payer_member_id: 'm-alice', amount: 30, currency: 'EUR' },
+  ];
+  it('returns only expenses where the current member is the payer', () => {
+    const mine = mineExpenses(expenses, 'm-alice');
+    expect(mine.map((e) => e.id)).toEqual(['e1', 'e3']);
+  });
+  it('does NOT include expenses where the member is merely in the split', () => {
+    // Bob paid e2; Alice is in the split but not the payer — must be excluded.
+    const mine = mineExpenses(expenses, 'm-alice');
+    expect(mine.find((e) => e.id === 'e2')).toBeUndefined();
+  });
+  it('returns empty when currentMemberId is null', () => {
+    expect(mineExpenses(expenses, null)).toEqual([]);
+    expect(mineExpenses(expenses, undefined)).toEqual([]);
+  });
+});
+
+describe('canInviteMembers — active participants can share invite links', () => {
+  it('owner can invite', () => { expect(canInviteMembers('owner')).toBe(true); });
+  it('admin can invite', () => { expect(canInviteMembers('admin')).toBe(true); });
+  it('member can invite', () => { expect(canInviteMembers('member')).toBe(true); });
+  it('viewer cannot invite', () => { expect(canInviteMembers('viewer')).toBe(false); });
+});
+
+describe('journeyViewerForcedPrefs — viewer forced defaults', () => {
+  it('forces Group scope, map OFF, images ON', () => {
+    const p = journeyViewerForcedPrefs();
+    expect(p.scope).toBe('group');
+    expect(p.mapOpen).toBe(false);
+    expect(p.images).toBe(true);
   });
 });
 

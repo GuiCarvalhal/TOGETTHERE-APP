@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image as ImageIcon, ImageOff, Plus, Map } from 'lucide-react';
+import { Image as ImageIcon, ImageOff, Plus, Map, BarChart3 } from 'lucide-react';
 import StickyBar from '@/components/tt/StickyBar';
 import ScopeSwitcher from '@/components/tt/ScopeSwitcher';
 import { Button } from '@/components/ui/button';
@@ -20,11 +20,27 @@ import { Button } from '@/components/ui/button';
 // icon-only sibling of the images on/off toggle, sharing its exact
 // active/inactive styling. All optional so Journey/Expenses/Members render
 // exactly as before when unused.
-export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, onAdd, canAdd, addLabel = 'item', action, filterRow, children }) {
+//
+// `showGraphToggle` + `graphOpen`/`setGraphOpen` + `graphRow`: the Expenses
+// graph overlay — same sizing/layout as the map overlay (renders in the same
+// StickyBar mapRow slot). Only one overlay is active per page (Expenses has
+// graph, Journey/Agent have map), so they never collide.
+//
+// `hideBar` (optional): when true, the sticky bar is not rendered at all —
+// only the children wrapper. Used by the Journey page for viewers, who get no
+// filter/action bar (forced Group scope, map OFF, images ON).
+//
+// `switcher` (optional): replaces the default ScopeSwitcher on the left — used
+// by the Members page for its Summary/Details toggle.
+export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, graphOpen, setGraphOpen, showGraphToggle = false, graphRow = null, onAdd, canAdd, addLabel = 'item', action, filterRow, hideBar = false, switcher, children }) {
+  if (hideBar) {
+    return <div className="mt-5">{children}</div>;
+  }
+  const overlayRow = mapOpen ? mapRow : (graphOpen ? graphRow : null);
   return (
     <div>
-      <StickyBar footer={filterRow} mapRow={mapOpen ? mapRow : null}>
-        <ScopeSwitcher scope={scope} setScope={setScope} />
+      <StickyBar footer={filterRow} mapRow={overlayRow}>
+        {switcher != null ? switcher : <ScopeSwitcher scope={scope} setScope={setScope} />}
         <div className="ml-auto flex items-center gap-2">
           {showMapToggle && (
             <Button
@@ -36,6 +52,18 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
               className={mapOpen ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
             >
               <Map />
+            </Button>
+          )}
+          {showGraphToggle && (
+            <Button
+              variant={graphOpen ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setGraphOpen(!graphOpen)}
+              aria-pressed={graphOpen}
+              aria-label={graphOpen ? 'Hide graph' : 'Show graph'}
+              className={graphOpen ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
+            >
+              <BarChart3 />
             </Button>
           )}
           {showImagesToggle && (

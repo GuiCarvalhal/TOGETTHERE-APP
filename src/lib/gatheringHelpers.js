@@ -31,6 +31,28 @@ export function canSeeAgent(role) { return role === 'owner' || role === 'member'
 export function canManageGathering(role) { return role === 'owner'; }
 export function isParticipant(role) { return role === 'owner' || role === 'member'; }
 
+// Invite (share-link) permission: owner, admin and member can share
+// Member/Viewer invite links. Viewers cannot. Role/member management (change
+// role, remove) stays owner/admin only via canManageMembers. Admin is a
+// co-organizer who can invite but is not an expense/agent participant.
+export function canInviteMembers(role) { return role === 'owner' || role === 'admin' || role === 'member'; }
+
+// Expenses Mine scope: ONLY expenses where the current member is the payer —
+// NOT expenses where the member is merely included in the split. This is the
+// Phase 1 change: previously Mine included split membership, which mixed
+// "what I paid" with "what I owe". Now Mine = "what I paid" exclusively.
+export function mineExpenses(expenses, currentMemberId) {
+  if (!currentMemberId) return [];
+  return expenses.filter((e) => e.payer_member_id === currentMemberId);
+}
+
+// Journey viewer forced defaults: Group scope (no participation), map OFF,
+// images ON — regardless of any stale stored preference. Viewers get no
+// filter/action bar at all; these values drive the content underneath.
+export function journeyViewerForcedPrefs() {
+  return { scope: 'group', mapOpen: false, images: true };
+}
+
 // participant member ids (exclude viewers)
 export function participantIds(members) {
   return members.filter((m) => isParticipant(m.role)).map((m) => m.id);

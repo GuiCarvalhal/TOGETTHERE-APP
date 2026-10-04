@@ -4,7 +4,7 @@ import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canAddJourney, journeyViewerForcedPrefs } from '@/lib/gatheringHelpers';
 import { tzDateKey } from '@/lib/formatPlaceTime';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
@@ -50,6 +50,15 @@ export default function GatheringJourney() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
+  const isViewer = role === 'viewer';
+  // Viewers get NO filter/action bar: forced Group scope, map OFF, images ON,
+  // regardless of any stale stored preference. The PageToolbar is hidden
+  // entirely (hideBar), so these effective values drive the content underneath
+  // without any visible controls.
+  const forced = isViewer ? journeyViewerForcedPrefs() : null;
+  const effectiveScope = forced ? forced.scope : scope;
+  const effectiveMapOpen = forced ? forced.mapOpen : mapOpen;
+  const effectiveImages = forced ? forced.images : images;
 
   async function load(silent) {
     if (!silent) { setLoading(true); setError(null); }
@@ -69,11 +78,6 @@ export default function GatheringJourney() {
 
   const memberById = Object.fromEntries(members.map((m) => [m.user_id, m]));
   const uid = currentMember?.user_id;
-  const isViewer = role === 'viewer';
-  // Viewers get Group view only (no participation scope selector) now that the
-  // Close/Casual friendship model is retired, so the scope is forced to Group
-  // for viewers regardless of any stale stored preference.
-  const effectiveScope = isViewer ? 'group' : scope;
   // MINE = items the signed-in user owns/created (owner_id is the item creator)
   // OR is an explicit attendee of (attendee_user_ids is the opt-in list,
   // distinct from the ACL member_user_ids which every visible item shares).
@@ -93,7 +97,7 @@ export default function GatheringJourney() {
   // writes a record — coords live in state + localStorage for the session.
   const destName = gathering?.destination_places?.[0]?.name || gathering?.destinations?.[0] || '';
   const { coords: itemCoords, pending: itemCoordsPending } = useJourneyItemCoords(
-    mapOpen ? visibleItems : [], destName
+    effectiveMapOpen ? visibleItems : [], destName
   );
   // Batch: keep the native-only item set while resolving (no per-pin flicker),
   // then swap in the augmented set once resolution finishes — a single map
@@ -147,7 +151,7 @@ export default function GatheringJourney() {
     didAutoScrollRef.current = true;
   }, [loading, targetDay]);
   const canAdd = canAddJourney(role);
-  const routeNumbers = itemRouteNumbers(filteredMapItems);
+  const routeNumbers = itemRouteNumbers(effectiveMapOpen ? filteredMapItems : []);
   const mapRow = (
     <JourneyMapPanel
       items={filteredMapItems}
@@ -204,7 +208,7 @@ export default function GatheringJourney() {
   );
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+    <PageToolbar hideBar={isViewer} scope={scope} setScope={setScope} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} filterRow={isViewer ? null : <FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
       {filteredItems.length === 0 ? (
         <EmptyState
           icon={Compass}
@@ -234,8 +238,8 @@ export default function GatheringJourney() {
                     typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
                     icon={ICONS[entry.item.type] || MapPin}
                     participants={itemParticipants(entry.item, memberById)}
-                    showImages={images}
-                    routeNumber={mapOpen ? routeNumbers.get(entry.item.id) : undefined}
+                    showImages={effectiveImages}
+                    routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
                     to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
                   />
                 ))}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight, UtensilsCrossed, Hotel, Car, Compass, Receipt } from 'lucide-react';
 import { formatCurrency, EXPENSE_CATEGORIES, isParticipant } from '@/lib/gatheringHelpers';
+import { Image } from '@/components/ui/image';
 import AvatarStack from '@/components/tt/AvatarStack';
 
 const CAT_ICON = { food: UtensilsCrossed, lodging: Hotel, transport: Car, activities: Compass, other: Receipt };
@@ -19,7 +20,7 @@ const SPLIT_LABEL = { equal: 'Equal', custom: 'Custom', by_share: 'By share' };
 //   4. AvatarStack of the people in the split (no separator rule above it)
 // The whole card opens the editor (chevron signals it); deleting happens on the
 // detail/edit view, not inline.
-export default function ExpenseTimelineCard({ exp, payer, splits, members, canEdit, onEdit, displayAmount, displayCurrency }) {
+export default function ExpenseTimelineCard({ exp, payer, splits, members, canEdit, onEdit, displayAmount, displayCurrency, showImages = true }) {
   const memberById = Object.fromEntries((members || []).map((m) => [m.id, m]));
   const catColor = CAT_COLOR[exp.category] || '#7a8290';
   const CatIcon = CAT_ICON[exp.category] || Receipt;
@@ -30,6 +31,12 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
     .filter((m) => m && isParticipant(m.role));
   const displayPayer = payer && isParticipant(payer.role) ? payer : null;
   const splitLabel = SPLIT_LABEL[exp.split_method] || 'Split';
+  // Receipt image: show only when images are ON and the receipt is an image
+  // (not a PDF). PDFs must not render as broken <img> tags. No render-time
+  // Places calls — the receipt URL is a stored upload, never fetched at render.
+  const receiptUrl = exp.receipt || '';
+  const isPdf = /\.pdf(\?|$)/i.test(receiptUrl);
+  const showReceiptImage = showImages && receiptUrl && !isPdf;
 
   return (
     <div className="flex gap-2 items-stretch">
@@ -45,13 +52,19 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
 
       {/* Card */}
       <div
-        className={`flex-1 min-w-0 rounded-2xl border border-ink-charcoal/15 bg-card p-3 relative ${exp.settled ? 'opacity-60' : ''} ${canEdit ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40' : ''}`}
+        className={`flex-1 min-w-0 rounded-2xl border border-ink-charcoal/15 bg-card relative ${exp.settled ? 'opacity-60' : ''} ${canEdit ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40' : ''}`}
         style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.12)' }}
         onClick={canEdit ? onEdit : undefined}
         role={canEdit ? 'button' : undefined}
         tabIndex={canEdit ? 0 : undefined}
         onKeyDown={canEdit ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEdit(); } } : undefined}
       >
+        {showReceiptImage && (
+          <div className="h-24 w-full overflow-hidden rounded-t-2xl">
+            <Image src={receiptUrl} alt={exp.title} className="w-full h-full object-cover" fittingType="fill" />
+          </div>
+        )}
+        <div className="p-3">
         {canEdit && <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-ink-deep/30" />}
 
         {/* Line 1: payer */}
@@ -73,6 +86,7 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
           ) : (
             <span className="text-xs italic text-ink-deep/55">No one split yet</span>
           )}
+        </div>
         </div>
       </div>
     </div>

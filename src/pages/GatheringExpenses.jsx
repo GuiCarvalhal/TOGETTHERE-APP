@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
-import { canSeeExpenses, canAddExpense, formatCurrency, EXPENSE_CATEGORIES } from '@/lib/gatheringHelpers';
+import { canSeeExpenses, canAddExpense, formatCurrency, EXPENSE_CATEGORIES, mineExpenses } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseTimelineCard from '@/components/tt/cards/ExpenseTimelineCard';
 import PageToolbar from '@/components/tt/PageToolbar';
@@ -11,6 +11,7 @@ import FilterChips from '@/components/tt/FilterChips';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { Button } from '@/components/ui/button';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
+import ExpenseGraphPanel from '@/components/expenses/ExpenseGraphPanel';
 import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, Scale, FileText } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
@@ -64,7 +65,7 @@ const CAT_FILTER_OPTIONS = [{ key: 'all', label: 'All' }, ...EXPENSE_CATEGORIES.
 export default function GatheringExpenses() {
   const d = useExpensesData();
   const { gatheringId, setFab, role, currentMember } = d;
-  const { scope, setScope } = useViewPrefs(gatheringId);
+  const { scope, setScope, images, setImages, graphOpen, setGraphOpen } = useViewPrefs(gatheringId);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [catFilter, setCatFilter] = useState('all');
@@ -94,8 +95,11 @@ export default function GatheringExpenses() {
 
   const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, expenseInBase, displayFor, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
 
+  // Mine = expenses where the current member is the PAYER (not merely in the
+  // split). Group = all gathering expenses. Uses the shared helper so the
+  // payer-vs-split semantics are unit-tested.
   const visibleExpenses = scope === 'mine'
-    ? expenses.filter((e) => e.payer_member_id === currentMember?.id || (splitsByExpense[e.id] || []).some((s) => s.member_id === currentMember?.id))
+    ? mineExpenses(expenses, currentMember?.id)
     : expenses;
   // Category filter composes with scope + currency/settlement behavior: it
   // narrows only the timeline list. The summary (group total, your balance,
@@ -127,11 +131,29 @@ export default function GatheringExpenses() {
     d.reload();
   }
 
+  const graphRow = (
+    <ExpenseGraphPanel
+      expenses={visibleExpenses}
+      memberById={memberById}
+      expenseInBase={expenseInBase}
+      displayFor={displayFor}
+      baseCurrency={baseCurrency}
+      ratesAvailable={ratesAvailable}
+      scope={scope}
+    />
+  );
+
   return (
     <PageToolbar
       scope={scope}
       setScope={setScope}
-      showImagesToggle={false}
+      images={images}
+      setImages={setImages}
+      showImagesToggle
+      showGraphToggle
+      graphOpen={graphOpen}
+      setGraphOpen={setGraphOpen}
+      graphRow={graphRow}
       onAdd={() => { setEditing(null); setOpen(true); }}
       canAdd={canAddExpense(role)}
       filterRow={<FilterChips options={CAT_FILTER_OPTIONS} value={catFilter} onChange={setCatFilter} />}
@@ -207,6 +229,7 @@ export default function GatheringExpenses() {
                         onEdit={() => { setEditing(exp); setOpen(true); }}
                         displayAmount={disp.amount}
                         displayCurrency={disp.currency}
+                        showImages={images}
                       />
                     );
                   })}

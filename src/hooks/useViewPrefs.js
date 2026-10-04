@@ -8,6 +8,7 @@ export function useViewPrefs(gatheringId) {
   const [scope, setScope] = useState('group');
   const [images, setImages] = useState(true);
   const [mapOpen, setMapOpen] = useState(false);
+  const [graphOpen, setGraphOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -17,13 +18,14 @@ export function useViewPrefs(gatheringId) {
         if (p.scope === 'mine' || p.scope === 'group') setScope(p.scope);
         if (typeof p.images === 'boolean') setImages(p.images);
         if (typeof p.mapOpen === 'boolean') setMapOpen(p.mapOpen);
+        if (typeof p.graphOpen === 'boolean') setGraphOpen(p.graphOpen);
       }
     } catch { /* ignore */ }
   }, [key]);
 
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify({ scope, images, mapOpen })); } catch { /* ignore */ }
-  }, [key, scope, images]);
+    try { localStorage.setItem(key, JSON.stringify({ scope, images, mapOpen, graphOpen })); } catch { /* ignore */ }
+  }, [key, scope, images, mapOpen, graphOpen]);
 
-  return { scope, setScope, images, setImages, mapOpen, setMapOpen };
+  return { scope, setScope, images, setImages, mapOpen, setMapOpen, graphOpen, setGraphOpen };
 }

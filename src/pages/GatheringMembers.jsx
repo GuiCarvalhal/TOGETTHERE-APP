@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { canManageMembers, ROLES } from '@/lib/gatheringHelpers';
+import { canManageMembers, canInviteMembers, ROLES } from '@/lib/gatheringHelpers';
 import MemberRow from '@/components/members/MemberRow';
+import MemberDetailsCard from '@/components/members/MemberDetailsCard';
 import MemberDetailSheet from '@/components/members/MemberDetailSheet';
 import PageToolbar from '@/components/tt/PageToolbar';
 import FilterChips from '@/components/tt/FilterChips';
-import { useViewPrefs } from '@/hooks/useViewPrefs';
+import DetailSwitcher from '@/components/tt/DetailSwitcher';
 import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +57,8 @@ const ROLE_FILTER_OPTIONS = [
 
 export default function GatheringMembers() {
   const { gatheringId, members, currentMember, role, setFab, refresh, silentRefresh, loading } = useGathering();
-  const { scope, setScope } = useViewPrefs(gatheringId);
+  const [detailMode, setDetailMode] = useState('summary');
+  const [families, setFamilies] = useState([]);
   const [shareOpen, setShareOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [activeMember, setActiveMember] = useState(null);
@@ -64,6 +66,7 @@ export default function GatheringMembers() {
   const [copied, setCopied] = useState('');
 
   const canManage = canManageMembers(role);
+  const canInvite = canInviteMembers(role);
   const isOwner = role === 'owner';
   const isViewer = role === 'viewer';
 
@@ -72,6 +75,43 @@ export default function GatheringMembers() {
   useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
 
   usePolling(silentRefresh, 25000);
+
+  // Load families only when Details mode is active — the Family entity is
+  // separate from Member and requires a backend call. Families are matched to
+  // members by user_id (owner_user_id or member_user_ids). Each family carries
+  // its name and the display names of its members in this gathering.
+  useEffect(() => {
+    if (detailMode !== 'details') return;
+    let active = true;
+    (async () => {
+      try {
+        const userIds = (members || []).map((m) => m.user_id).filter(Boolean);
+        if (!userIds.length) return;
+        const res = await base44.functions.invoke('getFamiliesForUsers', { user_ids: userIds });
+        const data = res.data || res;
+        const fams = (data.families || []).map((f) => {
+          const famUids = new Set([f.owner_user_id, ...(f.member_user_ids || [])]);
+          const famMembers = (members || []).filter((m) => m.user_id && famUids.has(m.user_id));
+          return {
+            id: f.id,
+            name: f.name,
+            user_ids: [...famUids],
+            memberNames: famMembers.map((m) => m.full_name).filter(Boolean),
+          };
+        });
+        if (active) setFamilies(fams);
+      } catch { /* ignore — Details just shows no family info */ }
+    })();
+    return () => { active = false; };
+  }, [detailMode, members]);
+
+  // Map: user_id -> family (the first family that includes this user)
+  const familyByUid = {};
+  families.forEach((f) => {
+    f.user_ids.forEach((uid) => {
+      if (!familyByUid[uid]) familyByUid[uid] = f;
+    });
+  });
 
   const inviteUrl = `${window.location.origin}/join/${gatheringId}`;
   const viewerInviteUrl = `${inviteUrl}?as=viewer`;
@@ -104,17 +144,10 @@ export default function GatheringMembers() {
     }
   }
 
-  // Scope filter. Members: "Mine" = just the signed-in user. Viewers get Group
-  // view only (no participation scope selector) now that the Close/Casual
-  // friendship model is retired, so the scope is forced to Group for viewers
-  // regardless of any stale stored preference.
-  const effectiveScope = isViewer ? 'group' : scope;
-  const scopedMembers = effectiveScope === 'mine'
-    ? members.filter((m) => m.id === currentMember?.id)
-    : members;
-  // Role filter composes with scope: narrows the visible members by gathering
-  // role (owner/admin/member/viewer) — never inferred from friendship.
-  const roleFiltered = roleFilter === 'all' ? scopedMembers : scopedMembers.filter((m) => m.role === roleFilter);
+  // All members are shown in both Summary and Details mode (the toggle
+  // controls detail level, not which members are visible). The role filter
+  // narrows by gathering role (owner/admin/member/viewer).
+  const roleFiltered = roleFilter === 'all' ? members : members.filter((m) => m.role === roleFilter);
   const others = roleFiltered.filter((m) => m.id !== currentMember?.id);
   const selfMember = roleFiltered.find((m) => m.id === currentMember?.id) || null;
   // Re-derive the open sheet's member from fresh data so role edits reflect
@@ -122,7 +155,7 @@ export default function GatheringMembers() {
   const active = activeMember ? (members.find((m) => m.id === activeMember.id) || activeMember) : null;
 
   return (
-    <PageToolbar scope={scope} setScope={setScope} showImagesToggle={false} action={canManage ? (
+    <PageToolbar showImagesToggle={false} switcher={<DetailSwitcher mode={detailMode} setMode={setDetailMode} />} action={canInvite ? (
       <Button variant="default" size="sm" onClick={() => setShareOpen(true)} className="shrink-0">
         <UserPlus />
         <span className="hidden sm:inline">Invite</span>
@@ -134,9 +167,9 @@ export default function GatheringMembers() {
       ) : roleFiltered.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={roleFilter !== 'all' ? 'No members with this role' : (effectiveScope === 'mine' ? 'Nothing to show' : 'No members yet')}
-          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : (effectiveScope === 'mine' ? 'Switch to Group to see everyone in this gathering.' : 'Invite your crew to start coordinating — share a Member link so people can participate, or a Viewer link for read-only access.')}
-          action={canManage && scope !== 'mine' && roleFilter === 'all' ? (
+          title={roleFilter !== 'all' ? 'No members with this role' : 'No members yet'}
+          body={roleFilter !== 'all' ? 'Switch to All to see everyone, or pick another role.' : 'Invite your crew to start coordinating — share a Member link so people can participate, or a Viewer link for read-only access.'}
+          action={canInvite && roleFilter === 'all' ? (
             <Button onClick={() => setShareOpen(true)}>
               <UserPlus /> Share invite link
             </Button>
@@ -146,12 +179,20 @@ export default function GatheringMembers() {
         <div className="space-y-6">
           {selfMember && (
             <MemberSection title="You" count={1} icon={<User className="w-3.5 h-3.5 text-terra-deep" />}>
-              <MemberRow key={selfMember.id} member={selfMember} gatheringId={gatheringId} isSelf onOpen={() => { setActiveMember(selfMember); setSheetOpen(true); }} />
+              {detailMode === 'details' ? (
+                <MemberDetailsCard key={selfMember.id} member={selfMember} family={familyByUid[selfMember.user_id] || null} isSelf gatheringId={gatheringId} onOpen={() => { setActiveMember(selfMember); setSheetOpen(true); }} />
+              ) : (
+                <MemberRow key={selfMember.id} member={selfMember} gatheringId={gatheringId} isSelf onOpen={() => { setActiveMember(selfMember); setSheetOpen(true); }} />
+              )}
             </MemberSection>
           )}
           <MemberSection title="Everyone" count={others.length} icon={<Users className="w-3.5 h-3.5 text-terra-deep" />}>
             {others.map((m) => (
-              <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
+              detailMode === 'details' ? (
+                <MemberDetailsCard key={m.id} member={m} family={familyByUid[m.user_id] || null} isSelf={m.id === currentMember?.id} gatheringId={gatheringId} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
+              ) : (
+                <MemberRow key={m.id} member={m} gatheringId={gatheringId} isSelf={m.id === currentMember?.id} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />
+              )
             ))}
           </MemberSection>
         </div>
