@@ -31,7 +31,7 @@ const PALETTE = ['#e05c48', '#1e2633', '#f07865', '#c8493a', '#7a8290', '#0ea5e9
 function ViewportShell({ children }) {
   return (
     <div className="tt-card p-3">
-      <div className={`${OVERLAY_VIEWPORT_CLASS} flex flex-col min-h-0`}>
+      <div className={`${OVERLAY_VIEWPORT_CLASS} flex flex-col min-h-0 min-w-0`}>
         {children}
       </div>
     </div>
@@ -230,16 +230,20 @@ export default function ExpenseGraphPanel({ expenses, memberById, expenseInBase,
     <ViewportShell>
       <Header label={scopeLabel} total={total} currency={activeCur} fmt={fmt} />
       <div className="shrink-0 flex items-center gap-1.5 px-0.5 mb-1">
-        <AlertTriangle className="w-3 h-3 shrink-0 text-amber-600" />
-        <span className="text-[10px] text-ink-deep/55 truncate flex-1 min-w-0">{t('expenseGraph.ratesUnavailableMixed')}</span>
+        <AlertTriangle className="w-3 h-3 shrink-0 text-amber-600" aria-hidden="true" />
+        <span className="text-[10px] text-ink-deep/55 truncate shrink-0 max-w-[35%]" title={t('expenseGraph.ratesUnavailableMixed')}>
+          {t('expenseGraph.ratesUnavailableMixed')}
+        </span>
         {currencies.length > 1 && (
-          <div className="flex gap-1 shrink-0">
+          <div className="flex gap-1 flex-1 min-w-0 overflow-x-auto tt-no-scrollbar" role="tablist" aria-label={t('expenseGraph.currencySelector')}>
             {currencies.map((c) => (
               <button
                 key={c}
                 type="button"
+                role="tab"
+                aria-selected={c === activeCur}
                 onClick={() => setSelCur(c)}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border transition-colors ${c === activeCur ? 'border-terra/40 bg-terra/10 text-terra-deep' : 'border-ink-charcoal/15 bg-cream-pale text-ink-deep/60'}`}
+                className={`shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border transition-colors ${c === activeCur ? 'border-terra/40 bg-terra/10 text-terra-deep' : 'border-ink-charcoal/15 bg-cream-pale text-ink-deep/60'}`}
               >
                 {c}
               </button>

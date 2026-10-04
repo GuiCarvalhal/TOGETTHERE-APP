@@ -243,10 +243,9 @@ export default function GatheringAgent() {
   );
 
   const regenerateAction = (
-    <Button onClick={generate} disabled={loading} size="sm" className="shrink-0">
+    <Button onClick={generate} disabled={loading} size="sm" className="shrink-0" aria-label={t('agent.reload')}>
       {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-      <span className="hidden sm:inline">{data ? t('agent.reload') : t('agent.generate')}</span>
-      <span className="sm:hidden">{data ? t('agent.reload') : t('agent.go')}</span>
+      <span>{t('agent.reload')}</span>
     </Button>
   );
   const lengthSwitcher = (
