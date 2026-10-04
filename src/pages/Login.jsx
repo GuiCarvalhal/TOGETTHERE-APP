@@ -4,8 +4,9 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import BrandLogo from "@/components/tt/BrandLogo";
 import GoogleIcon from "@/components/GoogleIcon";
 import AppleIcon from "@/components/AppleIcon";
 import FacebookIcon from "@/components/FacebookIcon";
@@ -65,9 +66,13 @@ export default function Login() {
 
   return (
     <AuthLayout
-      icon={LogIn}
-      title="Welcome back"
-      subtitle="Log in to your account"
+      header={
+        <div className="text-center mb-10">
+          <BrandLogo className="w-16 h-16 mx-auto mb-4" />
+          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">TOGETTHERE</h1>
+          <p className="text-muted-foreground mt-2">Plan together. Get there, together.</p>
+        </div>
+      }
       footer={
         <>
           Don't have an account?{" "}
