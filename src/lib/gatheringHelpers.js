@@ -418,9 +418,9 @@ export function settleUp(balances) {
 // graceful placeholder covers. Hex values render theme-aware via opacity tints.
 export const JOURNEY_TYPES = [
   { key: 'flight', label: 'Flight', icon: 'Plane', color: '#0EA5E9' },
-  { key: 'car', label: 'Car / Driver', icon: 'Car', color: '#E05A47' },
+  { key: 'car', label: 'Drive', icon: 'Car', color: '#E05A47' },
   { key: 'train', label: 'Train', icon: 'Train', color: '#8B5CF6' },
-  { key: 'hotel', label: 'Hotel / Stay', icon: 'Hotel', color: '#F59E0B' },
+  { key: 'hotel', label: 'Stay', icon: 'Hotel', color: '#F59E0B' },
   { key: 'activity', label: 'Activity', icon: 'Compass', color: '#10B981' },
   { key: 'cruise', label: 'Cruise', icon: 'Ship', color: '#14B8A6' },
   { key: 'main_event', label: 'Main Event', icon: 'Star', color: '#E05C48' },
