@@ -13,6 +13,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Home from '@/pages/Home';
 import HowItWorks from '@/pages/HowItWorks';
+import NewGathering from '@/pages/NewGathering';
 import GatheringShell from '@/components/GatheringShell';
 import GatheringAgent from '@/pages/GatheringAgent';
 import AgentPlaceDetail from '@/pages/AgentPlaceDetail';
@@ -57,6 +58,7 @@ function App() {
             <Route element={<ProtectedRoute unauthenticatedElement={<UnauthenticatedRedirect />} />}>
               <Route path="/" element={<Home />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/gathering/new" element={<NewGathering />} />
               <Route path="/join/:gatheringId" element={<JoinGathering />} />
               <Route path="/profile/:userId" element={<Profile />} />
               <Route path="/gathering/:id" element={<GatheringShell />}>

@@ -29,7 +29,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
   const { toast } = useToast();
   const { t } = useI18n();
   const [form, setForm] = useState({
-    full_name: member?.full_name || user?.full_name || '',
+    full_name: user?.display_name || member?.full_name || user?.full_name || '',
     photo: user?.photo || member?.photo || '',
     home_city: user?.home_city || '',
     home_place: user?.home_place || null,
@@ -67,7 +67,12 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
   async function save() {
     setSaving(true);
     try {
+      // Global profile fields persist on the User entity via updateMe. The
+      // display_name is the universal profile name (full_name is a read-only
+      // built-in that can't be overridden, so display_name is the editable
+      // name). photo is also global.
       await base44.auth.updateMe({
+        display_name: form.full_name.trim(),
         home_city: form.home_city.trim(),
         home_place: form.home_place || null,
         home_currency: form.home_currency,
@@ -76,10 +81,15 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
         dietary_preferences: form.dietary_preferences,
         photo: form.photo,
       });
-      await base44.functions.invoke('updateMyProfile', {
-        gathering_id: gatheringId,
-        fields: { full_name: form.full_name.trim(), photo: form.photo },
-      });
+      // Sync name + photo to the Member record ONLY when a gathering context
+      // exists — so gathering cards/avatars update there too. Without a
+      // gathering, the global update above is the whole save.
+      if (gatheringId) {
+        await base44.functions.invoke('updateMyProfile', {
+          gathering_id: gatheringId,
+          fields: { full_name: form.full_name.trim(), photo: form.photo },
+        });
+      }
       toast({ title: t('profileEdit.profileSaved') });
       onSaved();
       onSaveDone?.();

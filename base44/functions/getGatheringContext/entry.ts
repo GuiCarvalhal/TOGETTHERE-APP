@@ -52,11 +52,18 @@ export default async function(req) {
 
     // Minimal journey items so the gathering header can derive the date range
     // (earliest..latest across the current user's items, falling back to all).
+    // Minimal journey items so the gathering header can derive the date range
+    // and location. Includes `type` (for Main Event detection + location
+    // filtering: lodging/activities only, excluding flights/transport) and the
+    // primary place name/coords (for the derived location display).
     const journeyItems = (journeyItemsRaw || []).map((it) => ({
+      type: it.type || null,
       start_datetime: it.start_datetime || null,
       end_datetime: it.end_datetime || null,
       owner_id: it.owner_id || null,
       attendee_user_ids: it.attendee_user_ids || [],
+      place: it.place ? { name: it.place.name, place_id: it.place.place_id || null, lat: it.place.lat, lng: it.place.lng } : null,
+      location_name: it.location_name || null,
     }));
 
     let joinRequests = [];

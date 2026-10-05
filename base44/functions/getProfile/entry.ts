@@ -64,7 +64,7 @@ export default async function(req) {
 
     const full = visibility === 'full';
     const safeUser = {
-      full_name: targetUser?.full_name || targetMember?.full_name || 'Member',
+      full_name: targetUser?.display_name || targetUser?.full_name || targetMember?.full_name || 'Member',
       email: full ? (targetUser?.email || null) : null,
       photo: targetUser?.photo || targetMember?.photo || null,
       home_city: full ? (targetUser?.home_city || targetMember?.home_city || null) : null,

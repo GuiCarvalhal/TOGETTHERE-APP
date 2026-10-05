@@ -35,6 +35,7 @@
         "hotel",
         "activity",
         "cruise",
+        "main_event",
         "other"
       ]
     },
@@ -89,7 +90,7 @@
     },
     "place": {
       "type": "object",
-      "description": "Resolved Google Place for STAY/ACTIVITY items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz, iata, city }",
+      "description": "Resolved Google Place for STAY/ACTIVITY/MAIN_EVENT items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz, iata, city }",
       "properties": {
         "place_id": {
           "type": "string"

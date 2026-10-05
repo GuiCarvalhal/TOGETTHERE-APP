@@ -8,6 +8,10 @@
         "user"
       ]
     },
+    "display_name": {
+      "type": "string",
+      "description": "User-editable display name \u2014 the global profile name. Falls back to the built-in full_name when unset. Set via updateMe (no gathering required) so the profile name is editable universally, independent of any gathering membership."
+    },
     "home_city": {
       "type": "string",
       "description": "Home city \u2014 display string for the user's home. Legacy free-text values are shown as-is; a new Google Places selection overwrites this with the resolved formatted address."

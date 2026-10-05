@@ -26,6 +26,21 @@ export default async function (req) {
       me.role === 'admin';
     if (!canEdit) return Response.json({ error: 'You can only edit your own segments' }, { status: 403 });
 
+    // Main Event: at most one per gathering. Only enforced when the type is
+    // CHANGING to main_event (changing an existing main_event's other fields
+    // is allowed). A gathering with a Main Event functions as an event group.
+    if (payload.type === 'main_event' && existing.type !== 'main_event') {
+      const existingMain = await base44.asServiceRole.entities.JourneyItem.filter(
+        { gathering_id, type: 'main_event' }
+      );
+      if (existingMain && existingMain.length > 0) {
+        return Response.json(
+          { error: 'This gathering already has a Main Event. A gathering can have at most one Main Event.' },
+          { status: 409 }
+        );
+      }
+    }
+
     const [gathering, members] = await Promise.all([
       base44.asServiceRole.entities.Gathering.get(gathering_id),
       base44.asServiceRole.entities.Member.filter({ gathering_id }),

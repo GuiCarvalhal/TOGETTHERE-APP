@@ -1,16 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Image } from '@/components/ui/image';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, X, Plane, Car, Train, Hotel, Ship, MapPin } from 'lucide-react';
-import { gatheringDateStatus, gatheringSortKey, formatGatheringRange } from '@/lib/gatheringDates';
+import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, Plane, Car, Train, Hotel, Ship, MapPin, Star } from 'lucide-react';
+import { gatheringDateStatus, gatheringSortKey, formatGatheringRange, deriveGatheringLocation } from '@/lib/gatheringDates';
 import { format, differenceInCalendarDays } from 'date-fns';
 import EmptyState from '@/components/tt/EmptyState';
 import AppHeader from '@/components/tt/AppHeader';
@@ -18,15 +12,8 @@ import Skeleton from '@/components/tt/Skeleton';
 import GatheringCard from '@/components/tt/cards/GatheringCard';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
-import DestinationPicker from '@/components/tt/DestinationPicker';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import { useI18n } from '@/lib/i18n';
-
-const SAMPLE_COVERS = [
-  'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80',
-  'https://images.unsplash.com/photo-1502602898657-3e9fa60e1900?w=1200&q=80',
-  'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&q=80',
-];
 
 const FILTER_KEYS = [
   { key: 'all', tk: 'home.filterAll' },
@@ -34,13 +21,12 @@ const FILTER_KEYS = [
   { key: 'past', tk: 'home.filterPast' },
 ];
 
-const EMPTY_FORM = { name: '', description: '', destination_places: [], cover_image: SAMPLE_COVERS[0] };
-
-const JOURNEY_ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
+const JOURNEY_ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, main_event: Star, other: MapPin };
 const JOURNEY_TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 
 export default function Home() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [memberships, setMemberships] = useState([]);
   const [gatherings, setGatherings] = useState([]);
   const [previews, setPreviews] = useState({});
@@ -48,9 +34,6 @@ export default function Home() {
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [creating, setCreating] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
   const [nextUpcoming, setNextUpcoming] = useState(null);
 
   async function load() {
@@ -73,28 +56,6 @@ export default function Home() {
 
   useEffect(() => { load(); }, []);
 
-  async function handleCreate(e) {
-    e.preventDefault();
-    if (!form.name.trim()) return;
-    setCreating(true);
-    try {
-      await base44.functions.invoke('createGathering', {
-        name: form.name.trim(),
-        description: form.description,
-        destination_places: form.destination_places,
-        cover_image: form.cover_image,
-      });
-      setOpen(false);
-      setForm(EMPTY_FORM);
-      await load();
-    } catch (err) {
-      console.error(err);
-      alert(err.message || 'Could not create gathering');
-    } finally {
-      setCreating(false);
-    }
-  }
-
   const roleOf = (gid) => memberships.find((m) => m.gathering_id === gid)?.role;
 
   // Derive each gathering's date status + sort key + range from its journey
@@ -103,10 +64,13 @@ export default function Home() {
   const now = new Date();
   const annotated = gatherings.map((g) => {
     const items = itemsByGathering[g.id] || [];
-    const status = gatheringDateStatus(g, items, userId, now);
-    const sortKey = gatheringSortKey(g, items, userId, now);
-    const dateRange = formatGatheringRange(g, items, userId);
-    return { g, status, sortKey, dateRange };
+    const r = roleOf(g.id);
+    const status = gatheringDateStatus(g, items, userId, r, now);
+    const sortKey = gatheringSortKey(g, items, userId, r, now);
+    const dateRange = formatGatheringRange(g, items, userId, r);
+    const locs = deriveGatheringLocation(items, userId, r);
+    const locationLabel = locs.length ? locs.slice(0, 2).map((d) => d.name).join(', ') : '';
+    return { g, status, sortKey, dateRange, locationLabel };
   });
   const filtered = annotated.filter(({ status }) => {
     if (filter === 'all') return true;
@@ -192,7 +156,7 @@ export default function Home() {
               </div>
             )}
           </div>
-          <Button onClick={() => setOpen(true)} size="sm" className="shrink-0"><Plus /> {t('home.new')}</Button>
+          <Button onClick={() => navigate('/gathering/new')} size="sm" className="shrink-0"><Plus /> {t('home.new')}</Button>
         </div>
 
         {loading ? (
@@ -216,7 +180,7 @@ export default function Home() {
             icon={Compass}
             title={t('home.noGatherings')}
             body={t('home.noGatheringsBody')}
-            action={<Button onClick={() => setOpen(true)}><Plus /> {t('home.createGathering')}</Button>}
+            action={<Button onClick={() => navigate('/gathering/new')}><Plus /> {t('home.createGathering')}</Button>}
           />
         ) : sorted.length === 0 ? (
           <EmptyState
@@ -226,12 +190,13 @@ export default function Home() {
           />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sorted.map(({ g, status, dateRange }) => (
+            {sorted.map(({ g, status, dateRange, locationLabel }) => (
               <GatheringCard
                 key={g.id}
                 gathering={g}
                 dateLabel={status.label}
                 dateRange={dateRange}
+                locationLabel={locationLabel}
                 role={roleOf(g.id)}
                 people={previews[g.id] || []}
                 to={`/gathering/${g.id}/journey`}
@@ -264,51 +229,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Create dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="tt-card bg-card text-card-foreground rounded-[1.5rem] p-0 max-w-lg">
-          <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="font-display text-2xl font-bold text-ink-deep">{t('home.newGathering')}</DialogTitle>
-            <DialogDescription className="text-ink-deep/60">{t('home.newGatheringDesc')}</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreate} className="px-6 pb-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="g-name" className="text-ink-deep">{t('home.name')}</Label>
-              <Input id="g-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Amalfi Coast Reunion '25" required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-ink-deep">{t('home.destinations')}</Label>
-              <DestinationPicker
-                places={form.destination_places}
-                onChange={(places) => setForm({ ...form, destination_places: places })}
-                placeholder={t('home.destPlaceholder')}
-              />
-              <p className="text-xs text-ink-deep/50">{t('home.destHint')}</p>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-ink-deep">{t('home.coverImage')}</Label>
-              <div className="flex gap-2">
-                {SAMPLE_COVERS.map((url) => (
-                  <button type="button" key={url} onClick={() => setForm({ ...form, cover_image: url })}
-                    className={`w-20 h-14 rounded-lg overflow-hidden border-2 ${form.cover_image === url ? 'border-terra' : 'border-transparent'}`}>
-                    <Image src={url} alt="cover" className="w-full h-full object-cover" fittingType="fill" />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="g-desc" className="text-ink-deep">{t('home.description')} <span className="text-ink-deep/40 font-normal">({t('common.optional')})</span></Label>
-              <Textarea id="g-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-            </div>
-            <DialogFooter className="pt-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}><X /> {t('common.cancel')}</Button>
-              <Button type="submit" disabled={creating}>
-                {creating ? <Loader2 className="animate-spin" /> : <Plus />} {t('home.createGatheringBtn')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

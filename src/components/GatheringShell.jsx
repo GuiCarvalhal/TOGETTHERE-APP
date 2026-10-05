@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
-import { gatheringDateStatus, formatGatheringRange, gatheringDestinations, destinationMapsUrl } from '@/lib/gatheringDates';
+import { gatheringDateStatus, formatGatheringRange, deriveGatheringLocation, destinationMapsUrl } from '@/lib/gatheringDates';
 import { canManageGathering } from '@/lib/gatheringHelpers';
 import BottomTabBar from '@/components/tt/BottomTabBar';
 import MoreMenu from '@/components/tt/MoreMenu';
@@ -83,9 +83,9 @@ function ShellInner() {
   // Date label + range are derived from the gathering's journey items (the
   // current user's items first, falling back to all), never from a typed date.
   const uid = currentMember?.user_id;
-  const dateStatus = gatheringDateStatus(gathering, journeyItems, uid);
-  const dateRange = formatGatheringRange(gathering, journeyItems, uid);
-  const dests = gatheringDestinations(gathering);
+  const dateStatus = gatheringDateStatus(gathering, journeyItems, uid, role);
+  const dateRange = formatGatheringRange(gathering, journeyItems, uid, role);
+  const dests = deriveGatheringLocation(journeyItems, uid, role);
 
   // Any journey item detail route hides the gathering hero — the detail page
   // has its own sticky DetailActionBar (Back/Edit/Delete) as the first element

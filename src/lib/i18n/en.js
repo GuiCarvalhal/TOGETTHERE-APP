@@ -89,6 +89,22 @@ export const en = {
     failedToReset: 'Failed to reset password',
   },
 
+  newGathering: {
+    name: 'Name',
+    namePlaceholder: "Amalfi Coast Reunion '25",
+    nameRequired: 'A name is required',
+    coverImage: 'Cover image',
+    coverHint: 'Searches suggest images related to your gathering name',
+    searching: 'Searching covers…',
+    optionalLinks: 'Optional group links',
+    whatsapp: 'WhatsApp group',
+    music: 'Music / playlist',
+    invalidLink: 'One of the links is not a valid URL',
+    create: 'Create',
+    created: 'Gathering created',
+    couldNotCreate: 'Could not create gathering',
+  },
+
   home: {
     groupTravel: 'Group travel & gatherings',
     heroLine1: 'Plan together.',
@@ -242,6 +258,7 @@ export const en = {
     hotel: 'Hotel / Stay',
     activity: 'Activity',
     cruise: 'Cruise',
+    main_event: 'Main Event',
     other: 'Other',
   },
 
@@ -493,6 +510,8 @@ export const en = {
     addTitleDesc: 'Give the segment a title to save.',
     couldNotSave: 'Could not save segment',
     couldNotSaveFlight: 'Could not save flight',
+    mainEventCreated: 'Main Event added',
+    mainEventInfo: 'This gathering now works as an event group, not a trip. The Main Event sets its dates and location; other features stay the same.',
     flightUpdated: 'Flight updated',
     flightAdded: 'Flight added',
     editFlight: 'Edit flight',

@@ -423,6 +423,7 @@ export const JOURNEY_TYPES = [
   { key: 'hotel', label: 'Hotel / Stay', icon: 'Hotel', color: '#F59E0B' },
   { key: 'activity', label: 'Activity', icon: 'Compass', color: '#10B981' },
   { key: 'cruise', label: 'Cruise', icon: 'Ship', color: '#14B8A6' },
+  { key: 'main_event', label: 'Main Event', icon: 'Star', color: '#E05C48' },
   { key: 'other', label: 'Other', icon: 'MapPin', color: '#64748B' },
 ];
 

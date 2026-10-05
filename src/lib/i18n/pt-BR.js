@@ -85,6 +85,22 @@ export const ptBR = {
     failedToReset: 'Falha ao redefinir a senha',
   },
 
+  newGathering: {
+    name: 'Nome',
+    namePlaceholder: "Reunião na Costa Amalfitana '25",
+    nameRequired: 'Um nome é obrigatório',
+    coverImage: 'Imagem de capa',
+    coverHint: 'A busca sugere imagens relacionadas ao nome do gathering',
+    searching: 'Buscando capas…',
+    optionalLinks: 'Links opcionais do grupo',
+    whatsapp: 'Grupo do WhatsApp',
+    music: 'Música / playlist',
+    invalidLink: 'Um dos links não é uma URL válida',
+    create: 'Criar',
+    created: 'Gathering criado',
+    couldNotCreate: 'Não foi possível criar o gathering',
+  },
+
   home: {
     groupTravel: 'Viagens em grupo & encontros',
     heroLine1: 'Planejem juntos.',
@@ -238,6 +254,7 @@ export const ptBR = {
     hotel: 'Hotel / Estadia',
     activity: 'Atividade',
     cruise: 'Cruzeiro',
+    main_event: 'Evento Principal',
     other: 'Outro',
   },
 
@@ -489,6 +506,8 @@ export const ptBR = {
     addTitleDesc: 'Dê um título ao segmento para salvar.',
     couldNotSave: 'Não foi possível salvar o segmento',
     couldNotSaveFlight: 'Não foi possível salvar o voo',
+    mainEventCreated: 'Evento Principal adicionado',
+    mainEventInfo: 'Este gathering agora funciona como grupo de evento, não viagem. O Evento Principal define datas e localização; as demais funcionalidades permanecem.',
     flightUpdated: 'Voo atualizado',
     flightAdded: 'Voo adicionado',
     editFlight: 'Editar voo',

@@ -18,6 +18,22 @@ export default async function(req) {
     if (!me || me.role === 'viewer') {
       return Response.json({ error: 'Only participants can add journey segments' }, { status: 403 });
     }
+
+    // Main Event: at most one per gathering. A gathering with a Main Event
+    // functions as an event group (not a trip); the Main Event is the
+    // authoritative source of the gathering's dates and location.
+    if (payload.type === 'main_event') {
+      const existingMain = await base44.asServiceRole.entities.JourneyItem.filter(
+        { gathering_id, type: 'main_event' }
+      );
+      if (existingMain && existingMain.length > 0) {
+        return Response.json(
+          { error: 'This gathering already has a Main Event. A gathering can have at most one Main Event.' },
+          { status: 409 }
+        );
+      }
+    }
+
     const [gathering, members] = await Promise.all([
       base44.asServiceRole.entities.Gathering.get(gathering_id),
       base44.asServiceRole.entities.Member.filter({ gathering_id: gathering_id }),

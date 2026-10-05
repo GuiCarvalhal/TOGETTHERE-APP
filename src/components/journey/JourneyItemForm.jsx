@@ -27,6 +27,7 @@ const TYPE_META = {
   cruise: { fromTo: true, place: true },
   hotel: { fromTo: false, place: true },
   activity: { fromTo: false, place: true },
+  main_event: { fromTo: false, place: true },
   other: { fromTo: false, place: true },
 };
 
@@ -160,10 +161,17 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     try {
       const payload = buildJourneyPayload({ form, attendeeIds, startTz, endTz, meta, currentMember, item, gatheringId });
       await submitJourneyItem({ isEdit: !!item, gatheringId, itemId: item?.id, payload });
+      // Inform the user when a Main Event is created that the gathering now
+      // works as an event group (not a trip). Only on create, not on edit of
+      // an existing Main Event.
+      if (form.type === 'main_event' && !item) {
+        toast({ title: t('journeyForm.mainEventCreated'), description: t('journeyForm.mainEventInfo') });
+      }
       onSaved();
       onClose();
     } catch (err) {
-      toast({ title: t('journeyForm.couldNotSave'), description: err.message || t('common.error'), variant: 'destructive' });
+      const msg = err.response?.data?.error || err.message || t('common.error');
+      toast({ title: t('journeyForm.couldNotSave'), description: msg, variant: 'destructive' });
     } finally {
       setSaving(false);
     }

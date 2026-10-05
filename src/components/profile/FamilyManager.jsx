@@ -46,30 +46,33 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
   const multiple = (families?.length || 0) > 1;
   const isOwner = primaryFamily?.owner_user_id === userId;
 
-  // Trip members as add-candidates + their family membership (to block adding
-  // someone already in another family).
+  // Candidates: every person the user has traveled with across ALL their
+  // gatherings (participants only — never viewers), with each person's
+  // current family membership so the UI can block those already in another
+  // family. No longer scoped to a single gathering — works from the universal
+  // profile page too. The one-family-per-user invariant is enforced atomically
+  // by the manageFamily backend; this is just the candidate list for display.
   useEffect(() => {
-    if (!gatheringId) { setCandidates([]); setCandidateFamilies({}); return; }
     let active = true;
     (async () => {
       try {
-        const ms = await base44.entities.Member.filter({ gathering_id: gatheringId });
-        if (!active) return;
-        const cands = ms.filter((m) => m.user_id && m.user_id !== userId && (m.role === 'owner' || m.role === 'admin' || m.role === 'member'));
-        setCandidates(cands);
-        const res = await base44.functions.invoke('getFamiliesForUsers', { user_ids: cands.map((m) => m.user_id) });
+        const res = await base44.functions.invoke('getFamilyCandidates', {});
         const data = res.data || res;
+        if (!active) return;
+        setCandidates((data.candidates || []).map((c) => ({
+          user_id: c.user_id,
+          full_name: c.full_name,
+          photo: c.photo,
+        })));
         const map = {};
-        for (const f of data.families || []) {
-          for (const uid of [f.owner_user_id, ...(f.member_user_ids || [])]) {
-            if (!map[uid]) map[uid] = f;
-          }
+        for (const c of data.candidates || []) {
+          if (c.family) map[c.user_id] = c.family;
         }
         setCandidateFamilies(map);
       } catch { /* ignore */ }
     })();
     return () => { active = false; };
-  }, [gatheringId, userId]);
+  }, []);
 
   const candById = Object.fromEntries(candidates.map((m) => [m.user_id, m]));
   const memberLabel = (uid) => candById[uid]?.full_name || (uid === userId ? 'You' : 'Member');
@@ -170,9 +173,8 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
       {!hasFamily && creating && (
         <div className="space-y-3 rounded-xl bg-cream-pale p-3 border border-ink-charcoal/15">
           <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Family name (e.g. The Okafor Family)" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-          {gatheringId ? (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-ink-deep/60">Add members from this trip</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-ink-deep/60">Add members from your trips</Label>
               <div className="flex flex-wrap gap-1.5">
                 {candidateRows.map(({ m, inAnother, theirFam }) => {
                   if (inAnother) {
@@ -190,12 +192,9 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
                     </button>
                   );
                 })}
-                {candidateRows.length === 0 && <span className="text-xs text-ink-deep/45">No other trip members to add.</span>}
+                {candidateRows.length === 0 && <span className="text-xs text-ink-deep/45">No people from your trips yet.</span>}
               </div>
-            </div>
-          ) : (
-            <p className="text-xs text-ink-deep/50">Open this from a trip to add members to the family.</p>
-          )}
+          </div>
           <div className="flex items-center gap-2">
             <Button type="button" size="sm" onClick={createFamily} disabled={busy || !newName.trim()}>{busy && <Loader2 className="animate-spin" />} Create family</Button>
             <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setNewName(''); setNewMembers([]); }} disabled={busy}>Cancel</Button>
@@ -252,10 +251,10 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
             })}
           </div>
 
-          {/* Add members (owner only, needs a trip) */}
-          {isOwner && gatheringId && (
+          {/* Add members (owner only — candidates from all the user's trips) */}
+          {isOwner && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-ink-deep/60">Add members from this trip</Label>
+              <Label className="text-xs text-ink-deep/60">Add members from your trips</Label>
               <div className="flex flex-wrap gap-1.5">
                 {candidateRows.map(({ m, inAnother, theirFam }) => {
                   if (inAnother) {
@@ -273,12 +272,9 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
                     </button>
                   );
                 })}
-                {candidateRows.length === 0 && <span className="text-xs text-ink-deep/45">Everyone on this trip is already in your family.</span>}
+                {candidateRows.length === 0 && <span className="text-xs text-ink-deep/45">Everyone you know is already in your family.</span>}
               </div>
             </div>
-          )}
-          {isOwner && !gatheringId && (
-            <p className="text-xs text-ink-deep/50">Open this from a trip to add members.</p>
           )}
         </div>
       )}

@@ -12,10 +12,14 @@ import { useI18n } from '@/lib/i18n';
 // dark themes. The date label + range are DERIVED by the caller (Home) from
 // the gathering's journey items and passed in as strings; the card is pure
 // display. No status pill — the relative-time label is plain text.
-export default function GatheringCard({ gathering, dateLabel, dateRange, role, people, to }) {
+//
+// `locationLabel` is an optional pre-derived location string (from the
+// gathering's journey items — lodging/activities, or Main Event). When not
+// provided, falls back to the legacy stored destinations for backward compat.
+export default function GatheringCard({ gathering, dateLabel, dateRange, role, people, to, locationLabel }) {
   const { t } = useI18n();
   const g = gathering;
-  const destNames = gatheringDestinations(g).slice(0, 2).map((d) => d.name).join(', ');
+  const destNames = locationLabel || gatheringDestinations(g).slice(0, 2).map((d) => d.name).join(', ');
   return (
     <Link
       to={to}

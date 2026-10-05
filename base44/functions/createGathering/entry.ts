@@ -6,17 +6,21 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
-    const { name, description, destination_places, cover_image } = body;
+    const { name, description, destination_places, cover_image, whatsapp_url, music_url } = body;
     if (!name) return Response.json({ error: 'name required' }, { status: 400 });
 
     // Dates are no longer collected at create time — a gathering's range is
     // derived from its journey items. destination_places holds structured
-    // Google Places picks (place_id / name / address / lat / lng).
+    // Google Places picks (place_id / name / address / lat / lng). whatsapp_url
+    // and music_url are optional group links validated as URLs (the client
+    // validates; the backend stores them as-is, defaulting to empty string).
     const gathering = await base44.asServiceRole.entities.Gathering.create({
       name,
       description: description || '',
       destination_places: Array.isArray(destination_places) ? destination_places : [],
       cover_image: cover_image || '',
+      whatsapp_url: whatsapp_url || '',
+      music_url: music_url || '',
       status: 'planning',
       owner_user_id: user.id,
       member_user_ids: [user.id],

@@ -43,10 +43,13 @@ export default async function(req) {
         .map((m) => ({ full_name: m.full_name, photo: m.photo, role: m.role }))
         .slice(0, 8);
       itemsByGathering[gid] = (its || []).map((it) => ({
+        type: it.type || null,
         start_datetime: it.start_datetime || null,
         end_datetime: it.end_datetime || null,
         owner_id: it.owner_id || null,
         attendee_user_ids: it.attendee_user_ids || [],
+        place: it.place ? { name: it.place.name, place_id: it.place.place_id || null, lat: it.place.lat, lng: it.place.lng } : null,
+        location_name: it.location_name || null,
       }));
       const memberByUid = {};
       (ms || []).forEach((m) => { if (m.user_id) memberByUid[m.user_id] = m; });
