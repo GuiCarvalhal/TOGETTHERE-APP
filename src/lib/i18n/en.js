@@ -593,6 +593,10 @@ export const en = {
     noOneJoined: 'No one joined yet',
   },
 
+  gatheringCard: {
+    daysDuration: { one: '{count} day', other: '{count} days' },
+  },
+
   expenseForm: {
     editExpense: 'Edit expense',
     addExpense: 'Add expense',

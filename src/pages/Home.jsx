@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Image } from '@/components/ui/image';
-import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles, Plane, Car, Train, Hotel, Ship, MapPin, Star } from 'lucide-react';
-import { gatheringDateStatus, gatheringSortKey, formatGatheringRange, deriveGatheringLocation } from '@/lib/gatheringDates';
+import { Loader2, Plus, CalendarDays, Compass, Route, Receipt, Sparkles } from 'lucide-react';
+import { gatheringDateStatus, gatheringSortKey, mainEventOf, formatGatheringCardMeta } from '@/lib/gatheringDates';
+import { JOURNEY_ICONS, journeyIcon } from '@/lib/journeyIcons';
 import { format, differenceInCalendarDays } from 'date-fns';
 import EmptyState from '@/components/tt/EmptyState';
 import AppHeader from '@/components/tt/AppHeader';
@@ -21,11 +22,12 @@ const FILTER_KEYS = [
   { key: 'past', tk: 'home.filterPast' },
 ];
 
-const JOURNEY_ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, main_event: Star, other: MapPin };
+// JOURNEY_ICONS is imported from @/lib/journeyIcons (centralized with the
+// Journey timeline and Add Segment picker so Main Event always renders Star).
 const JOURNEY_TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 
 export default function Home() {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const navigate = useNavigate();
   const [memberships, setMemberships] = useState([]);
   const [gatherings, setGatherings] = useState([]);
@@ -67,10 +69,9 @@ export default function Home() {
     const r = roleOf(g.id);
     const status = gatheringDateStatus(g, items, userId, r, now);
     const sortKey = gatheringSortKey(g, items, userId, r, now);
-    const dateRange = formatGatheringRange(g, items, userId, r);
-    const locs = deriveGatheringLocation(items, userId, r);
-    const locationLabel = locs.length ? locs.slice(0, 2).map((d) => d.name).join(', ') : '';
-    return { g, status, sortKey, dateRange, locationLabel };
+    const isMainEvent = !!mainEventOf(items);
+    const metaLine = formatGatheringCardMeta(g, items, userId, r, { t, formatDateTime: fmt.formatDateTime, formatDate: fmt.formatDate });
+    return { g, status, sortKey, isMainEvent, metaLine };
   });
   const filtered = annotated.filter(({ status }) => {
     if (filter === 'all') return true;
@@ -122,7 +123,7 @@ export default function Home() {
               item={nextUpcoming.item}
               leg={nextUpcoming.item.type === 'hotel' ? 'check-in' : undefined}
               typeColor={JOURNEY_TYPE_COLOR[nextUpcoming.item.type] || JOURNEY_TYPE_COLOR.other}
-              icon={JOURNEY_ICONS[nextUpcoming.item.type] || MapPin}
+              icon={journeyIcon(nextUpcoming.item.type)}
               participants={nextUpcoming.participants}
               showImages
               to={`/gathering/${nextUpcoming.gatheringId}/journey/${nextUpcoming.item.id}`}
@@ -190,13 +191,13 @@ export default function Home() {
           />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sorted.map(({ g, status, dateRange, locationLabel }) => (
+            {sorted.map(({ g, status, isMainEvent, metaLine }) => (
               <GatheringCard
                 key={g.id}
                 gathering={g}
                 dateLabel={status.label}
-                dateRange={dateRange}
-                locationLabel={locationLabel}
+                metaLine={metaLine}
+                isMainEvent={isMainEvent}
                 role={roleOf(g.id)}
                 people={previews[g.id] || []}
                 to={`/gathering/${g.id}/journey`}

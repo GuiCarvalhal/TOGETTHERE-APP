@@ -17,12 +17,11 @@ import PageToolbar from '@/components/tt/PageToolbar';
 import FilterChips from '@/components/tt/FilterChips';
 import ViewerMemberFilter from '@/components/tt/ViewerMemberFilter';
 import { Button } from '@/components/ui/button';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Plus } from 'lucide-react';
+import { Compass, Plus } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import { useI18n } from '@/lib/i18n';
-
-const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
+import { journeyIcon } from '@/lib/journeyIcons';
 const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 const TYPE_FILTER_KEYS = [{ key: 'all', tk: 'common.all' }, ...JOURNEY_TYPES.map((t) => ({ key: t.key, tk: `journeyTypes.${t.key}` }))];
 
@@ -269,7 +268,7 @@ export default function GatheringJourney() {
                     item={entry.item}
                     leg={entry.leg}
                     typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
-                    icon={ICONS[entry.item.type] || MapPin}
+                    icon={journeyIcon(entry.item.type)}
                     participants={itemParticipants(entry.item, memberById)}
                     showImages={effectiveImages}
                     routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}

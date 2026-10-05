@@ -5,9 +5,7 @@ import { JOURNEY_TYPES, canAddJourney } from '@/lib/gatheringHelpers';
 import { useI18n } from '@/lib/i18n';
 import DetailActionBar from '@/components/tt/DetailActionBar';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin } from 'lucide-react';
-
-const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
+import { journeyIcon } from '@/lib/journeyIcons';
 
 // Full-page "Add segment" surface, mounted at /gathering/:id/journey/new.
 // First step: a responsive grid of type icons (same JOURNEY_TYPES order, icons
@@ -73,7 +71,7 @@ export default function AddSegmentPage() {
         <p className="text-sm text-ink-deep/55 mb-5">{t('journeyForm.addSegmentQ')}</p>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
           {JOURNEY_TYPES.map((jt) => {
-            const Icon = ICONS[jt.key] || MapPin;
+            const Icon = journeyIcon(jt.key);
             return (
               <button
                 key={jt.key}

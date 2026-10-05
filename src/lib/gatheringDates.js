@@ -55,31 +55,67 @@ export function rangeFromItems(items) {
   return { start, end: end || start };
 }
 
+// The Main Event item if one exists, else null. Main Event prevails globally
+// over all other date/location derivation.
+export function mainEventOf(items) {
+  return (items || []).find((it) => it.type === 'main_event') || null;
+}
+
+// Full address for a Main Event item, from the stored place/address fields
+// (never an inferred hotel/city location). Falls back to place name, then the
+// free-text location_name, then ''.
+export function mainEventAddress(item) {
+  if (!item) return '';
+  const p = item.place;
+  if (p?.address) return p.address;
+  if (p?.name) return p.name;
+  return item.location_name || '';
+}
+
+// DST-safe INCLUSIVE day count between two instants: counts BOTH the first
+// and last calendar dates (same-day = 1, next-day = 2, etc.). Uses local
+// calendar midnights — matching formatDate's local display — so the count is
+// consistent with the displayed dates and never shifts across DST transitions.
+// Returns 0 for missing/invalid input (never NaN or a fabricated number).
+export function inclusiveDayCount(start, end) {
+  if (!start || !end) return 0;
+  const a = new Date(start);
+  const b = new Date(end);
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  const diff = Math.round((db - da) / 86400000);
+  return diff < 0 ? 0 : diff + 1;
+}
+
+// Items used to derive the no-main-event range: the current user's own
+// participant items first (attendee, or non-flight creator), falling back to
+// the gathering's full set. Applied to EVERY role including viewers — viewers
+// are not forced to the full set when they have their own attendee items.
+export function selectedItemsForRange(items, userId) {
+  const all = items || [];
+  if (userId) {
+    const mine = all.filter((it) => itemInvolvesUser(it, userId));
+    if (mine.length) return mine;
+  }
+  return all;
+}
+
 // Main derivation. Returns { start: Date|null, end: Date|null, hasRange: bool }.
-// `role` is optional — when 'viewer', the user's own items are skipped and the
-// gathering's full set is used directly (viewers don't "participate" in items).
+// `role` is accepted for signature compatibility but no longer special-cased:
+// every role (including viewers) uses participant-first then the full set.
 export function deriveGatheringRange(gathering, items, userId, role) {
   const all = items || [];
 
   // Main Event prevails globally
-  const mainEvent = all.find((it) => it.type === 'main_event');
+  const mainEvent = mainEventOf(all);
   if (mainEvent) {
     const r = rangeFromItems([mainEvent]);
     if (r) return { start: r.start, end: r.end, hasRange: true };
   }
 
-  // Without Main Event: derive from the user's own items (non-viewer)
-  const isViewer = role === 'viewer';
-  if (!isViewer && userId) {
-    const mine = all.filter((it) => itemInvolvesUser(it, userId));
-    if (mine.length) {
-      const r = rangeFromItems(mine);
-      if (r) return { start: r.start, end: r.end, hasRange: true };
-    }
-  }
-
-  // Fall back to the gathering's full set (Viewer, or user has no own items)
-  const r = rangeFromItems(all);
+  // Participant-first (every role), then the gathering's full set
+  const r = rangeFromItems(selectedItemsForRange(all, userId));
   if (r) return { start: r.start, end: r.end, hasRange: true };
 
   // Legacy typed dates
@@ -125,6 +161,34 @@ export function formatGatheringRange(gathering, items, userId, role) {
   const e = formatDate(end);
   if (s && e) return `${s} – ${e}`;
   return s || e;
+}
+
+// The SINGLE metadata line shown below the gathering name on Home cards.
+//  - Main Event present: "Oct 12, 11:15 PM · 123 Main St" — start date+time
+//    (in the event's own timezone) + full address. No end date or duration.
+//  - No Main Event: "Oct 12 – Oct 19 (8 days)" — derived range (participant-
+//    first, then all) + inclusive day count. No address/location.
+// Returns '' for an empty/invalid state (never NaN or fabricated dates).
+// `formatters` = { t, formatDateTime(iso, tz), formatDate(d) } — supplied by
+// the caller from useI18n() so this stays a pure, testable function.
+export function formatGatheringCardMeta(gathering, items, userId, role, formatters) {
+  const { t, formatDateTime, formatDate: fmtDate } = formatters || {};
+  const main = mainEventOf(items);
+  if (main) {
+    const when = main.start_datetime && formatDateTime
+      ? formatDateTime(main.start_datetime, main.place?.tz)
+      : '';
+    const addr = mainEventAddress(main);
+    return [when, addr].filter(Boolean).join(' · ');
+  }
+  const { start, end, hasRange } = deriveGatheringRange(gathering, items, userId, role);
+  if (!hasRange) return '';
+  const s = fmtDate ? fmtDate(start) : '';
+  const e = fmtDate ? fmtDate(end) : '';
+  const days = inclusiveDayCount(start, end);
+  const daysPart = days > 0 && t ? ` (${t('gatheringCard.daysDuration', { count: days })})` : '';
+  if (s && e) return `${s} – ${e}${daysPart}`;
+  return `${s || e}${daysPart}`;
 }
 
 // ---- Location ----

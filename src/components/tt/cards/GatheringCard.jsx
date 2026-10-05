@@ -1,25 +1,30 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, MapPin } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import AvatarStack from '@/components/tt/AvatarStack';
-import { gatheringDestinations } from '@/lib/gatheringDates';
 import { useI18n } from '@/lib/i18n';
 
 // Home gathering card — image with a dark scrim and the info overlaid on top,
 // matching the Journey card treatment so the experience is consistent. The
-// scrim is always dark (ink-scrim), so white text reads in both light and
-// dark themes. The date label + range are DERIVED by the caller (Home) from
-// the gathering's journey items and passed in as strings; the card is pure
-// display. No status pill — the relative-time label is plain text.
+// scrim is always dark (ink-scrim), so white text reads in both light and dark
+// themes. `dateLabel` (top-left) is the relative status ("In 3 days"); `role`
+// (top-right) is the membership stamp. Both are plain text, unchanged.
 //
-// `locationLabel` is an optional pre-derived location string (from the
-// gathering's journey items — lodging/activities, or Main Event). When not
-// provided, falls back to the legacy stored destinations for backward compat.
-export default function GatheringCard({ gathering, dateLabel, dateRange, role, people, to, locationLabel }) {
+// Below the gathering name is a SINGLE metadata line (`metaLine`), derived by
+// the caller (Home) via formatGatheringCardMeta:
+//   - Main Event present: "Oct 12, 11:15 PM · 123 Main St" (start date+time +
+//     address; no end date or duration). A Star indicator sits next to the
+//     name with an accessible label/title "Main Event".
+//   - No Main Event: "Oct 12 – Oct 19 (8 days)" (derived range + inclusive
+//     days; no address/location).
+// The line truncates with an ellipsis on overflow; the full text is exposed
+// via the title attribute for accessibility. No status pill — the
+// relative-time label is plain text.
+export default function GatheringCard({ gathering, dateLabel, metaLine, isMainEvent, role, people, to }) {
   const { t } = useI18n();
   const g = gathering;
-  const destNames = locationLabel || gatheringDestinations(g).slice(0, 2).map((d) => d.name).join(', ');
+  const mainEventLabel = t('journeyTypes.main_event');
   return (
     <Link
       to={to}
@@ -44,15 +49,22 @@ export default function GatheringCard({ gathering, dateLabel, dateRange, role, p
           )}
         </div>
         <div>
-          <h3 className="font-display text-lg font-bold text-white leading-tight line-clamp-2">{g.name}</h3>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/85 mt-1.5">
-            {dateRange && (
-              <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{dateRange}</span>
+          <div className="flex items-start gap-1.5 min-w-0">
+            {isMainEvent && (
+              <span
+                className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-terra text-white shrink-0 mt-0.5"
+                title={mainEventLabel}
+                aria-label={mainEventLabel}
+                role="img"
+              >
+                <Star className="w-3 h-3" fill="currentColor" strokeWidth={1.5} />
+              </span>
             )}
-            {destNames && (
-              <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{destNames}</span>
-            )}
+            <h3 className="font-display text-lg font-bold text-white leading-tight line-clamp-2 min-w-0">{g.name}</h3>
           </div>
+          {metaLine && (
+            <p className="text-xs text-white/85 mt-1.5 truncate min-w-0" title={metaLine}>{metaLine}</p>
+          )}
           <div className="flex items-center mt-2.5">
             <AvatarStack people={people} max={4} size="xs" />
           </div>

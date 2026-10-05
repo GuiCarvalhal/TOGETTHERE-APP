@@ -589,6 +589,10 @@ export const ptBR = {
     noOneJoined: 'Ninguém entrou ainda',
   },
 
+  gatheringCard: {
+    daysDuration: { one: '{count} dia', other: '{count} dias' },
+  },
+
   expenseForm: {
     editExpense: 'Editar despesa',
     addExpense: 'Adicionar despesa',
