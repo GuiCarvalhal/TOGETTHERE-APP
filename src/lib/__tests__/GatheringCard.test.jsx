@@ -3,10 +3,10 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 // SSR validation of the GatheringCard markup (no jsdom / testing-library —
-// uses react-dom/server which ships with react-dom). Dependencies that touch
-// the browser/router are mocked so we exercise the production component's
-// own JSX (Star indicator, single truncate line, title attribute) — not a
-// copy of its logic.
+// uses react-dom/server which ships with react-dom). The shared
+// GatheringMetaLine is mocked so we can assert the card DELEGATES metadata to
+// it (proving Home card + internal header share one component) and passes the
+// structured meta through unchanged.
 
 vi.mock('@/lib/i18n', () => ({
   useI18n: () => ({
@@ -20,6 +20,13 @@ vi.mock('@/components/ui/image', () => ({
 vi.mock('@/components/tt/AvatarStack', () => ({
   default: ({ people }) => React.createElement('div', { 'data-testid': 'avatars', 'data-count': (people || []).length }),
 }));
+let lastMeta = null;
+vi.mock('@/components/tt/GatheringMetaLine', () => ({
+  default: ({ meta }) => {
+    lastMeta = meta;
+    return React.createElement('div', { 'data-testid': 'meta-line', 'data-mode': meta?.mode || 'none' });
+  },
+}));
 vi.mock('react-router-dom', () => ({
   Link: ({ children, to, className }) => React.createElement('a', { href: to, className }, children),
 }));
@@ -32,60 +39,53 @@ function render(overrides = {}) {
   const props = {
     gathering: baseGathering,
     dateLabel: 'In 3 days',
-    metaLine: 'Oct 12 – Oct 19 (8 days)',
-    isMainEvent: false,
+    meta: { mode: 'range', rangeStart: 'Oct 12', rangeEnd: 'Oct 19', days: 8, daysLabel: '8 days' },
     role: 'member',
     people: [],
     to: '/g/1/journey',
     ...overrides,
   };
+  lastMeta = null;
   return renderToStaticMarkup(React.createElement(GatheringCard, props));
 }
 
-describe('GatheringCard — Main Event branch', () => {
-  it('renders a Star indicator with an accessible Main Event label', () => {
-    const html = render({ isMainEvent: true, metaLine: 'Oct 12, 11:15 PM · Central Park, New York, NY, USA' });
-    expect(html).toContain('aria-label="Main Event"');
-    expect(html).toContain('title="Main Event"');
-    // Star icon renders as an svg
-    expect(html).toMatch(/<svg[^>]*>/);
+describe('GatheringCard — delegates metadata to shared GatheringMetaLine', () => {
+  it('renders the GatheringMetaLine component (shared with internal header)', () => {
+    const html = render();
+    expect(html).toContain('data-testid="meta-line"');
   });
 
-  it('renders only one metadata line (no second address/range row)', () => {
-    const html = render({ isMainEvent: true, metaLine: 'Oct 12, 11:15 PM · Central Park, New York, NY, USA' });
-    // exactly one <p> metadata line
-    const pCount = (html.match(/<p /g) || []).length;
-    expect(pCount).toBe(1);
-    expect(html).toContain('Central Park, New York, NY, USA');
+  it('passes the structured meta through unchanged', () => {
+    render({ meta: { mode: 'event', when: 'Oct 12, 11:15 PM', address: '123 Main St' } });
+    expect(lastMeta).toEqual({ mode: 'event', when: 'Oct 12, 11:15 PM', address: '123 Main St' });
   });
 
-  it('no Star when not a Main Event', () => {
-    const html = render({ isMainEvent: false });
+  it('no Star next to the gathering name (Star lives in the metadata line)', () => {
+    const html = render({ meta: { mode: 'event', when: 'W', address: 'A' } });
     expect(html).not.toContain('aria-label="Main Event"');
   });
-});
 
-describe('GatheringCard — no Main Event branch', () => {
-  it('renders the range+days line and NO address separator (·) when none provided', () => {
-    const html = render({ isMainEvent: false, metaLine: 'Oct 12 – Oct 19 (8 days)' });
-    expect(html).toContain('Oct 12 – Oct 19 (8 days)');
-    expect(html).not.toContain(' · ');
+  it('the <h3> name contains no svg (Star moved to metadata)', () => {
+    const html = render();
+    const h3Match = html.match(/<h3[^>]*>.*?<\/h3>/s);
+    expect(h3Match).toBeTruthy();
+    expect(h3Match[0]).not.toContain('svg');
   });
 });
 
-describe('GatheringCard — single-line truncation', () => {
-  it('metadata line is truncated with the full text in title', () => {
-    const longLine = 'Oct 12, 11:15 PM · A very long address that should truncate and not overflow the card at 320px width whatever happens';
-    const html = render({ isMainEvent: true, metaLine: longLine });
-    expect(html).toContain('class="');
-    // the metadata <p> carries the truncate utility and a title attribute
-    expect(html).toMatch(/<p [^>]*truncate[^>]*title="[^"]*"/);
-    expect(html).toContain(`title="${longLine}"`);
+describe('GatheringCard — event vs range meta modes', () => {
+  it('event meta: data-mode="event"', () => {
+    const html = render({ meta: { mode: 'event', when: 'Oct 12, 11:15 PM', address: 'Central Park' } });
+    expect(html).toContain('data-mode="event"');
   });
 
-  it('renders without error when metaLine is empty', () => {
-    const html = render({ isMainEvent: false, metaLine: '' });
-    expect(html).not.toContain('NaN');
-    expect(html).not.toContain('undefined');
+  it('range meta: data-mode="range"', () => {
+    const html = render({ meta: { mode: 'range', rangeStart: 'Oct 12', rangeEnd: 'Oct 19', days: 8, daysLabel: '8 days' } });
+    expect(html).toContain('data-mode="range"');
+  });
+
+  it('tbd meta: data-mode="tbd"', () => {
+    const html = render({ meta: { mode: 'tbd' } });
+    expect(html).toContain('data-mode="tbd"');
   });
 });

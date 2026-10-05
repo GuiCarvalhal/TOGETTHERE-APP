@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
-import { gatheringDateStatus, formatGatheringRange, deriveGatheringLocation, destinationMapsUrl } from '@/lib/gatheringDates';
+import { gatheringDateStatus, deriveGatheringMeta } from '@/lib/gatheringDates';
+import GatheringMetaLine from '@/components/tt/GatheringMetaLine';
+import { useI18n } from '@/lib/i18n';
 import { canManageGathering } from '@/lib/gatheringHelpers';
 import BottomTabBar from '@/components/tt/BottomTabBar';
 import MoreMenu from '@/components/tt/MoreMenu';
@@ -12,7 +14,7 @@ import { useOneSignal } from '@/lib/useOneSignal';
 import { readLastSection, writeLastSection, sectionFromPath, sectionAllowedForRole } from '@/lib/gatheringLastPage';
 import { useOfflineGatheringCache } from '@/lib/useOfflineSync';
 import { Image } from '@/components/ui/image';
-import { Loader2, CalendarDays, MapPin, Plus, MessageCircle, Music, ExternalLink, Settings } from 'lucide-react';
+import { Loader2, Plus, MessageCircle, Music, Settings } from 'lucide-react';
 
 function FabButton() {
   const { fab } = useGathering();
@@ -33,6 +35,7 @@ function ShellInner() {
   const { id } = useParams();
   const { gathering, role, loading, error, currentMember, journeyItems, members } = useGathering();
   const { user } = useAuth();
+  const { t, fmt } = useI18n();
   const onesignal = useOneSignal(user?.id);
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
@@ -84,8 +87,7 @@ function ShellInner() {
   // current user's items first, falling back to all), never from a typed date.
   const uid = currentMember?.user_id;
   const dateStatus = gatheringDateStatus(gathering, journeyItems, uid, role);
-  const dateRange = formatGatheringRange(gathering, journeyItems, uid, role);
-  const dests = deriveGatheringLocation(journeyItems, uid, role);
+  const meta = deriveGatheringMeta(gathering, journeyItems, uid, role, { t, formatDateTime: fmt.formatDateTime, formatDate: fmt.formatDate });
 
   // Any journey item detail route hides the gathering hero — the detail page
   // has its own sticky DetailActionBar (Back/Edit/Delete) as the first element
@@ -132,29 +134,8 @@ function ShellInner() {
           <div>
             <span className="tt-label text-white/80 block mb-1">{dateStatus.label}</span>
             <h1 className="font-display text-2xl sm:text-4xl font-bold text-white tt-text-balance leading-tight">{gathering.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-white/85 text-xs sm:text-sm">
-              {dateRange && (
-                <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{dateRange}</span>
-              )}
-              {dests.length > 0 && (
-                <span className="inline-flex items-center gap-1.5 flex-wrap">
-                  <MapPin className="w-3.5 h-3.5 shrink-0" />
-                  {dests.map((d, i) => {
-                    const url = destinationMapsUrl(d);
-                    const sep = i < dests.length - 1 ? ' · ' : '';
-                    return (
-                      <span key={i} className="inline-flex items-center gap-0.5">
-                        {url ? (
-                          <a href={url} target="_blank" rel="noopener noreferrer" className="underline decoration-white/40 hover:decoration-white inline-flex items-center gap-0.5">
-                            {d.name}<ExternalLink className="w-3 h-3 opacity-70" />
-                          </a>
-                        ) : d.name}
-                        {sep}
-                      </span>
-                    );
-                  })}
-                </span>
-              )}
+            <div className="mt-1.5 text-white/85 text-xs sm:text-sm">
+              <GatheringMetaLine meta={meta} />
             </div>
           </div>
         </div>

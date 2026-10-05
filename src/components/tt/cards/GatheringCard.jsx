@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import AvatarStack from '@/components/tt/AvatarStack';
+import GatheringMetaLine from '@/components/tt/GatheringMetaLine';
 import { useI18n } from '@/lib/i18n';
 
 // Home gathering card — image with a dark scrim and the info overlaid on top,
@@ -11,20 +11,17 @@ import { useI18n } from '@/lib/i18n';
 // themes. `dateLabel` (top-left) is the relative status ("In 3 days"); `role`
 // (top-right) is the membership stamp. Both are plain text, unchanged.
 //
-// Below the gathering name is a SINGLE metadata line (`metaLine`), derived by
-// the caller (Home) via formatGatheringCardMeta:
-//   - Main Event present: "Oct 12, 11:15 PM · 123 Main St" (start date+time +
-//     address; no end date or duration). A Star indicator sits next to the
-//     name with an accessible label/title "Main Event".
-//   - No Main Event: "Oct 12 – Oct 19 · (8 days)" (derived range + inclusive
-//     days; no address/location).
-// The line truncates with an ellipsis on overflow; the full text is exposed
-// via the title attribute for accessibility. No status pill — the
-// relative-time label is plain text.
-export default function GatheringCard({ gathering, dateLabel, metaLine, isMainEvent, role, people, to }) {
+// Below the gathering name is a SINGLE metadata line rendered by the shared
+// GatheringMetaLine component — the SAME component used by the internal
+// gathering header on Agent/Journey/Expenses/Members — so Home and the
+// in-gathering header always show identical metadata:
+//   - Main Event present: Star + "start date+time · full address" (no end/duration)
+//   - No Main Event: "start – end · (N days)" with bold duration
+// The Star lives in the metadata row, NOT next to the gathering name.
+// See GatheringMetaLine for the full structure and truncation rules.
+export default function GatheringCard({ gathering, dateLabel, meta, role, people, to }) {
   const { t } = useI18n();
   const g = gathering;
-  const mainEventLabel = t('journeyTypes.main_event');
   return (
     <Link
       to={to}
@@ -49,22 +46,10 @@ export default function GatheringCard({ gathering, dateLabel, metaLine, isMainEv
           )}
         </div>
         <div>
-          <div className="flex items-start gap-1.5 min-w-0">
-            {isMainEvent && (
-              <span
-                className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-terra text-white shrink-0 mt-0.5"
-                title={mainEventLabel}
-                aria-label={mainEventLabel}
-                role="img"
-              >
-                <Star className="w-3 h-3" fill="currentColor" strokeWidth={1.5} />
-              </span>
-            )}
-            <h3 className="font-display text-lg font-bold text-white leading-tight line-clamp-2 min-w-0">{g.name}</h3>
+          <h3 className="font-display text-lg font-bold text-white leading-tight line-clamp-2 min-w-0">{g.name}</h3>
+          <div className="text-xs text-white/85 mt-1.5">
+            <GatheringMetaLine meta={meta} />
           </div>
-          {metaLine && (
-            <p className="text-xs text-white/85 mt-1.5 truncate min-w-0" title={metaLine}>{metaLine}</p>
-          )}
           <div className="flex items-center mt-2.5">
             <AvatarStack people={people} max={4} size="xs" />
           </div>

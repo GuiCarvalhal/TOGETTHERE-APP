@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Plus, CalendarDays, Compass, Route, Receipt, Sparkles } from 'lucide-react';
-import { gatheringDateStatus, gatheringSortKey, mainEventOf, formatGatheringCardMeta } from '@/lib/gatheringDates';
+import { gatheringDateStatus, gatheringSortKey, deriveGatheringMeta } from '@/lib/gatheringDates';
 import { journeyIcon } from '@/lib/journeyIcons';
 import { format, differenceInCalendarDays } from 'date-fns';
 import EmptyState from '@/components/tt/EmptyState';
@@ -68,9 +68,8 @@ export default function Home() {
     const r = roleOf(g.id);
     const status = gatheringDateStatus(g, items, userId, r, now);
     const sortKey = gatheringSortKey(g, items, userId, r, now);
-    const isMainEvent = !!mainEventOf(items);
-    const metaLine = formatGatheringCardMeta(g, items, userId, r, { t, formatDateTime: fmt.formatDateTime, formatDate: fmt.formatDate });
-    return { g, status, sortKey, isMainEvent, metaLine };
+    const meta = deriveGatheringMeta(g, items, userId, r, { t, formatDateTime: fmt.formatDateTime, formatDate: fmt.formatDate });
+    return { g, status, sortKey, meta };
   });
   const filtered = annotated.filter(({ status }) => {
     if (filter === 'all') return true;
@@ -190,13 +189,12 @@ export default function Home() {
           />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sorted.map(({ g, status, isMainEvent, metaLine }) => (
+            {sorted.map(({ g, status, meta }) => (
               <GatheringCard
                 key={g.id}
                 gathering={g}
                 dateLabel={status.label}
-                metaLine={metaLine}
-                isMainEvent={isMainEvent}
+                meta={meta}
                 role={roleOf(g.id)}
                 people={previews[g.id] || []}
                 to={`/gathering/${g.id}/journey`}

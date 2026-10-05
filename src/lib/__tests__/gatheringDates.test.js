@@ -10,7 +10,7 @@ import {
   mainEventAddress,
   inclusiveDayCount,
   selectedItemsForRange,
-  formatGatheringCardMeta,
+  deriveGatheringMeta,
 } from '../gatheringDates';
 
 // ---- itemInvolvesUser ----
@@ -316,45 +316,55 @@ const mockFmt = {
   },
 };
 
-describe('formatGatheringCardMeta — Main Event', () => {
-  it('start date+time + address; no end date or duration', () => {
+describe('deriveGatheringMeta — Main Event', () => {
+  it('event mode: when + address; no end date or duration', () => {
     const items = [{
       type: 'main_event',
       start_datetime: '2026-10-12T11:15:00Z',
       end_datetime: '2026-10-12T15:00:00Z',
       place: { name: 'Central Park', address: 'Central Park, New York, NY, USA', tz: 'America/New_York' },
     }];
-    const line = formatGatheringCardMeta({}, items, 'u1', 'member', mockFmt);
-    expect(line).toBe('Oct 12, 11:15 PM · Central Park, New York, NY, USA');
-    expect(line).not.toContain('–');
-    expect(line).not.toMatch(/\(.*days?\)/);
+    const meta = deriveGatheringMeta({}, items, 'u1', 'member', mockFmt);
+    expect(meta.mode).toBe('event');
+    expect(meta.when).toBe('Oct 12, 11:15 PM');
+    expect(meta.address).toBe('Central Park, New York, NY, USA');
+    expect(meta).not.toHaveProperty('days');
+    expect(meta).not.toHaveProperty('rangeStart');
   });
 
   it('uses the event own tz; partial when no address', () => {
     const items = [{ type: 'main_event', start_datetime: '2026-10-12T11:15:00Z', place: { tz: 'America/New_York' } }];
-    expect(formatGatheringCardMeta({}, items, 'u1', 'member', mockFmt)).toBe('Oct 12, 11:15 PM');
+    const meta = deriveGatheringMeta({}, items, 'u1', 'member', mockFmt);
+    expect(meta.mode).toBe('event');
+    expect(meta.when).toBe('Oct 12, 11:15 PM');
+    expect(meta.address).toBe('');
   });
 
   it('Main Event prevails for a viewer too', () => {
     const items = [{ type: 'main_event', start_datetime: '2026-10-12T11:15:00Z', place: { address: 'Addr' } }];
-    expect(formatGatheringCardMeta({}, items, 'v1', 'viewer', mockFmt)).toContain('Addr');
+    const meta = deriveGatheringMeta({}, items, 'v1', 'viewer', mockFmt);
+    expect(meta.mode).toBe('event');
+    expect(meta.address).toBe('Addr');
   });
 });
 
-describe('formatGatheringCardMeta — no Main Event', () => {
-  it('range + inclusive days; no address', () => {
+describe('deriveGatheringMeta — no Main Event', () => {
+  it('range mode: rangeStart/rangeEnd + daysLabel; no address', () => {
     const items = [
       { type: 'hotel', start_datetime: '2026-03-10T08:00:00Z', end_datetime: '2026-03-12T08:00:00Z', owner_id: 'u1', attendee_user_ids: ['u1'] },
     ];
-    const line = formatGatheringCardMeta({}, items, 'u1', 'member', mockFmt);
-    // 3 inclusive days
-    expect(line).toMatch(/–.*\(3 days\)/);
-    expect(line).not.toContain('·');
+    const meta = deriveGatheringMeta({}, items, 'u1', 'member', mockFmt);
+    expect(meta.mode).toBe('range');
+    expect(meta.days).toBe(3);
+    expect(meta.daysLabel).toBe('3 days');
+    expect(meta.address).toBeUndefined();
   });
 
-  it('same-day range shows (1 day)', () => {
+  it('same-day range: days = 1, daysLabel = "1 day"', () => {
     const items = [{ type: 'hotel', start_datetime: '2026-03-10T08:00:00Z', end_datetime: '2026-03-10T20:00:00Z', owner_id: 'u1', attendee_user_ids: ['u1'] }];
-    expect(formatGatheringCardMeta({}, items, 'u1', 'member', mockFmt)).toMatch(/\(1 day\)/);
+    const meta = deriveGatheringMeta({}, items, 'u1', 'member', mockFmt);
+    expect(meta.days).toBe(1);
+    expect(meta.daysLabel).toBe('1 day');
   });
 
   it('participant-first for viewer with own items', () => {
@@ -362,14 +372,13 @@ describe('formatGatheringCardMeta — no Main Event', () => {
       { type: 'hotel', start_datetime: '2026-03-10T08:00:00Z', end_datetime: '2026-03-10T20:00:00Z', owner_id: 'v1', attendee_user_ids: ['v1'] },
       { type: 'activity', start_datetime: '2026-04-01T08:00:00Z', owner_id: 'other', attendee_user_ids: ['other'] },
     ];
-    const line = formatGatheringCardMeta({}, items, 'v1', 'viewer', mockFmt);
-    // Only the hotel (same-day) — not April
-    expect(line).toMatch(/\(1 day\)/);
-    expect(line).not.toContain('Apr');
+    const meta = deriveGatheringMeta({}, items, 'v1', 'viewer', mockFmt);
+    expect(meta.days).toBe(1);
+    expect(meta.daysLabel).toBe('1 day');
   });
 
-  it('empty/invalid dates produce empty string, never NaN', () => {
-    expect(formatGatheringCardMeta({}, [], 'u1', 'member', mockFmt)).toBe('');
-    expect(formatGatheringCardMeta({}, [{ type: 'hotel' }], 'u1', 'member', mockFmt)).toBe('');
+  it('empty/invalid dates produce tbd mode, never NaN', () => {
+    expect(deriveGatheringMeta({}, [], 'u1', 'member', mockFmt).mode).toBe('tbd');
+    expect(deriveGatheringMeta({}, [{ type: 'hotel' }], 'u1', 'member', mockFmt).mode).toBe('tbd');
   });
 });

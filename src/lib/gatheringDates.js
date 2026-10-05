@@ -163,32 +163,37 @@ export function formatGatheringRange(gathering, items, userId, role) {
   return s || e;
 }
 
-// The SINGLE metadata line shown below the gathering name on Home cards.
-//  - Main Event present: "Oct 12, 11:15 PM · 123 Main St" — start date+time
-//    (in the event's own timezone) + full address. No end date or duration.
-//  - No Main Event: "Oct 12 – Oct 19 (8 days)" — derived range (participant-
-//    first, then all) + inclusive day count. No address/location.
-// Returns '' for an empty/invalid state (never NaN or fabricated dates).
+// Structured metadata for the shared GatheringMetaLine component (used by
+// both the Home gathering card and the internal gathering header on
+// Agent/Journey/Expenses/Members). Returns a plain object — the component
+// renders the JSX, never string parsing or dangerouslySetInnerHTML.
+//   - Main Event present: { mode: 'event', when, address }
+//     when = start date+time in the event's own timezone; address = full
+//     place address. No end date or duration.
+//   - No Main Event: { mode: 'range', rangeStart, rangeEnd, days, daysLabel }
+//     derived range (participant-first, then all) + inclusive day count.
+//     daysLabel is the pluralized "{count} day/days" text (no parens — the
+//     component adds them and bolds the duration).
+//   - No dates: { mode: 'tbd' } (component renders nothing — truthful empty).
 // `formatters` = { t, formatDateTime(iso, tz), formatDate(d) } — supplied by
 // the caller from useI18n() so this stays a pure, testable function.
-export function formatGatheringCardMeta(gathering, items, userId, role, formatters) {
+export function deriveGatheringMeta(gathering, items, userId, role, formatters) {
   const { t, formatDateTime, formatDate: fmtDate } = formatters || {};
   const main = mainEventOf(items);
   if (main) {
     const when = main.start_datetime && formatDateTime
       ? formatDateTime(main.start_datetime, main.place?.tz)
       : '';
-    const addr = mainEventAddress(main);
-    return [when, addr].filter(Boolean).join(' · ');
+    const address = mainEventAddress(main);
+    return { mode: 'event', when, address };
   }
   const { start, end, hasRange } = deriveGatheringRange(gathering, items, userId, role);
-  if (!hasRange) return '';
-  const s = fmtDate ? fmtDate(start) : '';
-  const e = fmtDate ? fmtDate(end) : '';
+  if (!hasRange) return { mode: 'tbd' };
+  const rangeStart = fmtDate ? fmtDate(start) : '';
+  const rangeEnd = fmtDate ? fmtDate(end) : '';
   const days = inclusiveDayCount(start, end);
-  const daysPart = days > 0 && t ? ` (${t('gatheringCard.daysDuration', { count: days })})` : '';
-  if (s && e) return `${s} – ${e}${daysPart}`;
-  return `${s || e}${daysPart}`;
+  const daysLabel = days > 0 && t ? t('gatheringCard.daysDuration', { count: days }) : '';
+  return { mode: 'range', rangeStart, rangeEnd, days, daysLabel };
 }
 
 // ---- Location ----
