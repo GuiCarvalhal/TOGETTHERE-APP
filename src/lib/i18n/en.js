@@ -252,13 +252,13 @@ export const en = {
   },
 
   journeyTypes: {
+    hotel: 'Stay',
+    activity: 'Activity',
+    main_event: 'Main Event',
     flight: 'Flight',
     car: 'Drive',
     train: 'Train',
-    hotel: 'Stay',
-    activity: 'Activity',
     cruise: 'Cruise',
-    main_event: 'Main Event',
     other: 'Other',
   },
 
