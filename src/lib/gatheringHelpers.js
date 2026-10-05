@@ -417,13 +417,13 @@ export function settleUp(balances) {
 // Distinct accent color per journey type — used for tinted medallions and
 // graceful placeholder covers. Hex values render theme-aware via opacity tints.
 export const JOURNEY_TYPES = [
+  { key: 'hotel', label: 'Stay', icon: 'Hotel', color: '#F59E0B' },
+  { key: 'activity', label: 'Activity', icon: 'Compass', color: '#10B981' },
+  { key: 'main_event', label: 'Main Event', icon: 'Star', color: '#E05C48' },
   { key: 'flight', label: 'Flight', icon: 'Plane', color: '#0EA5E9' },
   { key: 'car', label: 'Drive', icon: 'Car', color: '#E05A47' },
   { key: 'train', label: 'Train', icon: 'Train', color: '#8B5CF6' },
-  { key: 'hotel', label: 'Stay', icon: 'Hotel', color: '#F59E0B' },
-  { key: 'activity', label: 'Activity', icon: 'Compass', color: '#10B981' },
   { key: 'cruise', label: 'Cruise', icon: 'Ship', color: '#14B8A6' },
-  { key: 'main_event', label: 'Main Event', icon: 'Star', color: '#E05C48' },
   { key: 'other', label: 'Other', icon: 'MapPin', color: '#64748B' },
 ];
 
