@@ -445,9 +445,9 @@ export function timeAgo(date, locale = 'en-US') {
 
 export const EXPENSE_CATEGORIES = [
   { key: 'food', label: 'Food & Drink', icon: 'UtensilsCrossed', color: '#E05A47' },
-  { key: 'lodging', label: 'Lodging', icon: 'Hotel', color: '#1E2633' },
-  { key: 'transport', label: 'Transport', icon: 'Car', color: '#F07865' },
   { key: 'activities', label: 'Activities', icon: 'Compass', color: '#C8493A' },
+  { key: 'transport', label: 'Transport', icon: 'Car', color: '#F07865' },
+  { key: 'lodging', label: 'Lodging', icon: 'Hotel', color: '#1E2633' },
   { key: 'other', label: 'Other', icon: 'Receipt', color: '#7a8290' },
 ];
 
