@@ -118,20 +118,24 @@ describe('GatheringMetaLine — empty/partial states (truthful, never NaN)', () 
   });
 });
 
-describe('GatheringShell — shares GatheringMetaLine with Home card', () => {
+describe('GatheringShell — shares GatheringMetaLine with Home card via GatheringHero', () => {
   const shellSrc = readFileSync(resolve('src/components/GatheringShell.jsx'), 'utf8');
+  const heroSrc = readFileSync(resolve('src/components/tt/GatheringHero.jsx'), 'utf8');
 
-  it('imports GatheringMetaLine', () => {
-    expect(shellSrc).toContain('GatheringMetaLine');
+  it('GatheringShell delegates the header to GatheringHero', () => {
+    expect(shellSrc).toContain('GatheringHero');
   });
 
-  it('renders <GatheringMetaLine meta={meta} />', () => {
-    expect(shellSrc).toMatch(/<GatheringMetaLine\s+meta=\{meta\}/);
+  it('GatheringHero imports and renders <GatheringMetaLine meta={meta} />', () => {
+    expect(heroSrc).toContain('GatheringMetaLine');
+    expect(heroSrc).toMatch(/<GatheringMetaLine\s+meta=\{meta\}/);
   });
 
-  it('no longer uses formatGatheringRange/deriveGatheringLocation in the header', () => {
+  it('neither the shell nor the hero uses formatGatheringRange/deriveGatheringLocation', () => {
     expect(shellSrc).not.toContain('formatGatheringRange');
     expect(shellSrc).not.toContain('deriveGatheringLocation');
     expect(shellSrc).not.toContain('destinationMapsUrl');
+    expect(heroSrc).not.toContain('formatGatheringRange');
+    expect(heroSrc).not.toContain('deriveGatheringLocation');
   });
 });

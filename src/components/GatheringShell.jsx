@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
 import { gatheringDateStatus, deriveGatheringMeta } from '@/lib/gatheringDates';
-import GatheringMetaLine from '@/components/tt/GatheringMetaLine';
+import GatheringHero from '@/components/tt/GatheringHero';
 import { useI18n } from '@/lib/i18n';
-import { canManageGathering } from '@/lib/gatheringHelpers';
 import BottomTabBar from '@/components/tt/BottomTabBar';
 import MoreMenu from '@/components/tt/MoreMenu';
 import TopBar from '@/components/tt/TopBar';
@@ -13,8 +12,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useOneSignal } from '@/lib/useOneSignal';
 import { readLastSection, writeLastSection, sectionFromPath, sectionAllowedForRole } from '@/lib/gatheringLastPage';
 import { useOfflineGatheringCache } from '@/lib/useOfflineSync';
-import { Image } from '@/components/ui/image';
-import { Loader2, Plus, MessageCircle, Music, Settings } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 
 function FabButton() {
   const { fab } = useGathering();
@@ -100,46 +98,15 @@ function ShellInner() {
     <div className="min-h-screen bg-background text-foreground">
       <TopBar gatheringId={id} onOpenMenu={() => setMoreOpen(true)} />
       {/* Cover-photo header — hidden on journey item detail */}
-      {!isItemDetail && <header className="relative">
-        <div className="relative h-[124px] sm:h-[168px] w-full overflow-hidden">
-          {gathering.cover_image ? (
-            <Image src={gathering.cover_image} alt={gathering.name} className="w-full h-full object-cover" fittingType="fill" />
-          ) : (
-            <div className="w-full h-full bg-ink-scrim flex items-center justify-center">
-              <span className="font-display italic text-white/20 text-4xl">TOGETTHERE</span>
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/25" />
-        </div>
-        {(canManageGathering(role) || gathering.whatsapp_url || gathering.music_url) && (
-          <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
-            {canManageGathering(role) && (
-              <Link to={`/gathering/${id}/settings`} aria-label="Gathering settings" className="w-11 h-11 rounded-full flex items-center justify-center bg-black/35 backdrop-blur-sm text-white hover:bg-black/50 transition-colors">
-                <Settings className="w-5 h-5" />
-              </Link>
-            )}
-            {gathering.music_url && (
-              <a href={gathering.music_url} target="_blank" rel="noopener noreferrer" aria-label="Open gathering playlist" className="w-11 h-11 rounded-full flex items-center justify-center bg-black/35 backdrop-blur-sm text-white hover:bg-black/50 transition-colors">
-                <Music className="w-5 h-5" />
-              </a>
-            )}
-            {gathering.whatsapp_url && (
-              <a href={gathering.whatsapp_url} target="_blank" rel="noopener noreferrer" aria-label="Open WhatsApp group" className="w-11 h-11 rounded-full flex items-center justify-center bg-black/35 backdrop-blur-sm text-white hover:bg-black/50 transition-colors">
-                <MessageCircle className="w-5 h-5" />
-              </a>
-            )}
-          </div>
-        )}
-        <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6">
-          <div>
-            <span className="tt-label text-white/80 block mb-1">{dateStatus.label}</span>
-            <h1 className="font-display text-2xl sm:text-4xl font-bold text-white tt-text-balance leading-tight">{gathering.name}</h1>
-            <div className="mt-1.5 text-white/85 text-xs sm:text-sm">
-              <GatheringMetaLine meta={meta} />
-            </div>
-          </div>
-        </div>
-      </header>}
+      {!isItemDetail && (
+        <GatheringHero
+          id={id}
+          gathering={gathering}
+          role={role}
+          dateStatusLabel={dateStatus.label}
+          meta={meta}
+        />
+      )}
 
       <NotificationOptInBanner onesignal={onesignal} gatheringId={id} />
 
