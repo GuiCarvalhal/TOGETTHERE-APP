@@ -138,6 +138,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Refresh the cached current user after a self-profile update (display_name,
+  // photo, etc.) so the TopBar avatar and any user-derived display update
+  // without a full reload. No loading flash — only the user state changes.
+  const refreshUser = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+    } catch { /* ignore — stale user is harmless until next mount */ }
+  };
+
   const navigateToLogin = () => {
     // Use the SDK's redirectToLogin method
     base44.auth.redirectToLogin(window.location.href);
@@ -153,6 +163,7 @@ export const AuthProvider = ({ children }) => {
       appPublicSettings,
       authChecked,
       logout,
+      refreshUser,
       navigateToLogin,
       checkUserAuth,
       checkAppState

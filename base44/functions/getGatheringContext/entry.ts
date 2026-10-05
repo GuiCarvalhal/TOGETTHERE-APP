@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { matchMyMember, healMember, syncChildArrays } from '../../shared/gatheringAcl.ts';
+import { matchMyMember, healMember, syncChildArrays, overlayUserDisplay } from '../../shared/gatheringAcl.ts';
 
 export default async function(req) {
   try {
@@ -33,10 +33,20 @@ export default async function(req) {
     // home_city are masked). No per-pair Relationship queries remain.
 
     // Enrich my member record with global User profile fields so my card and the
-    // Agent reflect the global profile (home_city, interests).
-    me = { ...me, home_city: user.home_city || me.home_city, interests: (user.interests && user.interests.length) ? user.interests : me.interests };
+    // Agent reflect the global profile (home_city, interests, display name/photo).
+    me = {
+      ...me,
+      home_city: user.home_city || me.home_city,
+      interests: (user.interests && user.interests.length) ? user.interests : me.interests,
+      full_name: user.display_name || user.full_name || me.full_name,
+      photo: user.photo || me.photo,
+    };
 
-    const masked = (members || []).map((m) => {
+    // Overlay the authoritative User display_name/photo onto every member so
+    // member displays reflect the global profile without syncing Member records.
+    const overlaid = await overlayUserDisplay(base44, members || []);
+
+    const masked = overlaid.map((m) => {
       if (m.id === me.id) {
         return { ...me, visibility: 'full' };
       }

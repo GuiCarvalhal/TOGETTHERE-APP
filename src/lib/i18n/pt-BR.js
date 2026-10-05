@@ -179,6 +179,9 @@ export const ptBR = {
 
   account: {
     settingsAccount: 'Configurações & conta',
+    account: 'Conta',
+    accountDesc: 'Seu perfil e configurações do app, disponíveis em qualquer lugar.',
+    appSettings: 'Configurações do app',
     member: 'Membro',
     appearance: 'Aparência',
     light: 'Claro',
@@ -380,6 +383,7 @@ export const ptBR = {
     saved: 'Salvo',
     couldNotSave: 'Não foi possível salvar as configurações',
     photoSearchFailed: 'Falha na busca de fotos',
+    myNotifications: 'Minhas notificações',
     dangerZone: 'Zona de perigo',
     dangerDesc: 'Exclui permanentemente este encontro e tudo nele — segmentos de roteiro, despesas, divisões, membros, tarefas, atividade e pedidos de entrada. Isso não pode ser desfeito.',
     deleteGathering: 'Excluir encontro',

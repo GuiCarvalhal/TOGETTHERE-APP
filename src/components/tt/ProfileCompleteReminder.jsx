@@ -31,7 +31,7 @@ export default function ProfileCompleteReminder() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-2">
       <Link
-        to={`/profile/${user.id}`}
+        to="/account"
         className="tt-card block p-4 sm:p-5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
       >
         <div className="flex items-center gap-3">

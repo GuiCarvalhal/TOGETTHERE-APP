@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { resolveMyMembers } from '../../shared/gatheringAcl.ts';
+import { resolveMyMembers, overlayUserDisplay } from '../../shared/gatheringAcl.ts';
 
 // Returns the current user's gatherings plus a display-safe member preview
 // (full_name, photo, role only) per gathering, for avatar stacks on Home, AND
@@ -39,7 +39,8 @@ export default async function(req) {
         base44.asServiceRole.entities.Member.filter({ gathering_id: gid }),
         base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gid }),
       ]);
-      previews[gid] = (ms || [])
+      const overlaidMs = await overlayUserDisplay(base44, ms || []);
+      previews[gid] = overlaidMs
         .map((m) => ({ full_name: m.full_name, photo: m.photo, role: m.role }))
         .slice(0, 8);
       itemsByGathering[gid] = (its || []).map((it) => ({
@@ -52,7 +53,7 @@ export default async function(req) {
         location_name: it.location_name || null,
       }));
       const memberByUid = {};
-      (ms || []).forEach((m) => { if (m.user_id) memberByUid[m.user_id] = m; });
+      overlaidMs.forEach((m) => { if (m.user_id) memberByUid[m.user_id] = m; });
       const resolveParticipants = (it) => {
         // Flights never fall back to the creator for avatar display — an empty
         // attendee list means "no one joined yet", not the owner. Other types

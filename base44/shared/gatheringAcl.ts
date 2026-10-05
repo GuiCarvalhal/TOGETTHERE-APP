@@ -134,6 +134,35 @@ export function resolvePayerUid(members, payerMemberId, fallback) {
   return (payer && payer.user_id) || fallback;
 }
 
+// Overlay the authoritative User display name + photo onto member records so
+// member displays reflect the global profile WITHOUT syncing Member records on
+// own-profile save. The User entity's display_name is the editable universal
+// name (full_name is a read-only built-in); photo is global. Falls back to the
+// stored Member fields when a User record can't be resolved (legacy/beta rows).
+// Safe to call with an empty list. One batched User.filter per call.
+export async function overlayUserDisplay(base44, members) {
+  const list = members || [];
+  const uids = list.map((m) => m && m.user_id).filter(Boolean);
+  if (!uids.length) return list;
+  let users = [];
+  try {
+    const res = await base44.asServiceRole.entities.User.filter({ id: { $in: uids } });
+    users = Array.isArray(res) ? res : (res && res.items) || [];
+  } catch { /* ignore — fall back to Member names */ }
+  const byId = new Map();
+  for (const u of users) if (u && u.id) byId.set(u.id, u);
+  return list.map((m) => {
+    const u = byId.get(m.user_id);
+    if (!u) return m;
+    const name = u.display_name || u.full_name;
+    return {
+      ...m,
+      full_name: name || m.full_name,
+      photo: u.photo || m.photo,
+    };
+  });
+}
+
 export function buildSplitRecords({ expenseId, gatheringId, splits, ownerUid, payerUid, parts }) {
   return (splits || []).map((s) => ({
     expense_id: expenseId,

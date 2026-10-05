@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
 import { gatheringDateStatus, deriveGatheringMeta } from '@/lib/gatheringDates';
 import GatheringHero from '@/components/tt/GatheringHero';
 import { useI18n } from '@/lib/i18n';
 import BottomTabBar from '@/components/tt/BottomTabBar';
-import MoreMenu from '@/components/tt/MoreMenu';
 import TopBar from '@/components/tt/TopBar';
 import NotificationOptInBanner from '@/components/tt/NotificationOptInBanner';
 import { useAuth } from '@/lib/AuthContext';
@@ -35,7 +34,6 @@ function ShellInner() {
   const { user } = useAuth();
   const { t, fmt } = useI18n();
   const onesignal = useOneSignal(user?.id);
-  const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
 
   // Populate the offline IndexedDB cache from successfully loaded gathering
@@ -96,7 +94,7 @@ function ShellInner() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TopBar gatheringId={id} onOpenMenu={() => setMoreOpen(true)} />
+      <TopBar gatheringId={id} />
       {/* Cover-photo header — hidden on journey item detail */}
       {!isItemDetail && (
         <GatheringHero
@@ -111,12 +109,11 @@ function ShellInner() {
       <NotificationOptInBanner onesignal={onesignal} gatheringId={id} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-2.5 pb-36">
-        <Outlet context={{ openMore: () => setMoreOpen(true) }} />
+        <Outlet context={{ onesignal }} />
       </main>
 
       <FabButton />
       <BottomTabBar gatheringId={id} role={role} />
-      <MoreMenu open={moreOpen} onOpenChange={setMoreOpen} onesignal={onesignal} />
     </div>
   );
 }

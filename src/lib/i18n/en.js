@@ -183,6 +183,9 @@ export const en = {
 
   account: {
     settingsAccount: 'Settings & account',
+    account: 'Account',
+    accountDesc: 'Your profile and app settings, available everywhere.',
+    appSettings: 'App settings',
     member: 'Member',
     appearance: 'Appearance',
     light: 'Light',
@@ -384,6 +387,7 @@ export const en = {
     saved: 'Saved',
     couldNotSave: 'Could not save settings',
     photoSearchFailed: 'Photo search failed',
+    myNotifications: 'My notifications',
     dangerZone: 'Danger zone',
     dangerDesc: 'Permanently delete this gathering and everything in it — journey segments, expenses, splits, members, tasks, activity, and join requests. This cannot be undone.',
     deleteGathering: 'Delete gathering',

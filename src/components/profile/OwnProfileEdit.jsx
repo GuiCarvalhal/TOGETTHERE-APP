@@ -24,7 +24,7 @@ import { MapPin, Globe, Sparkles, Camera, UtensilsCrossed } from 'lucide-react';
 // The Save action lives in the page's sticky ProfileActionBar, so this
 // component exposes an imperative save() through its ref and reports dirty /
 // saving state via callbacks. The save logic itself is unchanged.
-const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, userId, onSaved, onSaveDone, onDirtyChange, onSavingChange, openMore }, ref) {
+const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSaved, onSaveDone, onDirtyChange, onSavingChange }, ref) {
   const { user, member, families } = data;
   const { toast } = useToast();
   const { t } = useI18n();
@@ -71,6 +71,11 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
       // display_name is the universal profile name (full_name is a read-only
       // built-in that can't be overridden, so display_name is the editable
       // name). photo is also global.
+      // Own-profile writes target ONLY the authenticated account globally via
+      // updateMe (display_name, photo, home_city, etc.). No Member/ACL/role
+      // writes here — gathering member displays read the authoritative User
+      // display_name/photo via overlayUserDisplay in getGatheringContext /
+      // getHomePreviews, so they stay current without syncing Member records.
       await base44.auth.updateMe({
         display_name: form.full_name.trim(),
         home_city: form.home_city.trim(),
@@ -81,15 +86,6 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
         dietary_preferences: form.dietary_preferences,
         photo: form.photo,
       });
-      // Sync name + photo to the Member record ONLY when a gathering context
-      // exists — so gathering cards/avatars update there too. Without a
-      // gathering, the global update above is the whole save.
-      if (gatheringId) {
-        await base44.functions.invoke('updateMyProfile', {
-          gathering_id: gatheringId,
-          fields: { full_name: form.full_name.trim(), photo: form.photo },
-        });
-      }
       toast({ title: t('profileEdit.profileSaved') });
       onSaved();
       onSaveDone?.();
@@ -159,12 +155,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, gatheringId, u
       </div>
 
       {/* Family (global) */}
-      <FamilyManager families={families || []} gatheringId={gatheringId} userId={userId} onChanged={onSaved} />
-
-      {/* Save lives in the sticky ProfileActionBar. */}
-      {openMore && (
-        <Button variant="outline" onClick={openMore} className="rounded-full">{t('profileEdit.accountSettings')}</Button>
-      )}
+      <FamilyManager families={families || []} userId={userId} onChanged={onSaved} />
     </div>
   );
 });

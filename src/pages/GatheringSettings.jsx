@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
+import { useOutletContext } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { gatheringDestinations } from '@/lib/gatheringDates';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Image } from '@/components/ui/image';
 import { Loader2, Save, Search, Trash2, AlertTriangle, Check } from 'lucide-react';
 import DestinationPicker from '@/components/tt/DestinationPicker';
+import GatheringNotificationPrefs from '@/components/tt/GatheringNotificationPrefs';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -25,6 +27,8 @@ const SAMPLE_COVERS = [
 export default function GatheringSettings() {
   const { t } = useI18n();
   const { gatheringId, gathering, role, refresh, setFab } = useGathering();
+  const { onesignal } = useOutletContext() || {};
+  const isOwner = role === 'owner';
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -56,16 +60,7 @@ export default function GatheringSettings() {
     return () => setFab(null);
   }, [setFab]);
 
-  if (role !== 'owner') {
-    return (
-      <div className="tt-card p-10 text-center max-w-md mx-auto">
-        <AlertTriangle className="w-10 h-10 text-terra mx-auto mb-4" />
-        <p className="font-display text-2xl mb-2 text-ink-deep">{t('settings.ownerOnly')}</p>
-        <p className="text-ink-deep/60 text-sm">{t('settings.ownerOnlyBody')}</p>
-      </div>
-    );
-  }
-  if (!gathering || !form) {
+  if (!gathering || (isOwner && !form)) {
     return <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-terra" /></div>;
   }
 
