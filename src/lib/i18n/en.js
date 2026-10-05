@@ -253,9 +253,9 @@ export const en = {
 
   journeyTypes: {
     flight: 'Flight',
-    car: 'Car / Driver',
+    car: 'Drive',
     train: 'Train',
-    hotel: 'Hotel / Stay',
+    hotel: 'Stay',
     activity: 'Activity',
     cruise: 'Cruise',
     main_event: 'Main Event',
