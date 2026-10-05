@@ -33,7 +33,7 @@ export default function SegmentedControl({ options, value, onChange, ariaLabel, 
             className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background [&_svg]:w-3.5 [&_svg]:h-3.5 [&_svg]:shrink-0 ${active ? 'bg-terra text-cream' : 'text-foreground/60 hover:text-foreground'}`}
           >
             {o.icon}
-            {o.label && <span>{o.label}</span>}
+
           </button>
         );
       })}
