@@ -16,7 +16,7 @@ import { useI18n } from '@/lib/i18n';
 //   - Main Event present: "Oct 12, 11:15 PM · 123 Main St" (start date+time +
 //     address; no end date or duration). A Star indicator sits next to the
 //     name with an accessible label/title "Main Event".
-//   - No Main Event: "Oct 12 – Oct 19 (8 days)" (derived range + inclusive
+//   - No Main Event: "Oct 12 – Oct 19 · (8 days)" (derived range + inclusive
 //     days; no address/location).
 // The line truncates with an ellipsis on overflow; the full text is exposed
 // via the title attribute for accessibility. No status pill — the
