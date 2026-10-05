@@ -290,9 +290,9 @@ export const en = {
 
   expenseCategories: {
     food: 'Food & Drink',
-    lodging: 'Lodging',
-    transport: 'Transport',
     activities: 'Activities',
+    transport: 'Transport',
+    lodging: 'Lodging',
     other: 'Other',
   },
 
