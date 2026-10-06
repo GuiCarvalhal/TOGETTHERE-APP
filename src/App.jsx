@@ -19,6 +19,7 @@ import GatheringAgent from '@/pages/GatheringAgent';
 import AgentPlaceDetail from '@/pages/AgentPlaceDetail';
 import GatheringJourney from '@/pages/GatheringJourney';
 import AddSegmentPage from '@/pages/AddSegmentPage';
+import ImportEmail from '@/pages/ImportEmail';
 import FlightPage from '@/pages/FlightPage';
 import JourneyDetail from '@/pages/JourneyDetail';
 import GatheringExpenses from '@/pages/GatheringExpenses';
@@ -71,6 +72,7 @@ function App() {
                 <Route path="agent/place" element={<AgentPlaceDetail />} />
                 <Route path="journey" element={<GatheringJourney />} />
                 <Route path="journey/new" element={<AddSegmentPage />} />
+                <Route path="journey/import-email" element={<ImportEmail />} />
                 <Route path="journey/new/flight" element={<FlightPage />} />
                 <Route path="journey/:itemId/edit" element={<FlightPage />} />
                 <Route path="journey/:itemId" element={<JourneyDetail />} />

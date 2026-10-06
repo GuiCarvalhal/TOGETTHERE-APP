@@ -9,7 +9,9 @@ import { tzDateKey } from '@/lib/formatPlaceTime';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
+import DailyTravelSummary from '@/components/journey/DailyTravelSummary';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import useJourneyDayTotals from '@/hooks/useJourneyDayTotals';
 import { itemRouteNumbers } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import { useOfflineJourneyCache } from '@/lib/useOfflineSync';
@@ -17,7 +19,7 @@ import PageToolbar from '@/components/tt/PageToolbar';
 import FilterChips from '@/components/tt/FilterChips';
 import ViewerMemberFilter from '@/components/tt/ViewerMemberFilter';
 import { Button } from '@/components/ui/button';
-import { Compass, Plus } from 'lucide-react';
+import { Compass, Plus, Mail } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import { useI18n } from '@/lib/i18n';
@@ -138,14 +140,19 @@ export default function GatheringJourney() {
   // its correct day in chronological order. Other types stay single.
   const entries = [];
   filteredItems.forEach((it) => {
+    const tz = tzMap[it.id];
     if (it.type === 'hotel' && it.start_datetime && it.end_datetime && it.start_datetime !== it.end_datetime) {
-      entries.push({ key: `${it.id}-in`, leg: 'check-in', at: it.start_datetime, item: it });
-      entries.push({ key: `${it.id}-out`, leg: 'check-out', at: it.end_datetime, item: it });
+      entries.push({ key: `${it.id}-in`, leg: 'check-in', at: it.start_datetime, item: it, dayKey: dayKey(it.start_datetime, tz) });
+      entries.push({ key: `${it.id}-out`, leg: 'check-out', at: it.end_datetime, item: it, dayKey: dayKey(it.end_datetime, tz) });
     } else {
-      entries.push({ key: it.id, leg: null, at: it.start_datetime, item: it });
+      entries.push({ key: it.id, leg: null, at: it.start_datetime, item: it, dayKey: dayKey(it.start_datetime, tz) });
     }
   });
   entries.sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
+  // Per-day driving distance + duration between consecutive segments. Built
+  // from the same entries above (each now carrying its dayKey), fetched in one
+  // batch, non-blocking. See useJourneyDayTotals / journeyDistance.
+  const { totals: dayTotals, loading: dayTotalsLoading } = useJourneyDayTotals(entries);
   const byDay = {};
   entries.forEach((e) => {
     const k = dayKey(e.at, tzMap[e.item.id]);
@@ -247,38 +254,53 @@ export default function GatheringJourney() {
           title={typeFilter !== 'all' ? t('journey.noSegmentsType') : (isViewer ? t('journey.noSegmentsViewer') : (effectiveScope === 'mine' ? t('journey.noSegmentsMine') : t('journey.noSegments')))}
           body={typeFilter !== 'all' ? t('journey.noSegmentsTypeBody') : (isViewer ? t('journey.noSegmentsViewerBody') : (effectiveScope === 'mine' ? t('journey.noSegmentsMineBody') : t('journey.noSegmentsBody')))}
           action={canAdd && typeFilter === 'all' ? (
-            <Button onClick={() => navigate(`/gathering/${gatheringId}/journey/new`)}>
-              <Plus /> {t('journey.addFirstSegment')}
-            </Button>
+            <div className="flex flex-col items-center gap-2">
+              <Button onClick={() => navigate(`/gathering/${gatheringId}/journey/new`)}>
+                <Plus /> {t('journey.addFirstSegment')}
+              </Button>
+              <Button variant="outline" onClick={() => navigate(`/gathering/${gatheringId}/journey/import-email`)}>
+                <Mail /> {t('journey.importEmail')}
+              </Button>
+            </div>
           ) : undefined}
         />
       ) : (
-        <Timeline>
-          {days.map((day) => (
-            <div
-              key={day}
-              ref={day === targetDay ? targetDayRef : undefined}
-              className="space-y-3"
-            >
-              <TimelineDay day={day} />
-              <div className="space-y-3">
-                {byDay[day].map((entry) => (
-                  <JourneyCard
-                    key={entry.key}
-                    item={entry.item}
-                    leg={entry.leg}
-                    typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
-                    icon={journeyIcon(entry.item.type)}
-                    participants={itemParticipants(entry.item, memberById)}
-                    showImages={effectiveImages}
-                    routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
-                    to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
-                  />
-                ))}
+        <>
+          <Timeline>
+            {days.map((day) => (
+              <div
+                key={day}
+                ref={day === targetDay ? targetDayRef : undefined}
+                className="space-y-3"
+              >
+                <TimelineDay day={day} />
+                <DailyTravelSummary total={dayTotals[day]} loading={dayTotalsLoading} />
+                <div className="space-y-3">
+                  {byDay[day].map((entry) => (
+                    <JourneyCard
+                      key={entry.key}
+                      item={entry.item}
+                      leg={entry.leg}
+                      typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
+                      icon={journeyIcon(entry.item.type)}
+                      participants={itemParticipants(entry.item, memberById)}
+                      showImages={effectiveImages}
+                      routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
+                      to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
+                    />
+                  ))}
+                </div>
               </div>
+            ))}
+          </Timeline>
+          {canAdd && (
+            <div className="mt-6 flex justify-center">
+              <Button variant="ghost" size="sm" onClick={() => navigate(`/gathering/${gatheringId}/journey/import-email`)}>
+                <Mail /> {t('journey.importEmail')}
+              </Button>
             </div>
-          ))}
-        </Timeline>
+          )}
+        </>
       )}
 
     </PageToolbar>

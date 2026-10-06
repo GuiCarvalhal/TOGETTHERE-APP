@@ -31,7 +31,7 @@ const TYPE_META = {
   other: { fromTo: false, place: true },
 };
 
-export default function JourneyItemForm({ gatheringId, gatheringStartDate, currentMember, members, item, initial, inline, onClose, onSaved }) {
+export default function JourneyItemForm({ gatheringId, gatheringStartDate, currentMember, members, item, initial, initialManual = false, inline, onClose, onSaved }) {
   const navigate = useNavigate();
   const { t } = useI18n();
   // Participant selection (attendee_user_ids). Fresh add: default to the
@@ -69,7 +69,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
   // editable when it was entered manually (missing provider fields), so Edit
   // never forces a fresh lookup.
   const initialHasFlight = !!(item?.confirmation_number && item?.from_place && item?.to_place && item?.start_datetime);
-  const [manual, setManual] = useState(item?.type === 'flight' ? !initialHasFlight : false);
+  const [manual, setManual] = useState(item?.type === 'flight' ? !initialHasFlight : (initialManual && initial?.type === 'flight' ? true : false));
   const isFlight = form.type === 'flight';
   const flightReady = !!(form.confirmation_number && form.from_place && form.to_place && form.start_datetime);
   const flightNeedsSelection = isFlight && !manual && !flightReady;
