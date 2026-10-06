@@ -23,7 +23,7 @@ export default function InstallBanner() {
         <Smartphone className="w-5 h-5 text-terra-coral" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-display font-bold text-foreground leading-tight">{t('home.installBannerTitle')}</p>
+        <p className="font-display text-sm font-bold text-ink-deep">{t('home.installBannerTitle')}</p>
         <p className="text-sm text-muted-foreground leading-snug mt-0.5 truncate">{t('home.installBannerBody')}</p>
       </div>
       <ChevronRight className="w-5 h-5 text-ink-deep/40 shrink-0" />
