@@ -140,6 +140,11 @@ export default function Home() {
 
       <ProfileCompleteReminder />
 
+      {/* Install prompt — sits above the gatherings list; hidden when running as an installed app */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
+        <InstallBanner />
+      </section>
+
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
         <div className="flex items-center justify-between gap-3 mb-5">
@@ -203,11 +208,6 @@ export default function Home() {
             ))}
           </div>
         )}
-      </section>
-
-      {/* Install prompt — whole card links to the Add to Home screen guide */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-10">
-        <InstallBanner />
       </section>
 
       {/* Three pillars — horizontal, icon + headline only, each links to how-it-works */}

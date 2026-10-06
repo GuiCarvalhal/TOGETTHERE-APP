@@ -2,12 +2,17 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Smartphone, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { useStandaloneApp } from '@/hooks/useStandaloneApp';
 
 // Simple install-prompt banner for the Home page. The whole card is a single
 // link to /add-to-home-screen. Uses design-system tokens so it adapts to
-// light/dark mode. No dismiss logic — intentionally always visible.
+// light/dark mode. Hidden when the app is already running as an installed
+// app (standalone display mode) — no point prompting then. No dismiss logic.
 export default function InstallBanner() {
   const { t } = useI18n();
+  const standalone = useStandaloneApp();
+  if (standalone) return null;
+
   return (
     <Link
       to="/add-to-home-screen"
