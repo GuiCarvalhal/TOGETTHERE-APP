@@ -3,7 +3,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/theme';
 import { useI18n } from '@/lib/i18n';
 import LanguageSelector from '@/components/tt/LanguageSelector';
-import { Sun, Moon, Monitor, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Sun, Moon, Monitor, LogOut, Settings as SettingsIcon, Smartphone, ChevronRight } from 'lucide-react';
 
 const THEME_OPTS = [
   { key: 'light', tk: 'account.light', Icon: Sun },
@@ -51,6 +52,17 @@ export default function AccountSettings() {
         <p className="text-xs text-ink-deep/60">{t('account.language')}</p>
         <LanguageSelector variant="menu" />
       </div>
+
+      {/* Add to Home screen */}
+      <Link
+        to="/add-to-home-screen"
+        className="flex items-center justify-between py-2.5 px-3 -mx-3 rounded-xl text-sm font-semibold text-ink-deep hover:bg-foreground/5 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <Smartphone className="w-4 h-4 text-terra-deep" /> {t('account.installApp')}
+        </span>
+        <ChevronRight className="w-4 h-4 text-ink-deep/40" />
+      </Link>
 
       {/* Sign out */}
       <div className="pt-2 border-t border-ink-charcoal/10">
