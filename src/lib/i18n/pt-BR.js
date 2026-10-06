@@ -87,7 +87,7 @@ export const ptBR = {
 
   newGathering: {
     name: 'Nome',
-    namePlaceholder: "Reunião na Costa Amalfitana '25",
+    namePlaceholder: "Nome da viagem ou evento",
     nameRequired: 'Um nome é obrigatório',
     coverImage: 'Imagem de capa',
     coverHint: 'A busca sugere imagens relacionadas ao nome do gathering',
@@ -102,9 +102,9 @@ export const ptBR = {
   },
 
   home: {
-    groupTravel: 'Viagens em grupo & encontros',
-    heroLine1: 'Planejem juntos.',
-    heroLine2: 'Cheguem lá, juntos.',
+    groupTravel: 'Viagens & Eventos',
+    heroLine1: 'Plan together.',
+    heroLine2: 'Get there, together.',
     yourGatherings: 'Seus encontros',
     filterAll: 'Todos',
     filterUpcoming: 'Próximos',
@@ -130,7 +130,7 @@ export const ptBR = {
     pillarItinerary: 'Um roteiro vivo',
     pillarSplits: 'Divisões justas, resolvidas',
     pillarAI: 'Um concierge com IA',
-    happeningNow: 'ACONTECENDO AGORA',
+    happeningNow: 'AGORA',
     upNext: 'A SEGUIR',
     today: 'HOJE',
     tomorrow: 'AMANHÃ',
@@ -251,10 +251,10 @@ export const ptBR = {
   },
 
   journeyTypes: {
-    flight: 'Voo',
-    car: 'Carro / Motorista',
+    flight: 'Vôo',
+    car: 'Carro',
     train: 'Trem',
-    hotel: 'Hotel / Estadia',
+    hotel: 'Hospedagem',
     activity: 'Atividade',
     cruise: 'Cruzeiro',
     main_event: 'Evento Principal',
