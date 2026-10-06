@@ -139,6 +139,9 @@ export const en = {
     today: 'TODAY',
     tomorrow: 'TOMORROW',
     inDays: 'IN {count} DAYS',
+    installBannerTitle: 'Use TOGETTHERE like an app',
+    installBannerBody: "Add it to your phone's Home screen in a few steps",
+    installBannerAria: 'Learn how to add TOGETTHERE to your Home screen',
   },
 
   howItWorks: {

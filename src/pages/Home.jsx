@@ -13,6 +13,7 @@ import GatheringCard from '@/components/tt/cards/GatheringCard';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
+import InstallBanner from '@/components/tt/InstallBanner';
 import { useI18n } from '@/lib/i18n';
 
 const FILTER_KEYS = [
@@ -202,6 +203,11 @@ export default function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Install prompt — whole card links to the Add to Home screen guide */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-10">
+        <InstallBanner />
       </section>
 
       {/* Three pillars — horizontal, icon + headline only, each links to how-it-works */}

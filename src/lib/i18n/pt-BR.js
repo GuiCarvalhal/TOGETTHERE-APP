@@ -135,6 +135,9 @@ export const ptBR = {
     today: 'HOJE',
     tomorrow: 'AMANHÃ',
     inDays: 'EM {count} DIAS',
+    installBannerTitle: 'Use o TOGETTHERE como app',
+    installBannerBody: 'Adicione à tela inicial do seu celular em poucos passos',
+    installBannerAria: 'Saiba como adicionar o TOGETTHERE à tela inicial',
   },
 
   howItWorks: {
