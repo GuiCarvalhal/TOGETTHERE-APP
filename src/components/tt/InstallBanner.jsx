@@ -24,7 +24,7 @@ export default function InstallBanner() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-display text-sm font-bold text-ink-deep">{t('home.installBannerTitle')}</p>
-        <p className="text-sm text-muted-foreground leading-snug mt-0.5 truncate">{t('home.installBannerBody')}</p>
+        <p className="text-xs text-ink-deep/60 mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">{t('home.installBannerBody')}</p>
       </div>
       <ChevronRight className="w-5 h-5 text-ink-deep/40 shrink-0" />
     </Link>
