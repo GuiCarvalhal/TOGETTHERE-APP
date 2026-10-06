@@ -139,66 +139,66 @@ describe('offlineCache pure logic', () => {
   });
 
   describe('shouldCacheUrl (SW allowlist)', () => {
-    const origin = 'https://togethere.app';
+    const origin = 'https://togetthere.app';
     it('allows /assets/ paths', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/assets/app.js'), 'GET', origin)).toBe(true);
-      expect(shouldCacheUrl(new URL('https://togethere.app/assets/style.css'), 'GET', origin)).toBe(true);
-      expect(shouldCacheUrl(new URL('https://togethere.app/assets/chunk-abc.js'), 'GET', origin)).toBe(true);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/assets/app.js'), 'GET', origin)).toBe(true);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/assets/style.css'), 'GET', origin)).toBe(true);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/assets/chunk-abc.js'), 'GET', origin)).toBe(true);
     });
     it('allows exact public files', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/icon.svg'), 'GET', origin)).toBe(true);
-      expect(shouldCacheUrl(new URL('https://togethere.app/manifest.json'), 'GET', origin)).toBe(true);
-      expect(shouldCacheUrl(new URL('https://togethere.app/offline-shell.js'), 'GET', origin)).toBe(true);
-      expect(shouldCacheUrl(new URL('https://togethere.app/offline-shell.css'), 'GET', origin)).toBe(true);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/icon.svg'), 'GET', origin)).toBe(true);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/manifest.json'), 'GET', origin)).toBe(true);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/offline-shell.js'), 'GET', origin)).toBe(true);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/offline-shell.css'), 'GET', origin)).toBe(true);
     });
     it('rejects non-GET methods', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/assets/app.js'), 'POST', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/assets/app.js'), 'POST', origin)).toBe(false);
     });
     it('rejects cross-origin requests', () => {
       expect(shouldCacheUrl(new URL('https://maps.googleapis.com/map.js'), 'GET', origin)).toBe(false);
       expect(shouldCacheUrl(new URL('https://cdn.onesignal.com/sdk.js'), 'GET', origin)).toBe(false);
     });
     it('rejects /functions/ paths (backend API)', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/functions/createExpense'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/functions/createExpense'), 'GET', origin)).toBe(false);
     });
     it('rejects /api/ paths', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/api/entities'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/api/entities'), 'GET', origin)).toBe(false);
     });
     it('rejects auth routes', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/login'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/register'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/forgot-password'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/reset-password'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/auth/callback'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/callback'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/login'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/register'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/forgot-password'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/reset-password'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/auth/callback'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/callback'), 'GET', origin)).toBe(false);
     });
     it('rejects files/uploads/receipts', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/files/abc.pdf'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/uploads/img.png'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/receipts/123.png'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/files/abc.pdf'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/uploads/img.png'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/receipts/123.png'), 'GET', origin)).toBe(false);
     });
     it('rejects URLs with auth query tokens', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/?token=abc'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/?code=abc'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/reset-password?reset_token=abc'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/?access_token=abc'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/?token=abc'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/?code=abc'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/reset-password?reset_token=abc'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/?access_token=abc'), 'GET', origin)).toBe(false);
     });
     it('rejects /offline.html (synthetic SW response)', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/offline.html'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/offline.html'), 'GET', origin)).toBe(false);
     });
     it('rejects arbitrary same-origin paths not in allowlist', () => {
-      expect(shouldCacheUrl(new URL('https://togethere.app/some/random.js'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/data.json'), 'GET', origin)).toBe(false);
-      expect(shouldCacheUrl(new URL('https://togethere.app/profile'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/some/random.js'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/data.json'), 'GET', origin)).toBe(false);
+      expect(shouldCacheUrl(new URL('https://togetthere.app/profile'), 'GET', origin)).toBe(false);
     });
   });
 
   describe('isStaticAsset', () => {
     it('detects static asset extensions', () => {
-      expect(isStaticAsset(new URL('https://togethere.app/a.js'))).toBe(true);
-      expect(isStaticAsset(new URL('https://togethere.app/a.css'))).toBe(true);
-      expect(isStaticAsset(new URL('https://togethere.app/a.png?v=1'))).toBe(true);
-      expect(isStaticAsset(new URL('https://togethere.app/data.json'))).toBe(false);
+      expect(isStaticAsset(new URL('https://togetthere.app/a.js'))).toBe(true);
+      expect(isStaticAsset(new URL('https://togetthere.app/a.css'))).toBe(true);
+      expect(isStaticAsset(new URL('https://togetthere.app/a.png?v=1'))).toBe(true);
+      expect(isStaticAsset(new URL('https://togetthere.app/data.json'))).toBe(false);
     });
   });
 
