@@ -122,7 +122,11 @@ export default function GatheringSettings() {
         <p className="text-muted-foreground text-sm mt-1">{t('settings.settingsDesc')}</p>
       </div>
 
-      {/* Details form */}
+      {/* My notification preferences — all members (per-gathering subscriptions) */}
+      <GatheringNotificationPrefs onesignal={onesignal} />
+
+      {/* Trip details — owner only */}
+      {isOwner && (
       <form onSubmit={handleSave} className="tt-card p-6 space-y-5">
         <div className="flex items-center gap-2 mb-1">
           <Save className="w-5 h-5 text-terra-deep" />
@@ -181,42 +185,47 @@ export default function GatheringSettings() {
           {saved && <span className="inline-flex items-center gap-1 text-sm text-terra-deep font-semibold"><Check className="w-4 h-4" /> {t('settings.saved')}</span>}
         </div>
       </form>
+      )}
 
-      {/* Danger zone — owner only (the whole page is owner-gated). Cascading
-          delete of the gathering and all its records, behind an explicit
-          confirmation dialog that names the gathering being deleted. */}
-      <section className="tt-card p-6 border-destructive/30">
-        <div className="flex items-center gap-2 mb-3">
-          <AlertTriangle className="w-5 h-5 text-destructive" />
-          <h3 className="font-display text-xl font-bold text-ink-deep">{t('settings.dangerZone')}</h3>
-        </div>
-        <p className="text-sm text-ink-deep/60 mb-4">{t('settings.dangerDesc')}</p>
-        <Button variant="destructive" onClick={() => setDeleteOpen(true)} className="rounded-full">
-          <Trash2 /> {t('settings.deleteGathering')}
-        </Button>
-      </section>
+      {/* Danger zone — owner only. Cascading delete of the gathering and all
+          its records, behind an explicit confirmation dialog that names the
+          gathering being deleted. */}
+      {isOwner && (
+        <>
+          <section className="tt-card p-6 border-destructive/30">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <h3 className="font-display text-xl font-bold text-ink-deep">{t('settings.dangerZone')}</h3>
+            </div>
+            <p className="text-sm text-ink-deep/60 mb-4">{t('settings.dangerDesc')}</p>
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)} className="rounded-full">
+              <Trash2 /> {t('settings.deleteGathering')}
+            </Button>
+          </section>
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="bg-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('settings.deleteConfirm', { name: gathering.name })}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('settings.deleteConfirmDesc', { name: gathering.name })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteGathering}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-              {t('settings.deleteGathering')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <AlertDialogContent className="bg-card">
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('settings.deleteConfirm', { name: gathering.name })}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('settings.deleteConfirmDesc', { name: gathering.name })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteGathering}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                  {t('settings.deleteGathering')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
   );
 }

@@ -28,6 +28,7 @@ import GatheringMembers from '@/pages/GatheringMembers';
 import GatheringSettings from '@/pages/GatheringSettings';
 import Profile from '@/pages/Profile';
 import ProfileRedirect from '@/components/ProfileRedirect';
+import Account from '@/pages/Account';
 import JoinGathering from '@/pages/JoinGathering';
 import { useOfflinePruneOnMount } from '@/lib/useOfflineSync';
 import { LocaleProvider } from '@/lib/i18n';
@@ -57,6 +58,7 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<ProtectedRoute unauthenticatedElement={<UnauthenticatedRedirect />} />}>
               <Route path="/" element={<Home />} />
+              <Route path="/account" element={<Account />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/gathering/new" element={<NewGathering />} />
               <Route path="/join/:gatheringId" element={<JoinGathering />} />

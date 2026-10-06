@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/tt/Skeleton';
 import AppHeader from '@/components/tt/AppHeader';
@@ -55,6 +55,11 @@ export default function Profile() {
   const onBack = useCallback(() => navigate(-1), [navigate]);
 
   const isOwner = !!data?.isSelf;
+
+  // Self-profile now lives on the unified Account page; redirect there so the
+  // legacy /profile/<ownId> route (and any deep links) land on the canonical
+  // surface instead of rendering a duplicate.
+  if (!loading && isOwner) return <Navigate to="/account" replace />;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
