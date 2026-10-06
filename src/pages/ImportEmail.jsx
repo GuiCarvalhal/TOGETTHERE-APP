@@ -7,7 +7,7 @@ import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2, Mail, AlertTriangle, Sparkles } from 'lucide-react';
+import { Loader2, Mail, AlertTriangle, Sparkles } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { toast } from '@/components/ui/use-toast';
 import DetailActionBar from '@/components/tt/DetailActionBar';

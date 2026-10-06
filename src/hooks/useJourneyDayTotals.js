@@ -47,7 +47,6 @@ export function useJourneyDayTotals(entries) {
     })();
     return () => { active = false; };
     // legs/fetchable are derived from entries; fp is their stable fingerprint.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fp]);
 
   return { totals, loading };
