@@ -5,7 +5,6 @@ import ChipPicker from '@/components/profile/ChipPicker';
 import { INTERESTS, CUISINE } from '@/lib/profileOptions';
 import FamilyManager from '@/components/profile/FamilyManager';
 import HomePlaceField from '@/components/profile/HomePlaceField';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -14,6 +13,8 @@ import { COMMON_CURRENCIES, currencyLabel } from '@/lib/gatheringHelpers';
 import { useI18n } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { MapPin, Globe, Sparkles, Camera, UtensilsCrossed } from 'lucide-react';
+import PhotoCropEditor from '@/components/profile/PhotoCropEditor';
+import FormSheet from '@/components/tt/FormSheet';
 
 // Editable universal profile. Global fields (home_city, home_currency, bio,
 // interests, dietary_preferences, photo) persist on the User entity via
@@ -40,6 +41,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSave
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState(null);
 
   // Dirty tracking — compare current form to the snapshot taken at mount so the
   // action bar's Save can stay a no-op until something actually changed.
@@ -50,18 +52,32 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSave
   useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
   useEffect(() => { onSavingChange?.(saving); }, [saving, onSavingChange]);
 
-  async function onPhotoChange(e) {
+  // Open the crop/rotate editor instead of uploading immediately. The user
+  // adjusts zoom + rotation and confirms; only then do we upload the cropped
+  // result. Cancel preserves the previous photo with no upload or persist.
+  function onPhotoChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = ''; // allow re-selecting the same file after cancel
+    setPendingPhoto(file);
+  }
+
+  async function onPhotoConfirm(blob) {
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
+      const croppedFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file: croppedFile });
       setForm((f) => ({ ...f, photo: file_url }));
+      setPendingPhoto(null);
     } catch {
       toast({ title: t('profileEdit.uploadFailed'), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
+  }
+
+  function onPhotoCancel() {
+    setPendingPhoto(null);
   }
 
   async function save() {
@@ -156,6 +172,17 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSave
 
       {/* Family (global) */}
       <FamilyManager families={families || []} userId={userId} onChanged={onSaved} />
+
+      {/* Photo crop/rotate editor — opens on image select, before any upload */}
+      <FormSheet
+        open={!!pendingPhoto}
+        onOpenChange={(o) => { if (!o && !uploading) setPendingPhoto(null); }}
+        title={t('profileEdit.adjustPhoto')}
+      >
+        {pendingPhoto && (
+          <PhotoCropEditor file={pendingPhoto} onConfirm={onPhotoConfirm} onCancel={onPhotoCancel} />
+        )}
+      </FormSheet>
     </div>
   );
 });

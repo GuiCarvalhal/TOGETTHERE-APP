@@ -812,6 +812,17 @@ export const en = {
     couldNotSave: 'Could not save',
     uploadFailed: 'Upload failed',
     tooMany: 'Heads up — pick a few favorites. Too many dilutes your matches.',
+    adjustPhoto: 'Adjust photo',
+    zoom: 'Zoom',
+    rotate: 'Rotate',
+    rotateLeft: 'Rotate left',
+    rotateRight: 'Rotate right',
+    photoInvalid: 'Please choose an image file',
+    photoTooLarge: 'Image is too large (max 15 MB)',
+  },
+
+  placeAutocomplete: {
+    resolveFailed: 'Couldn\'t get the place details. Try selecting it again.',
   },
 
   profileView: {

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
+import { useI18n } from '@/lib/i18n';
+import { shouldSearch } from '@/lib/placeAutocompleteLogic';
 import { Loader2, MapPin, CornerDownLeft } from 'lucide-react';
 
 // Debounced Google Places type-ahead used by the journey form to resolve a
@@ -24,12 +27,27 @@ export default function PlaceAutocomplete({ value, onText, onSelect, placeholder
   const [focused, setFocused] = useState(-1);
   const reqId = useRef(0);
   const wrapRef = useRef(null);
+  const { toast } = useToast();
+  const { t } = useI18n();
+  // Suppress the debounced search for every text change that follows a
+  // selection (choose sets text, the parent echoes a new controlled value
+  // back, resolvePlace resolves the full name…). Without this, each of
+  // those cascading text changes re-fires the 300 ms search and reopens the
+  // dropdown after the user picks a place. The flag persists until the user
+  // deliberately types again (handleChange), so ALL cascading changes are
+  // skipped — not just the first.
+  const justSelectedRef = useRef(false);
 
   useEffect(() => { setText(value || ''); }, [value]);
 
   useEffect(() => {
+    if (!shouldSearch(text, justSelectedRef.current)) {
+      setPredictions([]);
+      setLoading(false);
+      setOpen(false);
+      return;
+    }
     const q = text.trim();
-    if (q.length < 2) { setPredictions([]); setLoading(false); setOpen(false); return; }
     setLoading(true);
     const id = ++reqId.current;
     const t = setTimeout(async () => {
@@ -59,12 +77,14 @@ export default function PlaceAutocomplete({ value, onText, onSelect, placeholder
 
   function handleChange(e) {
     const v = e.target.value;
+    justSelectedRef.current = false; // user is editing — re-enable search
     setText(v);
     onText(v);
     onSelect(null); // clear any previously resolved place; user is editing free text
   }
 
   async function choose(pred) {
+    justSelectedRef.current = true; // suppress search for all cascading text changes
     setOpen(false);
     setPredictions([]);
     setText(pred.name);
@@ -77,9 +97,11 @@ export default function PlaceAutocomplete({ value, onText, onSelect, placeholder
         onText(data.place.name || pred.name);
         onSelect(data.place);
       } else {
+        toast({ title: t('placeAutocomplete.resolveFailed'), variant: 'destructive' });
         onSelect(null);
       }
     } catch {
+      toast({ title: t('placeAutocomplete.resolveFailed'), variant: 'destructive' });
       onSelect(null);
     }
   }

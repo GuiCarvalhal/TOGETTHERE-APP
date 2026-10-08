@@ -808,6 +808,17 @@ export const ptBR = {
     couldNotSave: 'Não foi possível salvar',
     uploadFailed: 'Falha no envio',
     tooMany: 'Atenção — escolha alguns favoritos. Muitos diluem suas correspondências.',
+    adjustPhoto: 'Ajustar foto',
+    zoom: 'Zoom',
+    rotate: 'Girar',
+    rotateLeft: 'Girar para a esquerda',
+    rotateRight: 'Girar para a direita',
+    photoInvalid: 'Escolha um arquivo de imagem',
+    photoTooLarge: 'Imagem muito grande (máx 15 MB)',
+  },
+
+  placeAutocomplete: {
+    resolveFailed: 'Não foi possível obter os detalhes do lugar. Tente selecionar novamente.',
   },
 
   profileView: {

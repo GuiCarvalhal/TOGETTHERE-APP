@@ -1,5 +1,6 @@
 import React from 'react';
 import PlaceAutocomplete from '@/components/journey/PlaceAutocomplete';
+import { homePlaceOnSelect } from '@/lib/placeAutocompleteLogic';
 import { MapPin, X } from 'lucide-react';
 
 // Google Places autocomplete for the profile's home address. Reuses the SAME
@@ -19,8 +20,11 @@ export default function HomePlaceField({ value, place, onChange, placeholder, cl
           value={value}
           onText={(t) => onChange(t, null)}
           onSelect={(p) => {
-            if (p) onChange(p.address || p.name, { place_id: p.place_id, lat: p.lat, lng: p.lng, country: p.country });
-            else onChange(value, null);
+            const next = homePlaceOnSelect(p);
+            if (next) onChange(next.text, next.place);
+            // null = user editing or resolve failed — onText already set the
+            // typed text and cleared the place. Do NOT override the text with
+            // the stale controlled value (the prop hasn't refreshed yet).
           }}
           placeholder={placeholder || 'Search your home city on Google Maps'}
           className={`${className || ''} pr-9`}
