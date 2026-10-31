@@ -11,6 +11,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import OAuthConsent from '@/pages/OAuthConsent';
 import Home from '@/pages/Home';
 import HowItWorks from '@/pages/HowItWorks';
 import NewGathering from '@/pages/NewGathering';
@@ -58,6 +59,9 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            {/* MCP OAuth consent — must stay OUTSIDE ProtectedRoute: the page
+                handles the signed-out case itself and preserves the ctx handle. */}
+            <Route path="/oauth/consent" element={<OAuthConsent />} />
             <Route element={<ProtectedRoute unauthenticatedElement={<UnauthenticatedRedirect />} />}>
               <Route path="/" element={<Home />} />
               <Route path="/account" element={<Account />} />
