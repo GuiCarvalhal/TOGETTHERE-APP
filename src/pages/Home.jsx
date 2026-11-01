@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Plus, CalendarDays, Compass, Route, Receipt, Sparkles } from 'lucide-react';
+import { Plus, CalendarDays, Compass, Route, Receipt, Sparkles, Inbox, Loader2, Check, X } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, deriveGatheringMeta } from '@/lib/gatheringDates';
 import { journeyIcon } from '@/lib/journeyIcons';
 import { format, differenceInCalendarDays } from 'date-fns';
@@ -15,6 +15,8 @@ import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
 import { useI18n } from '@/lib/i18n';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/components/ui/use-toast';
 
 const FILTER_KEYS = [
   { key: 'all', tk: 'home.filterAll' },
@@ -33,6 +35,9 @@ export default function Home() {
   const [gatherings, setGatherings] = useState([]);
   const [previews, setPreviews] = useState({});
   const [itemsByGathering, setItemsByGathering] = useState({});
+  const [pendingImports, setPendingImports] = useState([]);
+  const [importChoiceById, setImportChoiceById] = useState({});
+  const [resolvingImportId, setResolvingImportId] = useState('');
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -47,6 +52,7 @@ export default function Home() {
       setMemberships(data.memberships || []);
       setPreviews(data.previews || {});
       setItemsByGathering(data.itemsByGathering || {});
+      setPendingImports(data.pendingImports || []);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
     } catch (e) {
@@ -81,10 +87,38 @@ export default function Home() {
   const sorted = [...filtered].sort((a, b) =>
     a.sortKey.bucket - b.sortKey.bucket || a.sortKey.ts - b.sortKey.ts
   );
+  const gatheringById = Object.fromEntries(gatherings.map((g) => [g.id, g]));
+
+  useEffect(() => {
+    const next = {};
+    pendingImports.forEach((it) => {
+      const candidates = Array.isArray(it.candidate_gathering_ids) ? it.candidate_gathering_ids : [];
+      next[it.id] = it.suggested_gathering_id || candidates[0] || '';
+    });
+    setImportChoiceById(next);
+  }, [pendingImports]);
+
+  async function resolveImport(importId, action) {
+    setResolvingImportId(importId);
+    try {
+      const gatheringId = importChoiceById[importId];
+      await base44.functions.invoke('resolveReservationImport', {
+        import_id: importId,
+        action,
+        ...(action === 'create' ? { gathering_id: gatheringId } : {}),
+      });
+      toast({ title: action === 'create' ? t('home.importResolved') : t('home.importDismissed') });
+      await load();
+    } catch (e) {
+      toast({ title: t('home.importResolveFailed'), description: e.message || t('common.error'), variant: 'destructive' });
+    } finally {
+      setResolvingImportId('');
+    }
+  }
 
   // Featured eyebrow: date-focused relative + absolute timing for the next
-  // upcoming segment (replaces the gathering name). Ongoing → HAPPENING NOW ·
-  // TODAY · <today>; upcoming → UP NEXT · <relative> · <start date>. The exact
+  // upcoming segment (replaces the gathering name). Ongoing ??? HAPPENING NOW ??
+  // TODAY ?? <today>; upcoming ??? UP NEXT ?? <relative> ?? <start date>. The exact
   // departure clock time lives on the JourneyCard below; this line is the
   // calendar-date + how-soon context, which is the more important line.
   const featuredEyebrow = (() => {
@@ -105,16 +139,16 @@ export default function Home() {
       {/* Universal header */}
       <AppHeader />
 
-      {/* Hero intro — or the user's next upcoming journey segment when one exists */}
+      {/* Hero intro ??? or the user's next upcoming journey segment when one exists */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10">
         {nextUpcoming ? (
           <div>
             {featuredEyebrow && (
               <p className="text-sm font-bold mb-3 tracking-wide flex flex-wrap items-baseline gap-x-1.5">
                 <span className="text-terra-coral uppercase">{featuredEyebrow.statusLabel}</span>
-                <span className="text-ink-deep/30">·</span>
+                <span className="text-ink-deep/30">??</span>
                 <span className="text-ink-deep uppercase">{featuredEyebrow.relative}</span>
-                <span className="text-ink-deep/30">·</span>
+                <span className="text-ink-deep/30">??</span>
                 <span className="text-ink-deep/75">{featuredEyebrow.absDate}</span>
               </p>
             )}
@@ -140,10 +174,77 @@ export default function Home() {
 
       <ProfileCompleteReminder />
 
-      {/* Install prompt — sits above the gatherings list; hidden when running as an installed app */}
+      {/* Install prompt ??? sits above the gatherings list; hidden when running as an installed app */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
         <InstallBanner />
       </section>
+
+      {pendingImports.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
+          <div className="tt-card p-4 sm:p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Inbox className="w-4 h-4 text-terra-coral" />
+              <h3 className="font-display text-lg font-bold text-ink-deep">{t('home.pendingImportsTitle')}</h3>
+            </div>
+            <p className="text-sm text-ink-deep/65">{t('home.pendingImportsBody')}</p>
+            <div className="space-y-3">
+              {pendingImports.map((it) => {
+                const disabled = resolvingImportId === it.id;
+                const candidates = (Array.isArray(it.candidate_gathering_ids) && it.candidate_gathering_ids.length)
+                  ? it.candidate_gathering_ids
+                  : gatherings.map((g) => g.id);
+                const availableGatheringIds = candidates.filter((gid) => !!gatheringById[gid]);
+                const selected = availableGatheringIds.includes(importChoiceById[it.id]) ? importChoiceById[it.id] : '';
+                const title = it?.extracted_draft?.title || it.source_subject || t('home.importFallbackTitle');
+                const subtitle = [it?.extracted_draft?.start_datetime, it?.source_sender].filter(Boolean).join(' ?? ');
+                return (
+                  <div key={it.id} className="rounded-xl border border-ink-charcoal/15 bg-cream-soft p-3.5 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-ink-deep">{title}</p>
+                      {subtitle && <p className="text-xs text-ink-deep/60 mt-0.5">{subtitle}</p>}
+                    </div>
+                    <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2.5 items-center">
+                      <Select
+                        value={selected}
+                        onValueChange={(v) => setImportChoiceById((cur) => ({ ...cur, [it.id]: v }))}
+                      >
+                        <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10">
+                          <SelectValue placeholder={t('home.selectGathering')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableGatheringIds
+                            .map((gid) => gatheringById[gid])
+                            .filter(Boolean)
+                            .map((g) => (
+                              <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        disabled={disabled || !selected}
+                        onClick={() => resolveImport(it.id, 'create')}
+                      >
+                        {disabled ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        {t('home.importCreate')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={disabled}
+                        onClick={() => resolveImport(it.id, 'discard')}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        {t('home.importDismiss')}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
@@ -210,7 +311,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* Three pillars — horizontal, icon + headline only, each links to how-it-works */}
+      {/* Three pillars ??? horizontal, icon + headline only, each links to how-it-works */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
         <div className="grid grid-cols-3 gap-2.5">
           {[
