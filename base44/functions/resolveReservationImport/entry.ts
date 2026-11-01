@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import {
   buildJourneyPayloadFromDraft,
   createJourneyItemFromImport,
-  isLikelyDuplicate,
+  findDuplicateItem,
   isParticipantRole,
   normalizeEmail,
 } from '../../shared/reservationImport.ts';
@@ -76,11 +76,11 @@ export default async function(req: Request) {
     }
 
     const draft = imp.extracted_draft || {};
-    const duplicate = isLikelyDuplicate(existingItems, draft?.confirmation_number);
+    const duplicate = findDuplicateItem(existingItems, draft);
     if (duplicate) {
       const updated = await base44.asServiceRole.entities.ReservationImport.update(importId, {
         status: 'duplicate',
-        created_item_id: duplicate.id,
+        created_item_id: duplicate.item.id,
         suggested_gathering_id: gatheringId,
         resolved_at: new Date().toISOString(),
         resolved_by_user_id: user.id,
@@ -111,4 +111,3 @@ export default async function(req: Request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

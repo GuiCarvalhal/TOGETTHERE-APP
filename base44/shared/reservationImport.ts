@@ -205,10 +205,63 @@ export function isParticipantRole(role: string) {
   return role === 'owner' || role === 'admin' || role === 'member';
 }
 
-export function isLikelyDuplicate(existingItems: any[], confirmationNumber: string) {
-  const code = normalizeText(confirmationNumber);
-  if (!code) return null;
-  const hit = (existingItems || []).find((it) => normalizeText(it?.confirmation_number) === code);
-  return hit || null;
+function normalizeCode(value: unknown) {
+  return normalizeTextLower(value).replace(/[^a-z0-9]/g, '');
 }
 
+function dayKey(value: unknown) {
+  const text = normalizeText(value);
+  return text.length >= 10 ? text.slice(0, 10) : '';
+}
+
+function fingerprintLabel(source: any) {
+  return normalizeTextLower(
+    source?.location_name || source?.title || source?.airline || source?.vendor || '',
+  ).replace(/\s+/g, ' ');
+}
+
+// Identity keys for "the same booking, mentioned again". Two shapes:
+//   ref:<type>|<reference>|<day>        — thread updates that repeat the reference
+//   slot:<type>|<label>|<start>|<end>   — updates carrying no code for the same slot
+// Two records match when they share ANY key, so a draft that knows the reference
+// still matches an item stored before that reference was available.
+export function bookingFingerprints(source: any): string[] {
+  const type = normalizeTextLower(source?.type) || 'other';
+  const reference = normalizeCode(source?.booking_reference) || normalizeCode(source?.pnr);
+  const start = normalizeText(source?.start_datetime).slice(0, 16);
+  const end = normalizeText(source?.end_datetime).slice(0, 16) || start;
+  const keys: string[] = [];
+  if (reference.length >= 4 && start.length >= 10) keys.push(`ref:${type}|${reference}|${dayKey(start)}`);
+  const label = fingerprintLabel(source);
+  if (label.length >= 4 && start.length >= 10) keys.push(`slot:${type}|${label}|${start}|${end}`);
+  return keys;
+}
+
+export function bookingFingerprint(source: any) {
+  return bookingFingerprints(source)[0] || '';
+}
+
+// Primary: same confirmation/code. Secondary: same booking reference, then a
+// shared fingerprint (thread update with no code, same type + label + slot).
+export function findDuplicateItem(existingItems: any[], draft: any) {
+  const items = existingItems || [];
+  const code = normalizeText(draft?.confirmation_number);
+  if (code) {
+    const hit = items.find((it) => normalizeText(it?.confirmation_number) === code);
+    if (hit) return { item: hit, reason: 'confirmation_number' };
+  }
+
+  const reference = normalizeCode(draft?.booking_reference);
+  if (reference.length >= 4) {
+    const hit = items.find((it) => normalizeCode(it?.booking_reference) === reference);
+    if (hit) return { item: hit, reason: 'booking_reference' };
+  }
+
+  const keys = bookingFingerprints(draft);
+  if (keys.length) {
+    const hit = items.find((it) => bookingFingerprints(it).some((key) => keys.includes(key)));
+    if (hit) return { item: hit, reason: 'fingerprint' };
+  }
+
+  return null;
+}

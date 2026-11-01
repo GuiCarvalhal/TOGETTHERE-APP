@@ -8,10 +8,15 @@
 
 import { extractJourneyDraft } from './extractJourneyDraft.ts';
 import {
+  classifyReservation,
+  decideReservationPolicy,
+  isReservationAiFallbackEnabled,
+} from './reservationClassifier.ts';
+import {
   buildJourneyPayloadFromDraft,
   chooseGatheringMatch,
   createJourneyItemFromImport,
-  isLikelyDuplicate,
+  findDuplicateItem,
   isParticipantRole,
   normalizeEmail,
   normalizeUserKeys,
@@ -99,30 +104,61 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
     : '';
 
   const content = text.slice(0, MAX_CONTENT);
-  const draft = await extractJourneyDraft(base44, content, sourceSubject || 'Imported reservation');
+
+  // 1) Deterministic classification. This is the whole default path: rules +
+  //    confidence, no AI, identical for every provider.
+  const classification = classifyReservation({ subject: sourceSubject, text: content });
+  let policy = decideReservationPolicy(classification);
+  let draft = classification.draft;
+  let classificationSource: 'rules' | 'ai' | 'none' = policy.outcome === 'ignore' ? 'none' : 'rules';
+  let ignoredReason = policy.outcome === 'ignore' ? policy.reasonCode : '';
+
+  // 2) Optional AI fallback, OFF unless RESERVATION_AI_FALLBACK=true. Runs only
+  //    for messages the rules could not classify confidently, and its draft can
+  //    only ever reach the pending queue — never an automatic item.
+  if (policy.outcome !== 'auto_create' && !classification.denied && isReservationAiFallbackEnabled()) {
+    try {
+      const aiDraft = await extractJourneyDraft(base44, content, sourceSubject || 'Imported reservation');
+      if (aiDraft && (aiDraft.type !== 'other' || aiDraft.start_datetime)) {
+        draft = aiDraft;
+        classificationSource = 'ai';
+        policy = { outcome: 'pending', reasonCode: 'ai_fallback' };
+        ignoredReason = '';
+      }
+    } catch {
+      // The deterministic result stands; a failed fallback must not block ingestion.
+    }
+  }
+
+  const hasDraft = policy.outcome !== 'ignore';
 
   const target = await resolveTargetUser(base44, input?.targetHints || {});
   const participantMemberships = (target.memberships || []).filter((m: any) => isParticipantRole(m.role));
   const gatheringIds = [...new Set(participantMemberships.map((m: any) => m.gathering_id).filter(Boolean))];
-  const [gatherings, journeyItems] = await Promise.all([
-    base44.asServiceRole.entities.Gathering.list('-created_date', 500),
-    Promise.all(gatheringIds.map((gid: string) => base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gid }))),
-  ]);
-  const byId = new Map((gatherings || []).map((g: any) => [g.id, g]));
-  const candidateGatherings = gatheringIds.map((id: string) => byId.get(id)).filter(Boolean);
-  const itemsByGathering: Record<string, any[]> = {};
-  gatheringIds.forEach((gid: string, idx: number) => { itemsByGathering[gid] = journeyItems[idx] || []; });
-  const match = chooseGatheringMatch(draft, candidateGatherings, itemsByGathering);
 
-  let status = 'pending';
+  let match: any = { confident: false, suggestedGatheringId: '', topScore: 0, reason: '', candidateGatheringIds: [] };
+  const byId = new Map<string, any>();
+  const itemsByGathering: Record<string, any[]> = {};
+  if (hasDraft && gatheringIds.length) {
+    const [gatherings, journeyItems] = await Promise.all([
+      base44.asServiceRole.entities.Gathering.list('-created_date', 500),
+      Promise.all(gatheringIds.map((gid: string) => base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gid }))),
+    ]);
+    for (const g of gatherings || []) byId.set(g.id, g);
+    gatheringIds.forEach((gid: string, idx: number) => { itemsByGathering[gid] = journeyItems[idx] || []; });
+    const candidateGatherings = gatheringIds.map((id: string) => byId.get(id)).filter(Boolean);
+    match = chooseGatheringMatch(draft, candidateGatherings, itemsByGathering);
+  }
+
+  let status = hasDraft ? 'pending' : 'ignored';
   let createdItemId = '';
   let error = '';
-  if (target.targetUserId && match.confident && match.suggestedGatheringId) {
+  if (hasDraft && policy.outcome === 'auto_create' && target.targetUserId && match.confident && match.suggestedGatheringId) {
     try {
-      const duplicate = isLikelyDuplicate(itemsByGathering[match.suggestedGatheringId], draft.confirmation_number);
+      const duplicate = findDuplicateItem(itemsByGathering[match.suggestedGatheringId], draft);
       if (duplicate) {
         status = 'duplicate';
-        createdItemId = duplicate.id;
+        createdItemId = duplicate.item.id;
       } else {
         const gathering = byId.get(match.suggestedGatheringId);
         const members = await base44.asServiceRole.entities.Member.filter({ gathering_id: match.suggestedGatheringId });
@@ -158,9 +194,17 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
     auto_match_score: match.topScore || 0,
     auto_match_reason: match.reason || '',
     extracted_draft: draft,
+    classification_type: classification.type,
+    classification_confidence: Math.round(classification.confidence * 100) / 100,
+    classification_signals: classification.signals,
+    classification_reason: classification.reason,
+    classification_source: classificationSource,
+    ignored_reason: ignoredReason || '',
     created_item_id: createdItemId || '',
     error: error || '',
-    resolved_at: status === 'auto_created' || status === 'duplicate' ? new Date().toISOString() : undefined,
+    resolved_at: status === 'auto_created' || status === 'duplicate' || status === 'ignored'
+      ? new Date().toISOString()
+      : undefined,
   });
 
   return { record, reused: false };

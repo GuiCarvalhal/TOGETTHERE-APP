@@ -10,9 +10,11 @@
         "manual_created",
         "duplicate",
         "discarded",
+        "ignored",
         "failed"
       ],
-      "default": "pending"
+      "default": "pending",
+      "description": "pending = needs the user's decision; ignored = the classifier was not confident enough (see ignored_reason) and nothing was created. ignored rows are kept so the same source message is never re-processed."
     },
     "source_message_id": {
       "type": "string"
@@ -63,6 +65,38 @@
     },
     "extracted_draft": {
       "type": "object"
+    },
+    "classification_type": {
+      "type": "string",
+      "description": "Item type chosen by the deterministic classifier: flight, hotel, train, car, activity or other."
+    },
+    "classification_confidence": {
+      "type": "number",
+      "description": "0-1 confidence from the rule classifier. >= RESERVATION_CONFIDENCE_POLICY.AUTO_CREATE_MIN may auto-create; >= PENDING_MIN queues a pending suggestion; below it nothing is created."
+    },
+    "classification_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Signal CODES that produced the classification (e.g. checkin_checkout, pnr). Codes only \u2014 never message content \u2014 so this is safe to log or display."
+    },
+    "classification_reason": {
+      "type": "string",
+      "description": "Compact internal summary, e.g. 'hotel: checkin_checkout, hotel_terms'. Debug aid, not user copy."
+    },
+    "classification_source": {
+      "type": "string",
+      "enum": [
+        "rules",
+        "ai",
+        "none"
+      ],
+      "description": "Which classifier produced the draft. 'ai' only appears when the RESERVATION_AI_FALLBACK feature flag is enabled."
+    },
+    "ignored_reason": {
+      "type": "string",
+      "description": "Reason code when nothing was created: low_confidence, denied_promotional, denied_account_security, denied_non_travel_receipt."
     },
     "created_item_id": {
       "type": "string"

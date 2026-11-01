@@ -108,6 +108,9 @@ export default async function(req) {
         suggested_gathering_id: row.suggested_gathering_id || '',
         candidate_gathering_ids: row.candidate_gathering_ids || [],
         extracted_draft: row.extracted_draft || {},
+        classification_type: row.classification_type || '',
+        classification_confidence: row.classification_confidence || 0,
+        classification_signals: row.classification_signals || [],
       }));
 
     // Home shows a single "Sync now" entry point, so it needs to know whether the

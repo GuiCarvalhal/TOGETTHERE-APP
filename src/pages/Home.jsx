@@ -15,6 +15,7 @@ import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
 import InboxSyncBar from '@/components/tt/InboxSyncBar';
+import ImportClassificationNote from '@/components/tt/ImportClassificationNote';
 import { useI18n } from '@/lib/i18n';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
@@ -210,6 +211,7 @@ export default function Home() {
                     <div>
                       <p className="text-sm font-semibold text-ink-deep">{title}</p>
                       {subtitle && <p className="text-xs text-ink-deep/60 mt-0.5">{subtitle}</p>}
+                      <ImportClassificationNote item={it} />
                     </div>
                     <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2.5 items-center">
                       <Select

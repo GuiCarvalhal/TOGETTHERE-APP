@@ -251,6 +251,52 @@ Prerequisites and the exact callback URL are in **OAuth app setup → Yahoo** ab
   `failed`).
 - `updateInboxConnection` changes `sync_interval_minutes` and/or `display_label` for one account.
 
+## Reservation email classification
+
+Every entry point (inbound webhook, Gmail, Outlook, Yahoo, iCloud) shares one
+pipeline: `ingestReservationMessage()` → `classifyReservation()` in
+`base44/shared/reservationClassifier.ts`. No connector parses mail on its own.
+
+The classifier is deterministic (rules + confidence), bilingual (EN + PT-BR) and
+returns the item type, the extracted fields, a 0–1 confidence and the signal
+**codes** that matched. Signal codes are the only diagnostic data stored
+(`ReservationImport.classification_signals`) — never message content.
+
+### Confidence policy (single source of truth)
+
+Tune in `RESERVATION_CONFIDENCE_POLICY` inside
+`base44/shared/reservationClassifier.ts`; nothing else hardcodes a threshold.
+
+| Constant | Default | Effect |
+| --- | --- | --- |
+| `AUTO_CREATE_MIN` | `0.75` | At or above: the type is trusted, so an item is created automatically once the gathering match is also confident. |
+| `PENDING_MIN` | `0.4` | At or above (below `AUTO_CREATE_MIN`): queued as a pending suggestion on Home. Below: nothing is created. |
+| `MIN_TYPE_SCORE` | `2.5` | Raw evidence needed before any type is claimed (otherwise the row is `other`). |
+| `SATURATION_SCORE` | `6` | Evidence total that maps to confidence `1`. |
+| `COMPETITOR_SHARE` | `0.6` | A second plausible type at this share of the winner trims the winner (ambiguous mail never auto-creates). |
+| `NO_DATE_CONFIDENCE_CAP` | `0.65` | A booking with no date never reaches auto-create. |
+
+Outcomes are `auto_create` / `pending` / `ignore` (`decideReservationPolicy`).
+An ignored message is stored with `status: "ignored"` plus `ignored_reason`
+(`low_confidence`, `denied_promotional`, `denied_account_security`,
+`denied_non_travel_receipt`) so it is never re-processed and never shown to the
+user.
+
+### Optional AI fallback (off by default)
+
+Set the secret/env `RESERVATION_AI_FALLBACK=true` to let ambiguous, non-denied
+messages (confidence below `AUTO_CREATE_MIN`) be re-read by the LLM. Its draft
+can only ever reach the **pending** queue — never an automatic item — and a
+failed call falls back to the deterministic result. Unset = fully deterministic.
+
+### Dedupe
+
+1. Source message id (unchanged) — a message is ingested once.
+2. Same `confirmation_number`.
+3. Same `booking_reference` (≥ 4 chars).
+4. Same fingerprint: type + reference + day, or type + title/venue + exact date
+   range (`bookingFingerprint`), which catches thread updates that carry no code.
+
 ## Docs & Support
 
 GitHub integration: [https://docs.base44.com/developers/app-code/local-development/github](https://docs.base44.com/developers/app-code/local-development/github)
