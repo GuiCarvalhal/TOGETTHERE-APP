@@ -138,6 +138,15 @@ export const ptBR = {
     installBannerTitle: 'Use o TOGETTHERE como app',
     installBannerBody: 'Adicione ?? tela inicial do seu celular em poucos passos',
     installBannerAria: 'Saiba como adicionar o TOGETTHERE ?? tela inicial',
+    pendingImportsTitle: 'Reservas importadas aguardando revis??o',
+    pendingImportsBody: 'N??s processamos estas reservas automaticamente. Escolha o gathering e crie o item.',
+    importFallbackTitle: 'Reserva importada',
+    selectGathering: 'Selecione um gathering',
+    importCreate: 'Criar item',
+    importDismiss: 'Descartar',
+    importResolved: 'Reserva adicionada ao gathering',
+    importDismissed: 'Reserva importada descartada',
+    importResolveFailed: 'N??o foi poss??vel resolver a reserva importada',
   },
 
   howItWorks: {
