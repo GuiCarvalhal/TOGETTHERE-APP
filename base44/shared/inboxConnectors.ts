@@ -10,8 +10,15 @@
 
 import { extractPlainTextFromHtml, normalizeUserKeys } from './reservationImport.ts';
 import { ingestReservationMessage } from './reservationIngestion.ts';
+import {
+  decryptImapCredential,
+  describeImapSyncError,
+  fetchImapMessages,
+  imapCredentialsAvailable,
+  isImapProvider,
+} from './imapInbox.ts';
 
-export const INBOX_PROVIDERS = ['gmail', 'outlook'];
+export const INBOX_PROVIDERS = ['gmail', 'outlook', 'icloud', 'yahoo'];
 
 const MAX_CANDIDATES = 12;
 const MAX_INGESTS_PER_SYNC = 6;
@@ -79,6 +86,10 @@ export function inboxProviderConfigStatus() {
   return {
     gmail: Boolean(getOAuthConfig('gmail')),
     outlook: Boolean(getOAuthConfig('outlook')),
+    // IMAP providers need no app-level client; they only need the credential
+    // encryption key, and each user supplies their own app password.
+    icloud: imapCredentialsAvailable(),
+    yahoo: imapCredentialsAvailable(),
   };
 }
 
@@ -342,19 +353,43 @@ async function fetchOutlookMessages(accessToken, { limit, sinceIso }) {
 // Sync
 // ---------------------------------------------------------------------------
 
-export async function syncInboxConnection(base44, connection) {
+// Provider-agnostic fetch. Gmail/Outlook go through OAuth tokens; iCloud/Yahoo
+// read IMAP with the stored app password. Everything after this is identical
+// for all four providers.
+async function collectMessages(base44, connection, { sinceMs }) {
   const provider = connection.provider;
+
+  if (isImapProvider(provider)) {
+    const appPassword = await decryptImapCredential(connection.credential_secret);
+    if (!appPassword) throw new Error('missing_password');
+    const { messages, nextUidCursor } = await fetchImapMessages(provider, {
+      email: connection.provider_account_email || '',
+      appPassword,
+      limit: MAX_CANDIDATES,
+      sinceMs,
+      uidCursor: Number(connection.uid_cursor) || 0,
+      isCandidate: (subject) => isReservationCandidate(subject, ''),
+    });
+    return { messages, cursorPatch: nextUidCursor > 0 ? { uid_cursor: nextUidCursor } : {} };
+  }
+
   const accessToken = await ensureAccessToken(base44, connection);
-
-  const parsedCursor = Date.parse(connection.sync_cursor || '');
-  const sinceMs = Number.isFinite(parsedCursor) ? parsedCursor : 0;
-
   const messages = provider === 'gmail'
     ? await fetchGmailMessages(accessToken, { limit: MAX_CANDIDATES, sinceMs })
     : await fetchOutlookMessages(accessToken, {
       limit: MAX_CANDIDATES,
       sinceIso: sinceMs > 0 ? new Date(sinceMs).toISOString() : '',
     });
+  return { messages, cursorPatch: {} };
+}
+
+export async function syncInboxConnection(base44, connection) {
+  const provider = connection.provider;
+
+  const parsedCursor = Date.parse(connection.sync_cursor || '');
+  const sinceMs = Number.isFinite(parsedCursor) ? parsedCursor : 0;
+
+  const { messages, cursorPatch } = await collectMessages(base44, connection, { sinceMs });
 
   const candidates = messages
     .filter((m) => isReservationCandidate(m.subject, m.text.slice(0, 800)))
@@ -401,6 +436,7 @@ export async function syncInboxConnection(base44, connection) {
     status: 'connected',
     last_error: '',
     updated_at: now,
+    ...cursorPatch,
   });
 
   return {
@@ -483,18 +519,24 @@ export async function disconnectingConnection(base44, connection) {
     access_token: '',
     refresh_token: '',
     access_token_expires_at: '',
+    credential_secret: '',
     sync_cursor: '',
+    uid_cursor: 0,
     last_error: '',
     disabled_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
 }
 
+function hasCredentials(connection) {
+  return Boolean(connection.access_token || connection.refresh_token || connection.credential_secret);
+}
+
 export async function syncInboxForUser(base44, user, { provider, force } = {}) {
   const connections = await listUserConnections(base44, user);
   const targets = connections.filter((c) => {
     if (provider && c.provider !== provider) return false;
-    if (!c.access_token && !c.refresh_token) return false;
+    if (!hasCredentials(c)) return false;
     if (c.status === 'disconnected') return false;
     return true;
   });
@@ -512,7 +554,10 @@ export async function syncInboxForUser(base44, user, { provider, force } = {}) {
       const result = await syncInboxConnection(base44, connection);
       results.push({ ...result, ok: true });
     } catch (error: any) {
-      const message = error?.message || 'Sync failed';
+      const raw = error?.message || 'Sync failed';
+      const message = isImapProvider(connection.provider)
+        ? describeImapSyncError(connection.provider, raw)
+        : raw;
       await markSyncFailure(base44, connection, message);
       results.push({ provider: connection.provider, ok: false, error: message });
     }
@@ -528,7 +573,7 @@ export async function maybeSyncInboxInBackground(base44, user) {
     const connections = await listUserConnections(base44, user);
     const due = connections.find((c) => {
       if (c.status !== 'connected' && c.status !== 'attention') return false;
-      if (!c.access_token && !c.refresh_token) return false;
+      if (!hasCredentials(c)) return false;
       const lastMs = Date.parse(c.last_sync_at || '');
       return !Number.isFinite(lastMs) || Date.now() - lastMs >= SYNC_THROTTLE_MS;
     });

@@ -3,15 +3,19 @@ import { base44 } from '@/api/base44Client';
 import { useI18n } from '@/lib/i18n';
 import { Inbox } from 'lucide-react';
 import InboxConnectorCard from './InboxConnectorCard';
+import InboxCredentialSheet from './InboxCredentialSheet';
 
 const PROVIDERS = [
-  { provider: 'gmail', labelKey: 'account.inboxGmail' },
-  { provider: 'outlook', labelKey: 'account.inboxOutlook' },
+  { provider: 'gmail', labelKey: 'account.inboxGmail', auth: 'oauth' },
+  { provider: 'outlook', labelKey: 'account.inboxOutlook', auth: 'oauth' },
+  { provider: 'icloud', labelKey: 'account.inboxIcloud', auth: 'credential' },
+  { provider: 'yahoo', labelKey: 'account.inboxYahoo', auth: 'credential' },
 ];
 
-// Inbox connectors section on the Account page: Gmail + Outlook.com mailboxes
-// that feed the reservation import pipeline. Connection state comes from
-// getInboxConnections (tokens never leave the server).
+// Inbox connectors section on the Account page: Gmail/Outlook.com (OAuth) and
+// iCloud/Yahoo (IMAP app password) mailboxes that feed the reservation import
+// pipeline. Connection state comes from getInboxConnections (credentials never
+// leave the server).
 export default function InboxConnectors() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
@@ -20,6 +24,7 @@ export default function InboxConnectors() {
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [credentialProvider, setCredentialProvider] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -52,10 +57,15 @@ export default function InboxConnectors() {
 
   const findConnection = (provider) => connections.find((c) => c.provider === provider) || null;
 
-  const handleConnect = async (provider) => {
-    setBusy(provider);
+  const handleConnect = async (provider, auth) => {
     setError('');
     setNotice('');
+    // iCloud/Yahoo collect an app password in a sheet instead of redirecting.
+    if (auth === 'credential') {
+      setCredentialProvider(provider);
+      return;
+    }
+    setBusy(provider);
     try {
       const res = await base44.functions.invoke('startInboxOAuth', { provider });
       const url = res.data?.url;
@@ -114,14 +124,14 @@ export default function InboxConnectors() {
         </div>
       ) : (
         <div className="space-y-2">
-          {PROVIDERS.map(({ provider, labelKey }) => (
+          {PROVIDERS.map(({ provider, labelKey, auth }) => (
             <InboxConnectorCard
               key={provider}
               label={t(labelKey)}
               connection={findConnection(provider)}
               configured={configured[provider] !== false}
               busy={busy === provider}
-              onConnect={() => handleConnect(provider)}
+              onConnect={() => handleConnect(provider, auth)}
               onSync={() => handleSync(provider)}
               onDisconnect={() => handleDisconnect(provider)}
             />
@@ -131,6 +141,17 @@ export default function InboxConnectors() {
 
       {notice ? <p className="text-xs text-terra-deep">{notice}</p> : null}
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
+
+      <InboxCredentialSheet
+        open={Boolean(credentialProvider)}
+        provider={credentialProvider}
+        label={t(credentialProvider === 'yahoo' ? 'account.inboxYahoo' : 'account.inboxIcloud')}
+        onOpenChange={(open) => { if (!open) setCredentialProvider(''); }}
+        onConnected={() => {
+          load();
+          setNotice(t('account.inboxConnectedNotice'));
+        }}
+      />
     </div>
   );
 }

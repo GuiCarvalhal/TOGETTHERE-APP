@@ -1,0 +1,392 @@
+// iCloud + Yahoo inbox connectors (IMAP, app-password auth).
+//
+// Nothing here parses reservations: it only authenticates, reads recent INBOX
+// messages and hands them to the SAME shared ingestion pipeline the Gmail and
+// Outlook connectors use. The app password is AES-GCM encrypted at rest with a
+// server-side key and is never logged or returned to the client.
+
+import {
+  decodeImapBytes,
+  literalsByUid,
+  openImap,
+  quoteImap,
+  searchUids,
+} from './imapClient.ts';
+import { extractPlainTextFromHtml } from './reservationImport.ts';
+
+export const IMAP_PROVIDERS = ['icloud', 'yahoo'];
+
+// Official IMAP endpoints, TLS only.
+const ENDPOINTS: Record<string, { host: string; port: number }> = {
+  icloud: { host: 'imap.mail.me.com', port: 993 },
+  yahoo: { host: 'imap.mail.yahoo.com', port: 993 },
+};
+
+const CONNECT_TIMEOUT_MS = 15000;
+const MAX_BODY_CHARS = 20000;
+const SCAN_WINDOW_DAYS = 30;
+const BODY_FETCH_LIMIT = 8;
+const FALLBACK_BODY_FETCH = 5;
+
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+export function isImapProvider(value: unknown) {
+  return typeof value === 'string' && IMAP_PROVIDERS.includes(value);
+}
+
+export function imapEndpoint(provider: string) {
+  return ENDPOINTS[provider] || null;
+}
+
+// ---------------------------------------------------------------------------
+// Credential encryption (AES-GCM, key derived from a server-side secret)
+// ---------------------------------------------------------------------------
+
+function keySecret() {
+  for (const name of ['INBOX_CREDENTIALS_KEY', 'RESERVATION_INBOX_TOKEN']) {
+    const value = (process.env[name] || '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
+// The connectors are usable as soon as one key-material secret exists; the UI
+// reads this to decide whether to offer Connect at all.
+export function imapCredentialsAvailable() {
+  return Boolean(keySecret());
+}
+
+function toBase64(bytes: Uint8Array) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function fromBase64(value: string) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function aesKey() {
+  const secret = keySecret();
+  if (!secret) throw new Error('not_configured');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+export async function encryptImapCredential(plain: string) {
+  const key = await aesKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cipher = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(plain),
+  );
+  return `v1:${toBase64(iv)}:${toBase64(new Uint8Array(cipher))}`;
+}
+
+export async function decryptImapCredential(stored: unknown) {
+  const value = typeof stored === 'string' ? stored.trim() : '';
+  if (!value) return '';
+  const [version, ivPart, dataPart] = value.split(':');
+  if (version !== 'v1' || !ivPart || !dataPart) return '';
+  try {
+    const key = await aesKey();
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: fromBase64(ivPart) },
+      key,
+      fromBase64(dataPart),
+    );
+    return new TextDecoder().decode(plain);
+  } catch {
+    return '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Error mapping — the UI translates these codes per provider
+// ---------------------------------------------------------------------------
+
+export function imapErrorCode(error: any) {
+  const raw = String(error?.message || error || '').toLowerCase();
+  if (!raw) return 'imap_error';
+  if (raw.includes('missing_password') || raw.includes('app_password_missing')) return 'missing_password';
+  if (raw.includes('timeout') || raw.includes('timed out')) return 'timeout';
+  if (raw.includes('auth')) return 'auth_failed';
+  if (raw.includes('denied') || raw.includes('not permitted') || raw.includes('forbidden')) return 'denied';
+  if (raw.includes('imap_unavailable') || raw.includes('not_configured')) return 'unavailable';
+  return 'imap_error';
+}
+
+// Short, storage-safe explanation written to InboxConnection.last_error.
+export function describeImapSyncError(provider: string, message: string) {
+  const code = imapErrorCode(message);
+  const label = provider === 'yahoo' ? 'Yahoo' : 'iCloud';
+  if (code === 'auth_failed') return `${label} rejected the app password. Reconnect with a new app password.`;
+  if (code === 'timeout') return `${label} did not answer in time. Try syncing again.`;
+  if (code === 'denied') return `${label} denied mailbox access. Check that IMAP is enabled for the account.`;
+  if (code === 'missing_password') return `No app password is stored. Reconnect the mailbox.`;
+  if (code === 'unavailable') return `Mailbox credentials are not configured yet.`;
+  return message || `${label} sync failed.`;
+}
+
+// ---------------------------------------------------------------------------
+// IMAP reads
+// ---------------------------------------------------------------------------
+
+function imapDate(ms: number) {
+  const date = Number.isFinite(ms) && ms > 0
+    ? new Date(ms)
+    : new Date(Date.now() - SCAN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = MONTHS[date.getUTCMonth()];
+  return `${day}-${month}-${date.getUTCFullYear()}`;
+}
+
+function parseInternalDate(value: string) {
+  const match = /^(\d{1,2})-([A-Za-z]{3})-(\d{4}) (\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})/.exec(String(value || '').trim());
+  if (!match) return 0;
+  const [, day, monthName, year, hours, minutes, seconds, zone] = match;
+  const monthIndex = MONTHS.indexOf(monthName.toLowerCase());
+  if (monthIndex < 0) return 0;
+  const sign = zone.startsWith('-') ? -1 : 1;
+  const offsetMinutes = sign * (Number(zone.slice(1, 3)) * 60 + Number(zone.slice(3, 5)));
+  const utc = Date.UTC(Number(year), monthIndex, Number(day), Number(hours), Number(minutes), Number(seconds));
+  return utc - offsetMinutes * 60000;
+}
+
+function parseHeaders(block: string) {
+  const map: Record<string, string> = {};
+  const unfolded = String(block || '').replace(/\r?\n[ \t]+/g, ' ');
+  for (const line of unfolded.split(/\r?\n/)) {
+    const index = line.indexOf(':');
+    if (index <= 0) continue;
+    map[line.slice(0, index).trim().toLowerCase()] = line.slice(index + 1).trim();
+  }
+  return map;
+}
+
+function splitHeaders(raw: string) {
+  const match = /\r?\n\r?\n/.exec(raw);
+  if (!match) return { headers: parseHeaders(raw), body: '' };
+  return {
+    headers: parseHeaders(raw.slice(0, match.index)),
+    body: raw.slice(match.index + match[0].length),
+  };
+}
+
+function headerParam(value: string, name: string) {
+  const match = String(value || '').match(new RegExp(`${name}\\s*=\\s*"?([^";]+)"?`, 'i'));
+  return match ? match[1].trim() : '';
+}
+
+function quotedPrintableToBytes(input: string) {
+  const source = String(input || '').replace(/=\r?\n/g, '');
+  const out: number[] = [];
+  for (let i = 0; i < source.length; i += 1) {
+    const head = source.slice(i + 1, i + 3);
+    if (source[i] === '=' && /^[0-9A-Fa-f]{2}$/.test(head)) {
+      out.push(parseInt(head, 16));
+      i += 2;
+    } else {
+      out.push(source.charCodeAt(i) & 0xff);
+    }
+  }
+  return new Uint8Array(out);
+}
+
+function base64ToBytes(input: string) {
+  const clean = String(input || '').replace(/[^A-Za-z0-9+/=]/g, '');
+  if (!clean) return new Uint8Array(0);
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function decodeTransfer(body: string, encoding: string) {
+  const value = String(encoding || '').toLowerCase();
+  try {
+    if (value.includes('base64')) return decodeImapBytes(base64ToBytes(body));
+    if (value.includes('quoted-printable')) return decodeImapBytes(quotedPrintableToBytes(body));
+    return body;
+  } catch {
+    return body;
+  }
+}
+
+function collectTextParts(raw: string, out: { plain: string[]; html: string[] }, depth = 0) {
+  if (depth > 6) return;
+  const { headers, body } = splitHeaders(raw);
+  const contentType = headers['content-type'] || 'text/plain';
+  const boundary = headerParam(contentType, 'boundary');
+
+  if (/^multipart\//i.test(contentType) && boundary) {
+    const marker = `--${boundary}`;
+    let position = body.indexOf(marker);
+    while (position >= 0) {
+      const next = body.indexOf(marker, position + marker.length);
+      if (next < 0) break;
+      const chunk = body.slice(position + marker.length, next).replace(/^\r?\n/, '');
+      if (!chunk.startsWith('--')) collectTextParts(chunk, out, depth + 1);
+      position = next;
+    }
+    return;
+  }
+
+  const text = decodeTransfer(body, headers['content-transfer-encoding'] || '');
+  if (/^text\/html/i.test(contentType)) out.html.push(text);
+  else if (/^text\/plain/i.test(contentType)) out.plain.push(text);
+}
+
+export function decodeMimeWords(value: string) {
+  return String(value || '')
+    .replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (_all, charset, encoding, data) => {
+      try {
+        const bytes = String(encoding).toUpperCase() === 'B'
+          ? base64ToBytes(data)
+          : quotedPrintableToBytes(String(data).replace(/_/g, ' '));
+        return new TextDecoder(String(charset || 'utf-8')).decode(bytes);
+      } catch {
+        return data;
+      }
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function extractMessageText(raw: string) {
+  const out = { plain: [] as string[], html: [] as string[] };
+  collectTextParts(raw, out);
+  const plain = out.plain.join('\n').trim();
+  if (plain) return plain;
+  if (out.html.length) return extractPlainTextFromHtml(out.html.join('\n'));
+  return '';
+}
+
+function loginFailure(result: any) {
+  const text = (result?.parts || [])
+    .map((part: any) => (typeof part?.line === 'string' ? part.line : ''))
+    .join(' ')
+    .toLowerCase();
+  if (text.includes('unavailable') || text.includes('try again') || text.includes('server error')) return 'imap_error';
+  return 'auth_failed';
+}
+
+async function openAuthenticatedSession(provider: string, email: string, appPassword: string) {
+  const endpoint = imapEndpoint(provider);
+  if (!endpoint) throw new Error('unknown_provider');
+  if (!email || !appPassword) throw new Error('missing_password');
+
+  const session = await openImap(endpoint, { timeoutMs: CONNECT_TIMEOUT_MS });
+  const login = await session.run(`LOGIN ${quoteImap(email)} ${quoteImap(appPassword)}`);
+  if (login.status !== 'OK') {
+    await session.close();
+    throw new Error(loginFailure(login));
+  }
+  if (provider === 'yahoo') {
+    // Yahoo requires a client identifier before it serves mailbox data.
+    try {
+      await session.run('ID ("name" "TOGETTHERE" "version" "1.0")');
+    } catch {
+      // Optional: some accounts answer BAD and still work.
+    }
+  }
+  const select = await session.run('SELECT "INBOX"');
+  if (select.status !== 'OK') {
+    await session.close();
+    throw new Error('denied');
+  }
+  return session;
+}
+
+// Verifies an app password without storing anything. Throws on failure so the
+// caller can map the error to a provider-specific message.
+export async function testImapLogin(provider: string, { email, appPassword }: any) {
+  const session = await openAuthenticatedSession(provider, email, appPassword);
+  await session.close();
+  return { ok: true };
+}
+
+export async function fetchImapMessages(provider: string, opts: any) {
+  const { email, appPassword, limit, sinceMs, uidCursor, isCandidate } = opts || {};
+  const session = await openAuthenticatedSession(provider, email, appPassword);
+
+  try {
+    // UID cursor when we have one (strictly newer), otherwise a time window.
+    const searchCommand = uidCursor > 0
+      ? `UID SEARCH UID ${Number(uidCursor) + 1}:*`
+      : `UID SEARCH SINCE ${imapDate(sinceMs)}`;
+    const search = await session.run(searchCommand);
+    if (search.status !== 'OK') throw new Error('search_failed');
+
+    let uids = searchUids(search);
+    if (uidCursor > 0) uids = uids.filter((uid) => uid > Number(uidCursor));
+    uids = [...new Set(uids)].sort((a, b) => a - b);
+
+    const nextUidCursor = uids.length ? uids[uids.length - 1] : (Number(uidCursor) || 0);
+    if (!uids.length) return { messages: [], nextUidCursor };
+
+    const window = uids.slice(-Math.max(1, Number(limit) || 12));
+
+    const headerResult = await session.run(
+      `UID FETCH ${window.join(',')} (UID INTERNALDATE BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO DATE)])`,
+    );
+    const headerLiterals = literalsByUid(headerResult);
+
+    const rows = [];
+    for (const uid of window) {
+      const entry = headerLiterals.get(uid);
+      if (!entry) continue;
+      const headers = parseHeaders(decodeImapBytes(entry.bytes));
+      const receivedMs = parseInternalDate(entry.internalDate) || Date.parse(headers.date || '') || 0;
+      rows.push({
+        uid,
+        subject: decodeMimeWords(headers.subject || ''),
+        sender: decodeMimeWords(headers.from || ''),
+        recipient: decodeMimeWords(headers.to || ''),
+        receivedMs,
+      });
+    }
+
+    // Only download full bodies where the subject already looks like a booking;
+    // if nothing matches, sample the newest few anyway so an oddly-worded
+    // subject cannot hide a real reservation.
+    const matched = rows.filter((row) => {
+      try {
+        return typeof isCandidate === 'function' ? Boolean(isCandidate(row.subject)) : true;
+      } catch {
+        return true;
+      }
+    });
+    const bodyTargets = (matched.length ? matched.map((row) => row.uid) : window.slice(-FALLBACK_BODY_FETCH))
+      .slice(-BODY_FETCH_LIMIT);
+
+    let rawByUid = new Map();
+    if (bodyTargets.length) {
+      const bodyResult = await session.run(`UID FETCH ${bodyTargets.join(',')} (UID BODY.PEEK[])`);
+      rawByUid = literalsByUid(bodyResult);
+    }
+
+    const account = String(email || '').trim().toLowerCase();
+    const messages = rows.map((row) => {
+      const entry = rawByUid.get(row.uid);
+      const text = entry ? extractMessageText(decodeImapBytes(entry.bytes)) : '';
+      return {
+        sourceId: `${provider}:${account}:${row.uid}`,
+        subject: row.subject,
+        sender: row.sender,
+        recipient: row.recipient,
+        receivedAt: row.receivedMs ? new Date(row.receivedMs).toISOString() : '',
+        receivedMs: row.receivedMs,
+        text: text.slice(0, MAX_BODY_CHARS),
+      };
+    });
+
+    return { messages, nextUidCursor };
+  } finally {
+    await session.close();
+  }
+}

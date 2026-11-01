@@ -112,6 +112,7 @@ so there is no second parser to keep in sync.
 | `MICROSOFT_OAUTH_CLIENT_ID` / `MICROSOFT_OAUTH_CLIENT_SECRET` | Microsoft Entra app registration for Outlook.com (`Mail.Read`, `User.Read`, `offline_access`). |
 | `INBOX_OAUTH_CALLBACK_URL` *(optional)* | Exact redirect URI registered with the providers. Default: `<app url>/functions/completeInboxOAuth`. |
 | `INBOX_OAUTH_SUCCESS_URL` *(optional)* | Where the browser lands after connecting. Default: `<app url>/account`. |
+| `INBOX_CREDENTIALS_KEY` *(optional)* | AES-GCM key material for the iCloud/Yahoo app passwords stored on `InboxConnection`. Falls back to `RESERVATION_INBOX_TOKEN` when unset. |
 
 ### OAuth app setup
 
@@ -126,6 +127,31 @@ so there is no second parser to keep in sync.
 Both providers require the callback to be an exact string match; if you set
 `INBOX_OAUTH_CALLBACK_URL`, it must be identical in the provider console.
 
+### iCloud & Yahoo (IMAP, app passwords)
+
+No OAuth app registration is needed for these two: each user connects with an
+**app-specific password**, which is verified against the real IMAP server,
+encrypted with AES-GCM, and stored on their own `InboxConnection` record
+(admin-only RLS; never returned to the client).
+
+| Provider | IMAP host | Port | Prerequisite |
+| --- | --- | --- | --- |
+| iCloud Mail | `imap.mail.me.com` | `993` (TLS) | Apple ID → **Sign-In and Security → App-Specific Passwords**. Two-factor authentication must be on; the normal Apple ID password is rejected. |
+| Yahoo Mail | `imap.mail.yahoo.com` | `993` (TLS) | Account Security → **Generate app password** (required while two-step verification is on). |
+
+- Connect from **Account → Inbox connectors → iCloud Mail / Yahoo Mail**: enter the
+  mailbox address and the app password. `connectImapInbox` runs `LOGIN` + `SELECT INBOX`
+  before storing anything, so a bad password fails immediately with a specific message
+  (rejected app password, timeout, or mailbox access denied).
+- `syncInboxConnections` issues `UID SEARCH`, then `HEADER.FIELDS (SUBJECT FROM TO DATE)`,
+  and downloads full bodies only for subject matches. The highest INBOX UID is kept in
+  `uid_cursor`, so later syncs fetch strictly newer mail; a first sync falls back to a
+  30-day window.
+- Source ids are `icloud:<mailbox>:<uid>` and `yahoo:<mailbox>:<uid>`, so re-scans and
+  reconnects never duplicate imports.
+- Revoking the app password at the provider makes the next sync record "Needs attention";
+  disconnect clears the encrypted credential and the UID cursor.
+
 ### How syncing works
 
 - Connect from **Account → Inbox connectors**. `startInboxOAuth` mints a single-use state token,
@@ -133,7 +159,8 @@ Both providers require the callback to be an exact string match; if you set
   (admin-only RLS; tokens never reach the client).
 - `syncInboxConnections` scans recent inbox mail (Gmail: last 30 days or after the cursor; Outlook:
   since the cursor), keeps messages whose subject/body match reservation hints (EN + PT), and passes
-  each to the shared pipeline. Source ids are prefixed `gmail:` / `outlook:`, so re-scans are idempotent.
+  each to the shared pipeline. Source ids are prefixed `gmail:` / `outlook:` / `icloud:` / `yahoo:`,
+  so re-scans are idempotent.
 - Home calls a throttled background sync (10 minutes) for due connections; failures stay silent there
   and surface as "Needs attention" in Account settings.
 

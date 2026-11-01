@@ -6,9 +6,11 @@
       "type": "string",
       "enum": [
         "gmail",
-        "outlook"
+        "outlook",
+        "icloud",
+        "yahoo"
       ],
-      "description": "Mailbox provider this connection reads from."
+      "description": "Mailbox provider this connection reads from. gmail/outlook use OAuth tokens; icloud/yahoo use IMAP with an app password."
     },
     "status": {
       "type": "string",
@@ -48,9 +50,17 @@
       "type": "string",
       "format": "date-time"
     },
+    "credential_secret": {
+      "type": "string",
+      "description": "AES-GCM encrypted app password for IMAP providers (icloud/yahoo), stored as v1:<iv>:<ciphertext>. Never returned to the client; cleared on disconnect."
+    },
     "sync_cursor": {
       "type": "string",
       "description": "ISO timestamp of the newest message already scanned; subsequent syncs only look past it."
+    },
+    "uid_cursor": {
+      "type": "number",
+      "description": "IMAP only: highest INBOX UID already scanned. Lets iCloud/Yahoo sync fetch strictly newer messages instead of re-reading a time window."
     },
     "connected_at": {
       "type": "string",

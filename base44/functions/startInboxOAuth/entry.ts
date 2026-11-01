@@ -5,6 +5,7 @@ import {
   isInboxProvider,
   resolveCallbackUrl,
 } from '../../shared/inboxConnectors.ts';
+import { isImapProvider } from '../../shared/imapInbox.ts';
 import { normalizeUserKeys } from '../../shared/reservationImport.ts';
 
 const STATE_TTL_MS = 15 * 60 * 1000;
@@ -22,6 +23,10 @@ export default async function(req) {
     const provider = typeof body?.provider === 'string' ? body.provider.trim().toLowerCase() : '';
     if (!isInboxProvider(provider)) {
       return Response.json({ error: 'Invalid provider' }, { status: 400 });
+    }
+    if (isImapProvider(provider)) {
+      // iCloud/Yahoo authenticate with an app password via connectImapInbox.
+      return Response.json({ error: 'use_credential_connect', provider }, { status: 400 });
     }
 
     if (!inboxProviderConfigStatus()[provider]) {
