@@ -142,6 +142,15 @@ export const en = {
     installBannerTitle: 'Use TOGETTHERE like an app',
     installBannerBody: "Add it to your phone's Home screen in a few steps",
     installBannerAria: 'Learn how to add TOGETTHERE to your Home screen',
+    pendingImportsTitle: 'Imported reservations need your review',
+    pendingImportsBody: 'We parsed these reservations automatically. Pick the gathering and create the item.',
+    importFallbackTitle: 'Imported reservation',
+    selectGathering: 'Select a gathering',
+    importCreate: 'Create item',
+    importDismiss: 'Dismiss',
+    importResolved: 'Reservation added to gathering',
+    importDismissed: 'Imported reservation dismissed',
+    importResolveFailed: 'Could not resolve imported reservation',
   },
 
   howItWorks: {
