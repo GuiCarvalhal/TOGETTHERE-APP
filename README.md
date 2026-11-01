@@ -10,7 +10,7 @@ Any change pushed to the repo will also be reflected in the Base44 Builder.
 2. Navigate to the project directory.
 3. Install dependencies: `npm install`.
 4. Install the Base44 CLI: `npm install -g base44@latest`.
-5. Install [Deno](https://docs.deno.com/runtime/getting_started/installation/) — the local Base44 backend runs on it.
+5. Install [Deno](https://docs.deno.com/runtime/getting_started/installation/) ??? the local Base44 backend runs on it.
 
 Run `base44 --help` (or see the [CLI reference](https://docs.base44.com/developers/references/cli/commands/introduction)) for the full command surface.
 
@@ -29,9 +29,9 @@ Open the frontend URL that `base44 dev` prints (typically `http://localhost:5173
 Notes:
 
 - **Every fresh clone needs `base44 link`.** It writes `base44/.app.jsonc` (the app-id pointer), which is deliberately gitignored. Your app id is in the Builder URL (`app.base44.com/apps/<id>/...`); `base44 link --help` shows the non-interactive flags.
-- **`base44 dev` runs the frontend for you** (via `site.serveCommand` in this repo's `base44/config.jsonc`) — never run `npm run dev` yourself: alone it serves a UI with no backend behind it (`[base44] Proxy not enabled`, every `/api` call fails), and alongside `base44 dev` the second Vite silently takes the next port and you end up looking at the wrong one.
+- **`base44 dev` runs the frontend for you** (via `site.serveCommand` in this repo's `base44/config.jsonc`) ??? never run `npm run dev` yourself: alone it serves a UI with no backend behind it (`[base44] Proxy not enabled`, every `/api` call fails), and alongside `base44 dev` the second Vite silently takes the next port and you end up looking at the wrong one.
 - **The app must be published at least once for the UI to load under `base44 dev`.** The frontend boots by fetching app settings from the hosted app; before the first publish that fails and every page redirects to login. The local API works regardless.
-- Entities, functions, and auth run locally — entity data is **in-memory only**, wiped when `base44 dev` restarts. Everything else (Core integrations, OAuth login) is forwarded to your deployed app. Full breakdown: [Local development overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview).
+- Entities, functions, and auth run locally ??? entity data is **in-memory only**, wiped when `base44 dev` restarts. Everything else (Core integrations, OAuth login) is forwarded to your deployed app. Full breakdown: [Local development overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview).
 
 ## Frontend Only, Hosted Backend
 
@@ -41,7 +41,7 @@ To work on just the frontend against your app's live hosted backend:
 base44 dev --remote
 ```
 
-⚠️ In this mode writes go to your app's **production data** — plain `base44 dev` keeps everything local.
+?????? In this mode writes go to your app's **production data** ??? plain `base44 dev` keeps everything local.
 
 ## Publish Your Changes
 
@@ -51,7 +51,52 @@ After pushing your changes to git, open the Base44 dashboard and publish the app
 base44 dashboard open
 ```
 
-This repo syncs to Base44 through git, so publish from the dashboard rather than `base44 deploy` — a CLI deploy ships your local tree directly, bypassing the sync, and the deployed state silently diverges from the repo.
+This repo syncs to Base44 through git, so publish from the dashboard rather than `base44 deploy` ??? a CLI deploy ships your local tree directly, bypassing the sync, and the deployed state silently diverges from the repo.
+
+## Automatic reservation import from Microsoft 365 email
+
+This app includes a backend webhook function (`receiveReservationEmail`) that can ingest reservation emails automatically and either:
+
+1. auto-create a `JourneyItem` when a gathering match is confident (date-window scoring), or
+2. create a pending import that appears on Home so the user picks the gathering manually.
+
+### 1) Configure secret in Base44
+
+Set a strong shared token in Base44 secrets:
+
+- `RESERVATION_INBOX_TOKEN=<long-random-token>`
+
+`receiveReservationEmail` requires this token in `Authorization: Bearer <token>` or `x-togetthere-token`.
+
+### 2) Build a Power Automate flow (Microsoft 365 mailbox)
+
+Use mailbox `plan@togetthere.app`:
+
+1. Trigger: **When a new email arrives (V3)** (Outlook).
+2. Action: **HTTP** (POST) to your Base44 function URL.
+3. Headers:
+   - `Authorization: Bearer <RESERVATION_INBOX_TOKEN>`
+   - `Content-Type: application/json`
+4. Body (example):
+
+```json
+{
+  "messageId": "@{triggerOutputs()?['body/id']}",
+  "internetMessageId": "@{triggerOutputs()?['body/internetMessageId']}",
+  "subject": "@{triggerOutputs()?['body/subject']}",
+  "from": "@{triggerOutputs()?['body/from/emailAddress/address']}",
+  "to": "plan@togetthere.app",
+  "receivedAt": "@{triggerOutputs()?['body/receivedDateTime']}",
+  "bodyText": "@{triggerOutputs()?['body/bodyPreview']}"
+}
+```
+
+Optional: pass `targetUserEmail` if you want deterministic user routing.
+
+### 3) User resolution and fallback behavior
+
+- If the sender/target email maps to a TOGETTHERE member and the date match is clear, item is created automatically.
+- If confidence is low, Home shows a pending import card with a gathering picker and one-click create/discard.
 
 ## Docs & Support
 
@@ -60,3 +105,4 @@ GitHub integration: [https://docs.base44.com/developers/app-code/local-developme
 Local development: [https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview)
 
 Support: [https://app.base44.com/support](https://app.base44.com/support)
+
