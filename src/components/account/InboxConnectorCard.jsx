@@ -22,6 +22,7 @@ const STATUS_LABEL_KEY = {
 // "Connect" affordance, so an empty provider group needs no extra component.
 export default function InboxConnectorCard({
   label,
+  hint,
   connection,
   configured,
   busy,
@@ -42,10 +43,13 @@ export default function InboxConnectorCard({
         <p className="text-sm font-semibold text-ink-deep">{label}</p>
         <p className="text-xs text-ink-deep/50">{t('account.inboxNoAccounts')}</p>
         {configured ? (
-          <Button size="sm" onClick={onConnect} disabled={isBusy}>
-            {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-            {t('account.inboxConnect')}
-          </Button>
+          <>
+            <Button size="sm" onClick={onConnect} disabled={isBusy}>
+              {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+              {t('account.inboxConnect')}
+            </Button>
+            {hint ? <p className="text-[0.6875rem] text-ink-deep/45 leading-relaxed">{hint}</p> : null}
+          </>
         ) : (
           <p className="text-xs text-ink-deep/50">{t('account.inboxNotConfigured')}</p>
         )}

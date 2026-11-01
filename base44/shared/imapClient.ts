@@ -17,7 +17,8 @@ function latin1ToBytes(value: string) {
   return bytes;
 }
 
-class ImapSession {
+// Exported so the SASL exchange can be exercised without a live mail server.
+export class ImapSession {
   socket: any;
   timeoutMs: number;
   buffer: string;
@@ -122,6 +123,34 @@ class ImapSession {
       parts.push({ line: current });
 
       const trimmed = current.trim();
+      if (trimmed.startsWith(`${tag} `)) {
+        const status = (trimmed.split(' ')[1] || '').toUpperCase();
+        return { status, parts };
+      }
+    }
+  }
+
+  // Runs one SASL authentication exchange (AUTHENTICATE <mechanism>). The server
+  // opens with a `+` continuation, we answer with the payload; on failure some
+  // servers (Yahoo) send a second `+` challenge carrying a base64 error, which
+  // must be acknowledged with an empty line before they report the final NO.
+  async authenticateSasl(mechanism: string, payload: string) {
+    this.tagSeq += 1;
+    const tag = `a${this.tagSeq}`;
+    this.write(`${tag} AUTHENTICATE ${mechanism}`);
+
+    const parts: any[] = [];
+    let answered = false;
+    for (;;) {
+      const current = await this.readLine();
+      const trimmed = current.trim();
+      if (trimmed.startsWith('+')) {
+        parts.push({ line: current });
+        this.write(answered ? '' : payload);
+        answered = true;
+        continue;
+      }
+      parts.push({ line: current });
       if (trimmed.startsWith(`${tag} `)) {
         const status = (trimmed.split(' ')[1] || '').toUpperCase();
         return { status, parts };

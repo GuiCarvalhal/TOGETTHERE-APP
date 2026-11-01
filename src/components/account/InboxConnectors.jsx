@@ -58,7 +58,8 @@ export default function InboxConnectors() {
   const handleConnect = async (provider, auth) => {
     setError('');
     setNotice('');
-    // iCloud/Yahoo collect an app password in a sheet instead of redirecting.
+    // iCloud collects an app-specific password in a sheet instead of redirecting;
+    // every other provider goes through the OAuth flow.
     if (auth === 'credential') {
       setCredentialProvider(provider);
       return;
@@ -126,7 +127,7 @@ export default function InboxConnectors() {
         </div>
       ) : (
         <div className="space-y-4">
-          {INBOX_PROVIDERS.map(({ provider, labelKey, auth }) => {
+          {INBOX_PROVIDERS.map(({ provider, labelKey, auth, hintKey }) => {
             const rows = connections.filter((c) => c.provider === provider);
             const isConfigured = configured[provider] !== false;
             return (
@@ -147,6 +148,7 @@ export default function InboxConnectors() {
                 {rows.length === 0 ? (
                   <InboxConnectorCard
                     label={t(labelKey)}
+                    hint={hintKey ? t(hintKey) : ''}
                     connection={null}
                     configured={isConfigured}
                     busy={busyKey === `connect:${provider}`}
@@ -179,7 +181,7 @@ export default function InboxConnectors() {
       <InboxCredentialSheet
         open={Boolean(credentialProvider)}
         provider={credentialProvider}
-        label={t(credentialProvider === 'yahoo' ? 'account.inboxYahoo' : 'account.inboxIcloud')}
+        label={t('account.inboxIcloud')}
         onOpenChange={(open) => { if (!open) setCredentialProvider(''); }}
         onConnected={() => {
           load();

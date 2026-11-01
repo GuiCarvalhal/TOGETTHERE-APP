@@ -1,9 +1,11 @@
-// iCloud + Yahoo inbox connectors (IMAP, app-password auth).
+// IMAP mailbox connectors: iCloud (app-specific password) and Yahoo (OAuth 2.0
+// over SASL XOAUTH2).
 //
 // Nothing here parses reservations: it only authenticates, reads recent INBOX
 // messages and hands them to the SAME shared ingestion pipeline the Gmail and
-// Outlook connectors use. The app password is AES-GCM encrypted at rest with a
-// server-side key and is never logged or returned to the client.
+// Outlook connectors use. An iCloud app password is AES-GCM encrypted at rest
+// (tagged with the key that wrote it) and never logged or returned to the client;
+// Yahoo stores OAuth tokens only, so no password ever exists for it.
 
 import {
   decodeImapBytes,
@@ -15,6 +17,10 @@ import {
 import { extractPlainTextFromHtml } from './reservationImport.ts';
 
 export const IMAP_PROVIDERS = ['icloud', 'yahoo'];
+// Which credential model a provider uses. Yahoo is OAuth-only: an app password
+// is never accepted for it.
+export const APP_PASSWORD_PROVIDERS = ['icloud'];
+export const IMAP_OAUTH_PROVIDERS = ['yahoo'];
 
 // Official IMAP endpoints, TLS only.
 const ENDPOINTS: Record<string, { host: string; port: number }> = {
@@ -34,26 +40,71 @@ export function isImapProvider(value: unknown) {
   return typeof value === 'string' && IMAP_PROVIDERS.includes(value);
 }
 
+export function isAppPasswordProvider(value: unknown) {
+  return typeof value === 'string' && APP_PASSWORD_PROVIDERS.includes(value);
+}
+
+export function isImapOAuthProvider(value: unknown) {
+  return typeof value === 'string' && IMAP_OAUTH_PROVIDERS.includes(value);
+}
+
 export function imapEndpoint(provider: string) {
   return ENDPOINTS[provider] || null;
 }
 
 // ---------------------------------------------------------------------------
-// Credential encryption (AES-GCM, key derived from a server-side secret)
+// Credential encryption (AES-GCM)
+//
+// The dedicated key is INBOX_CREDENTIALS_KEY and it is what new writes use.
+// Ciphertext is tagged with a short fingerprint of the key that produced it
+// (`v2:<keyId>:<iv>:<ciphertext>`), so a rotated key is DETECTED instead of
+// silently yielding garbage: the outgoing key stays readable through
+// INBOX_CREDENTIALS_KEY_PREVIOUS during the rotation window, and anything read
+// with a non-primary key is re-encrypted on the next sync. Records written before
+// fingerprints existed (`v1:`) are tried against the whole ring.
+// RESERVATION_INBOX_TOKEN is last-resort legacy material — read for compatibility,
+// never preferred when a dedicated key exists.
 // ---------------------------------------------------------------------------
 
-function keySecret() {
-  for (const name of ['INBOX_CREDENTIALS_KEY', 'RESERVATION_INBOX_TOKEN']) {
-    const value = (process.env[name] || '').trim();
-    if (value) return value;
-  }
-  return '';
+function keyMaterials(): string[] {
+  return [
+    (process.env.INBOX_CREDENTIALS_KEY || '').trim(),
+    (process.env.INBOX_CREDENTIALS_KEY_PREVIOUS || '').trim(),
+    (process.env.RESERVATION_INBOX_TOKEN || '').trim(),
+  ].filter(Boolean);
 }
 
-// The connectors are usable as soon as one key-material secret exists; the UI
-// reads this to decide whether to offer Connect at all.
+// The connectors are usable as soon as some key material exists; the UI reads
+// this to decide whether to offer Connect at all.
 export function imapCredentialsAvailable() {
-  return Boolean(keySecret());
+  return keyMaterials().length > 0;
+}
+
+type CredentialKey = { id: string; key: CryptoKey };
+
+function keyFingerprint(digest: ArrayBuffer) {
+  return Array.from(new Uint8Array(digest).slice(0, 8))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function deriveKey(material: string): Promise<CredentialKey> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(material));
+  const key = await crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  return { id: keyFingerprint(digest), key };
+}
+
+// Ordered ring: dedicated key first, then the previous one, then the legacy token.
+async function credentialKeyring(): Promise<CredentialKey[]> {
+  const seen = new Set<string>();
+  const materials = keyMaterials().filter((material) => {
+    if (seen.has(material)) return false;
+    seen.add(material);
+    return true;
+  });
+  const keys: CredentialKey[] = [];
+  for (const material of materials) keys.push(await deriveKey(material));
+  return keys;
 }
 
 function toBase64(bytes: Uint8Array) {
@@ -69,40 +120,71 @@ function fromBase64(value: string) {
   return bytes;
 }
 
-async function aesKey() {
-  const secret = keySecret();
-  if (!secret) throw new Error('not_configured');
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
-  return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+async function primaryKey(): Promise<CredentialKey> {
+  const [first] = await credentialKeyring();
+  if (!first) throw new Error('credentials_key_missing');
+  return first;
 }
 
 export async function encryptImapCredential(plain: string) {
-  const key = await aesKey();
+  const { id, key } = await primaryKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
     new TextEncoder().encode(plain),
   );
-  return `v1:${toBase64(iv)}:${toBase64(new Uint8Array(cipher))}`;
+  return `v2:${id}:${toBase64(iv)}:${toBase64(new Uint8Array(cipher))}`;
 }
 
-export async function decryptImapCredential(stored: unknown) {
-  const value = typeof stored === 'string' ? stored.trim() : '';
-  if (!value) return '';
-  const [version, ivPart, dataPart] = value.split(':');
-  if (version !== 'v1' || !ivPart || !dataPart) return '';
-  try {
-    const key = await aesKey();
-    const plain = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: fromBase64(ivPart) },
-      key,
-      fromBase64(dataPart),
-    );
-    return new TextDecoder().decode(plain);
-  } catch {
-    return '';
+export type StoredCredential = {
+  value: string;
+  // True when the record was written with a key that is no longer primary (old
+  // dedicated key, legacy token, or a pre-fingerprint v1 record). The caller can
+  // re-encrypt with the primary key to complete a rotation.
+  needsRotation: boolean;
+};
+
+// Decrypts a stored app password. Throws a specific code — never server detail —
+// when the key material is missing or no longer matches the stored ciphertext.
+export async function readImapCredential(stored: unknown): Promise<StoredCredential> {
+  const raw = typeof stored === 'string' ? stored.trim() : '';
+  if (!raw) return { value: '', needsRotation: false };
+
+  const parts = raw.split(':');
+  const tagged = parts[0] === 'v2' && parts.length === 4;
+  const legacy = parts[0] === 'v1' && parts.length === 3;
+  if (!tagged && !legacy) return { value: '', needsRotation: false };
+
+  const storedKeyId = tagged ? parts[1] : '';
+  const ivPart = tagged ? parts[2] : parts[1];
+  const dataPart = tagged ? parts[3] : parts[2];
+
+  const ring = await credentialKeyring();
+  if (!ring.length) throw new Error('credentials_key_missing');
+
+  const primaryId = ring[0].id;
+  // A tagged record is only meaningful to the key that produced it; an untagged
+  // (v1) record predates fingerprints, so every configured key is a candidate.
+  const candidates = storedKeyId ? ring.filter((candidate) => candidate.id === storedKeyId) : ring;
+  if (!candidates.length) throw new Error('credentials_key_invalid');
+
+  for (const candidate of candidates) {
+    try {
+      const plain = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: fromBase64(ivPart) },
+        candidate.key,
+        fromBase64(dataPart),
+      );
+      return {
+        value: new TextDecoder().decode(plain),
+        needsRotation: candidate.id !== primaryId,
+      };
+    } catch {
+      // Wrong key in the ring — try the next one.
+    }
   }
+  throw new Error('credentials_key_invalid');
 }
 
 // ---------------------------------------------------------------------------
@@ -112,24 +194,48 @@ export async function decryptImapCredential(stored: unknown) {
 export function imapErrorCode(error: any) {
   const raw = String(error?.message || error || '').toLowerCase();
   if (!raw) return 'imap_error';
+  if (raw.includes('credentials_key_missing')) return 'credentials_key_missing';
+  if (raw.includes('credentials_key_invalid')) return 'credentials_key_invalid';
   if (raw.includes('missing_password') || raw.includes('app_password_missing')) return 'missing_password';
+  if (raw.includes('missing_token')) return 'missing_token';
   if (raw.includes('timeout') || raw.includes('timed out')) return 'timeout';
+  if (raw.includes('reconnect') || raw.includes('invalid_grant') || raw.includes('unauthorized')) return 'auth_failed';
   if (raw.includes('auth')) return 'auth_failed';
   if (raw.includes('denied') || raw.includes('not permitted') || raw.includes('forbidden')) return 'denied';
   if (raw.includes('imap_unavailable') || raw.includes('not_configured')) return 'unavailable';
   return 'imap_error';
 }
 
-// Short, storage-safe explanation written to InboxConnection.last_error.
+// Short, storage-safe explanation written to InboxConnection.last_error. Provider
+// or server wording is never echoed back — only these fixed codes reach the UI.
 export function describeImapSyncError(provider: string, message: string) {
   const code = imapErrorCode(message);
   const label = provider === 'yahoo' ? 'Yahoo' : 'iCloud';
-  if (code === 'auth_failed') return `${label} rejected the app password. Reconnect with a new app password.`;
-  if (code === 'timeout') return `${label} did not answer in time. Try syncing again.`;
-  if (code === 'denied') return `${label} denied mailbox access. Check that IMAP is enabled for the account.`;
-  if (code === 'missing_password') return `No app password is stored. Reconnect the mailbox.`;
-  if (code === 'unavailable') return `Mailbox credentials are not configured yet.`;
-  return message || `${label} sync failed.`;
+  const oauth = isImapOAuthProvider(provider);
+
+  switch (code) {
+    case 'credentials_key_missing':
+      return 'Mailbox security is not configured yet. Ask the app owner to set the inbox credentials key.';
+    case 'credentials_key_invalid':
+      return 'Stored mailbox credentials can no longer be read because the inbox key changed. Reconnect the mailbox.';
+    case 'auth_failed':
+      return oauth
+        ? `${label} authorization expired. Reconnect the mailbox to approve mail access again.`
+        : `${label} rejected the app password. Reconnect with a new app password.`;
+    case 'denied':
+      return oauth
+        ? `${label} denied mailbox access. Reconnect and allow mail reading.`
+        : `${label} denied mailbox access. Check that IMAP is enabled for the account.`;
+    case 'timeout':
+      return `${label} did not answer in time. Try syncing again.`;
+    case 'missing_password':
+    case 'missing_token':
+      return 'No mailbox credential is stored. Reconnect the mailbox.';
+    case 'unavailable':
+      return 'Mailbox credentials are not configured yet.';
+    default:
+      return `${label} sync failed. Try again.`;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -275,44 +381,59 @@ function loginFailure(result: any) {
   return 'auth_failed';
 }
 
-async function openAuthenticatedSession(provider: string, email: string, appPassword: string) {
+// Yahoo requires a client identifier command before it serves a session.
+async function sendClientId(session: any) {
+  try {
+    await session.run('ID ("name" "TOGETTHERE" "version" "1.0")');
+  } catch {
+    // Optional: some accounts answer BAD and still work.
+  }
+}
+
+// SASL XOAUTH2 payload: user=<address>\x01auth=Bearer <token>\x01\x01
+export function buildXoauth2Payload(email: string, accessToken: string) {
+  return toBase64(new TextEncoder().encode(`user=${email}\x01auth=Bearer ${accessToken}\x01\x01`));
+}
+
+async function openImapSession(provider: string, { email, appPassword, accessToken }: any) {
   const endpoint = imapEndpoint(provider);
   if (!endpoint) throw new Error('unknown_provider');
-  if (!email || !appPassword) throw new Error('missing_password');
+  if (!email) throw new Error('missing_password');
+  if (!appPassword && !accessToken) {
+    throw new Error(isImapOAuthProvider(provider) ? 'missing_token' : 'missing_password');
+  }
 
   const session = await openImap(endpoint, { timeoutMs: CONNECT_TIMEOUT_MS });
-  const login = await session.run(`LOGIN ${quoteImap(email)} ${quoteImap(appPassword)}`);
-  if (login.status !== 'OK') {
-    await session.close();
-    throw new Error(loginFailure(login));
-  }
-  if (provider === 'yahoo') {
-    // Yahoo requires a client identifier before it serves mailbox data.
-    try {
-      await session.run('ID ("name" "TOGETTHERE" "version" "1.0")');
-    } catch {
-      // Optional: some accounts answer BAD and still work.
+  try {
+    if (accessToken) {
+      await sendClientId(session);
+      const auth = await session.authenticateSasl('XOAUTH2', buildXoauth2Payload(email, accessToken));
+      if (auth.status !== 'OK') throw new Error(loginFailure(auth));
+    } else {
+      const login = await session.run(`LOGIN ${quoteImap(email)} ${quoteImap(appPassword)}`);
+      if (login.status !== 'OK') throw new Error(loginFailure(login));
     }
-  }
-  const select = await session.run('SELECT "INBOX"');
-  if (select.status !== 'OK') {
+
+    const select = await session.run('SELECT "INBOX"');
+    if (select.status !== 'OK') throw new Error('denied');
+    return session;
+  } catch (error) {
     await session.close();
-    throw new Error('denied');
+    throw error;
   }
-  return session;
 }
 
 // Verifies an app password without storing anything. Throws on failure so the
 // caller can map the error to a provider-specific message.
 export async function testImapLogin(provider: string, { email, appPassword }: any) {
-  const session = await openAuthenticatedSession(provider, email, appPassword);
+  const session = await openImapSession(provider, { email, appPassword });
   await session.close();
   return { ok: true };
 }
 
 export async function fetchImapMessages(provider: string, opts: any) {
-  const { email, appPassword, limit, sinceMs, uidCursor, isCandidate } = opts || {};
-  const session = await openAuthenticatedSession(provider, email, appPassword);
+  const { email, appPassword, accessToken, limit, sinceMs, uidCursor, isCandidate } = opts || {};
+  const session = await openImapSession(provider, { email, appPassword, accessToken });
 
   try {
     // UID cursor when we have one (strictly newer), otherwise a time window.

@@ -112,7 +112,9 @@ so there is no second parser to keep in sync.
 | `MICROSOFT_OAUTH_CLIENT_ID` / `MICROSOFT_OAUTH_CLIENT_SECRET` | Microsoft Entra app registration for Outlook.com (`Mail.Read`, `User.Read`, `offline_access`). |
 | `INBOX_OAUTH_CALLBACK_URL` *(optional)* | Exact redirect URI registered with the providers. Default: `<app url>/functions/completeInboxOAuth`. |
 | `INBOX_OAUTH_SUCCESS_URL` *(optional)* | Where the browser lands after connecting. Default: `<app url>/account`. |
-| `INBOX_CREDENTIALS_KEY` *(optional)* | AES-GCM key material for the iCloud/Yahoo app passwords stored on `InboxConnection`. Falls back to `RESERVATION_INBOX_TOKEN` when unset. |
+| `YAHOO_OAUTH_CLIENT_ID` / `YAHOO_OAUTH_CLIENT_SECRET` | Yahoo Developer app for Yahoo Mail OAuth (`openid mail-r`), used for the OAuth token and IMAP XOAUTH2 access. |
+| `INBOX_CREDENTIALS_KEY` | AES-GCM key material for iCloud app-specific passwords stored on `InboxConnection`. Required for iCloud connections; when unset, the legacy `RESERVATION_INBOX_TOKEN` is used so records written earlier keep decrypting. |
+| `INBOX_CREDENTIALS_KEY_PREVIOUS` *(optional)* | The outgoing key during a rotation window. Records it wrote stay readable and are re-encrypted with `INBOX_CREDENTIALS_KEY` on their next sync. |
 
 ### OAuth app setup
 
@@ -122,35 +124,95 @@ so there is no second parser to keep in sync.
 2. **Microsoft** — Entra admin center → App registrations → New registration → "Accounts in any organizational directory and personal Microsoft accounts".
    Redirect URI (platform: **Web**): `https://<your app domain>/functions/completeInboxOAuth`
    API permissions → Microsoft Graph → Delegated → `Mail.Read`, `User.Read`, `offline_access`. Then Certificates & secrets → new client secret.
-3. Paste the four values (plus the optional URLs) into the dashboard **Secrets** page.
+3. **Yahoo** — [Yahoo Developer Network](https://developer.yahoo.com/apps/create/) → Create Application:
+   - Application type: **Web Application**
+   - **Mail** permission: **Read** (this is the `mail-r` scope the connector requests)
+   - **OpenID Connect**: enabled (needed to read the mailbox address from `userinfo`)
+   - Redirect URI (exact, no trailing slash): `https://gcarva.base44.app/functions/completeInboxOAuth`
+   - Save the **Client ID** (`YAHOO_OAUTH_CLIENT_ID`) and **Client Secret** (`YAHOO_OAUTH_CLIENT_SECRET`).
 
-Both providers require the callback to be an exact string match; if you set
-`INBOX_OAUTH_CALLBACK_URL`, it must be identical in the provider console.
+   Yahoo flow details, for reference: authorization at
+   `https://api.login.yahoo.com/oauth2/request_auth` (`scope=openid mail-r`), tokens at
+   `https://api.login.yahoo.com/oauth2/get_token`, mailbox address from
+   `https://api.login.yahoo.com/openid/v1/userinfo`, and IMAP access over
+   `imap.mail.yahoo.com:993` with `AUTHENTICATE XOAUTH2` using the access token.
+   Tokens are refreshed automatically; an expired or revoked grant marks the mailbox
+   "Needs attention" and asks the user to reconnect.
 
-### iCloud & Yahoo (IMAP, app passwords)
+4. Paste the values (plus the optional URLs) into the dashboard **Secrets** page.
 
-No OAuth app registration is needed for these two: each user connects with an
-**app-specific password**, which is verified against the real IMAP server,
-encrypted with AES-GCM, and stored on their own `InboxConnection` record
-(admin-only RLS; never returned to the client).
+Every provider requires the callback to be an exact string match; if you set
+`INBOX_OAUTH_CALLBACK_URL`, it must be identical in all three consoles. Yahoo is
+strictest here: a mismatched redirect URI fails at `request_auth`, before any code
+is issued.
 
-| Provider | IMAP host | Port | Prerequisite |
-| --- | --- | --- | --- |
-| iCloud Mail | `imap.mail.me.com` | `993` (TLS) | Apple ID → **Sign-In and Security → App-Specific Passwords**. Two-factor authentication must be on; the normal Apple ID password is rejected. |
-| Yahoo Mail | `imap.mail.yahoo.com` | `993` (TLS) | Account Security → **Generate app password** (required while two-step verification is on). |
+### iCloud Mail (IMAP, app-specific password)
 
-- Connect from **Account → Inbox connectors → iCloud Mail / Yahoo Mail**: enter the
-  mailbox address and the app password. `connectImapInbox` runs `LOGIN` + `SELECT INBOX`
-  before storing anything, so a bad password fails immediately with a specific message
-  (rejected app password, timeout, or mailbox access denied).
+iCloud keeps the app-password model (Apple has no OAuth for mail). Each user
+connects their own **app-specific password**, which is verified against the real
+IMAP server and only then stored — AES-GCM encrypted, never logged, never returned
+to the client.
+
+| IMAP host | Port | Prerequisite |
+| --- | --- | --- |
+| `imap.mail.me.com` | `993` (TLS) | Apple ID → **Sign-In and Security → App-Specific Passwords**. Two-factor authentication must be on; the normal Apple ID password is rejected. |
+
+Security model:
+
+- **Encryption at rest.** The password is encrypted with AES-GCM under the dedicated
+  `INBOX_CREDENTIALS_KEY`. Ciphertext is tagged with a short fingerprint of the key
+  that produced it (`v2:<keyId>:<iv>:<ciphertext>`), so a wrong/rotated key is
+  detected instead of producing garbage.
+- **Key rotation.** To rotate: copy the current value to
+  `INBOX_CREDENTIALS_KEY_PREVIOUS`, set the new value in `INBOX_CREDENTIALS_KEY`.
+  Records written by the old key still decrypt (the ring is tried in order: new,
+  previous, legacy `RESERVATION_INBOX_TOKEN`), and each one is **re-encrypted with the
+  new key on its next sync** — after every mailbox has synced once, the previous key
+  can be removed.
+- **Clear errors.** Missing key material fails with `credentials_key_missing`; a key
+  that no longer matches the stored ciphertext fails with `credentials_key_invalid`
+  and the UI says to reconnect. Neither message exposes crypto or server detail.
+- **Strict input.** The address must be a valid mailbox address (≤ 254 chars) and the
+  password must look like an app-specific token (8–256 chars after stripping spaces);
+  a rejection from Apple is reported as a fixed code, never as the server's wording.
+- **Disconnect wipes.** Disconnecting clears the encrypted secret, both cursors
+  (`sync_cursor`, `uid_cursor`), the sync lease, the next-sync time and the last error,
+  so nothing about the mailbox survives on the record.
+
+Behaviour:
+
+- Connect from **Account → Inbox connectors → iCloud Mail**: enter the mailbox address
+  and the app password. `connectImapInbox` runs `LOGIN` + `SELECT INBOX` before storing
+  anything, so a bad password fails immediately with a specific message (rejected app
+  password, timeout, or mailbox access denied).
 - `syncInboxConnections` issues `UID SEARCH`, then `HEADER.FIELDS (SUBJECT FROM TO DATE)`,
   and downloads full bodies only for subject matches. The highest INBOX UID is kept in
   `uid_cursor`, so later syncs fetch strictly newer mail; a first sync falls back to a
-  30-day window.
-- Source ids are `icloud:<mailbox>:<uid>` and `yahoo:<mailbox>:<uid>`, so re-scans and
-  reconnects never duplicate imports.
-- Revoking the app password at the provider makes the next sync record "Needs attention";
-  disconnect clears the encrypted credential and the UID cursor.
+  30-day window. Source ids are `icloud:<mailbox>:<uid>`.
+- Revoking the app password at Apple makes the next sync record "Needs attention".
+
+### Yahoo Mail (IMAP over OAuth 2.0 / XOAUTH2)
+
+Yahoo is OAuth-only — no password is ever collected or stored for it. The browser is
+sent to Yahoo, the code is exchanged by `completeInboxOAuth`, and the mailbox is read
+over IMAP using `AUTHENTICATE XOAUTH2` with the access token.
+
+- Scopes: `openid mail-r` (read-only mail). `mail-w` is never requested.
+- The mailbox address comes from `https://api.login.yahoo.com/openid/v1/userinfo`, so
+  the account can be keyed by address (multi-account) and used as the IMAP login name.
+  A callback that cannot resolve an address redirects with `inbox=error&reason=missing_account_email`.
+- Access tokens are refreshed automatically before expiry (5-minute skew) and the
+  rotated refresh token is persisted. An expired or revoked grant marks the mailbox
+  "Needs attention" with a fixed message asking the user to reconnect — the provider's
+  raw wording is never shown.
+- Yahoo needs its `ID` command before authentication; the client sends it up front, then
+  answers the SASL continuation and acknowledges a failed exchange before reading the
+  final NO.
+- Source ids are `yahoo:<mailbox>:<uid>`, so re-scans and reconnects never duplicate
+  imports. Disconnect clears both tokens and both cursors.
+
+Prerequisites and the exact callback URL are in **OAuth app setup → Yahoo** above;
+`YAHOO_OAUTH_CLIENT_ID` and `YAHOO_OAUTH_CLIENT_SECRET` are the only secrets needed.
 
 ### How syncing works
 

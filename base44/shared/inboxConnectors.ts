@@ -1,4 +1,7 @@
-// Native inbox connectors (Gmail + Outlook.com).
+// Native inbox connectors (Gmail, Outlook.com, Yahoo and iCloud).
+//
+// Gmail, Outlook and Yahoo authenticate with OAuth (Yahoo reads IMAP over SASL
+// XOAUTH2); iCloud uses an AES-GCM-encrypted app-specific password.
 //
 // Everything provider-specific lives here: OAuth URL generation, code exchange,
 // token refresh, message fetching and the sync loop. The sync loop does no
@@ -11,11 +14,14 @@
 import { extractPlainTextFromHtml, normalizeUserKeys } from './reservationImport.ts';
 import { ingestReservationMessage } from './reservationIngestion.ts';
 import {
-  decryptImapCredential,
   describeImapSyncError,
+  encryptImapCredential,
   fetchImapMessages,
   imapCredentialsAvailable,
+  isAppPasswordProvider,
+  isImapOAuthProvider,
   isImapProvider,
+  readImapCredential,
 } from './imapInbox.ts';
 
 export const INBOX_PROVIDERS = ['gmail', 'outlook', 'icloud', 'yahoo'];
@@ -125,6 +131,11 @@ function getOAuthConfig(provider) {
     const clientSecret = (process.env.MICROSOFT_OAUTH_CLIENT_SECRET || '').trim();
     return clientId && clientSecret ? { clientId, clientSecret } : null;
   }
+  if (provider === 'yahoo') {
+    const clientId = (process.env.YAHOO_OAUTH_CLIENT_ID || '').trim();
+    const clientSecret = (process.env.YAHOO_OAUTH_CLIENT_SECRET || '').trim();
+    return clientId && clientSecret ? { clientId, clientSecret } : null;
+  }
   return null;
 }
 
@@ -132,10 +143,10 @@ export function inboxProviderConfigStatus() {
   return {
     gmail: Boolean(getOAuthConfig('gmail')),
     outlook: Boolean(getOAuthConfig('outlook')),
-    // IMAP providers need no app-level client; they only need the credential
-    // encryption key, and each user supplies their own app password.
+    yahoo: Boolean(getOAuthConfig('yahoo')),
+    // iCloud needs no app-level client: each user supplies their own app-specific
+    // password, so only the credential encryption key is required.
     icloud: imapCredentialsAvailable(),
-    yahoo: imapCredentialsAvailable(),
   };
 }
 
@@ -183,6 +194,15 @@ export function buildAuthorizationUrl(provider, { state, redirectUri }) {
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 
+  if (provider === 'yahoo') {
+    // `mail-r` is Yahoo's read-only Mail scope and is what IMAP XOAUTH2 requires;
+    // `openid` lets us read the mailbox address from the userinfo endpoint so the
+    // account can be keyed by address.
+    params.set('scope', 'openid mail-r');
+    params.set('nonce', crypto.randomUUID());
+    return `https://api.login.yahoo.com/oauth2/request_auth?${params.toString()}`;
+  }
+
   params.set('scope', 'offline_access openid email User.Read Mail.Read');
   params.set('response_mode', 'query');
   params.set('prompt', 'consent');
@@ -193,13 +213,17 @@ export function buildAuthorizationUrl(provider, { state, redirectUri }) {
 // Token handling
 // ---------------------------------------------------------------------------
 
+const TOKEN_ENDPOINTS: Record<string, string> = {
+  gmail: 'https://oauth2.googleapis.com/token',
+  outlook: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+  yahoo: 'https://api.login.yahoo.com/oauth2/get_token',
+};
+
 async function requestToken(provider, body) {
   const config = getOAuthConfig(provider);
   if (!config) throw new Error('not_configured');
 
-  const endpoint = provider === 'gmail'
-    ? 'https://oauth2.googleapis.com/token'
-    : 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+  const endpoint = TOKEN_ENDPOINTS[provider];
 
   const params = new URLSearchParams({
     ...body,
@@ -272,6 +296,15 @@ async function fetchAccountEmail(provider, accessToken) {
       if (!res.ok) return '';
       const json = await res.json().catch(() => ({}));
       return json.emailAddress || '';
+    }
+    if (provider === 'yahoo') {
+      const res = await fetch('https://api.login.yahoo.com/openid/v1/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+      });
+      if (!res.ok) return '';
+      const json = await res.json().catch(() => ({}));
+      return json.email || '';
     }
     const res = await fetch('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -399,18 +432,34 @@ async function fetchOutlookMessages(accessToken, { limit, sinceIso }) {
 // Sync
 // ---------------------------------------------------------------------------
 
-// Provider-agnostic fetch. Gmail/Outlook go through OAuth tokens; iCloud/Yahoo
-// read IMAP with the stored app password. Everything after this is identical
-// for all four providers.
+// Provider-agnostic fetch. Gmail/Outlook use their REST APIs, Yahoo reads IMAP
+// with an OAuth token (XOAUTH2) and iCloud reads IMAP with the stored app
+// password. Everything after this is identical for all four providers.
 async function collectMessages(base44, connection, { sinceMs }) {
   const provider = connection.provider;
 
   if (isImapProvider(provider)) {
-    const appPassword = await decryptImapCredential(connection.credential_secret);
-    if (!appPassword) throw new Error('missing_password');
+    const email = connection.provider_account_email || '';
+    const credentials: Record<string, any> = { email };
+
+    if (isAppPasswordProvider(provider)) {
+      const stored = await readImapCredential(connection.credential_secret);
+      if (!stored.value) throw new Error('missing_password');
+      // Completes a key rotation: a secret decrypted with a non-primary key is
+      // rewritten with the primary one so the old key can be retired safely.
+      if (stored.needsRotation) {
+        await base44.asServiceRole.entities.InboxConnection.update(connection.id, {
+          credential_secret: await encryptImapCredential(stored.value),
+          updated_at: new Date().toISOString(),
+        });
+      }
+      credentials.appPassword = stored.value;
+    } else if (isImapOAuthProvider(provider)) {
+      credentials.accessToken = await ensureAccessToken(base44, connection);
+    }
+
     const { messages, nextUidCursor } = await fetchImapMessages(provider, {
-      email: connection.provider_account_email || '',
-      appPassword,
+      ...credentials,
       limit: MAX_CANDIDATES,
       sinceMs,
       uidCursor: Number(connection.uid_cursor) || 0,
@@ -498,8 +547,9 @@ export async function syncInboxConnection(base44, connection) {
   };
 }
 
-// Provider-aware, user-facing message for a failed sync. IMAP errors get a
-// readable explanation; OAuth errors keep the provider's own wording.
+// Provider-aware, user-facing message for a failed sync. IMAP failures (iCloud
+// app password, Yahoo XOAUTH2) map to fixed, non-verbose explanations; the REST
+// providers keep their own wording.
 export function describeSyncError(connection, error) {
   const raw = error?.message || 'Sync failed';
   return isImapProvider(connection.provider)
@@ -593,6 +643,9 @@ export async function upsertConnection(base44, { provider, user, tokens, provide
     access_token: tokens.accessToken || '',
     refresh_token: tokens.refreshToken || existing?.refresh_token || '',
     access_token_expires_at: tokens.expiresAt || '',
+    // OAuth providers never keep a password. This also retires the secret of a
+    // Yahoo row that was connected before the switch to OAuth.
+    credential_secret: '',
     connected_at: now,
     last_error: '',
     sync_started_at: '',

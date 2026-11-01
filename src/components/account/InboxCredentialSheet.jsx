@@ -10,17 +10,22 @@ import { Loader2 } from 'lucide-react';
 const ERROR_KEYS = {
   invalid_email: 'account.inboxErrorInvalidEmail',
   missing_password: 'account.inboxErrorMissingPassword',
+  invalid_password: 'account.inboxErrorInvalidPassword',
   auth_failed: 'account.inboxErrorAuthFailed',
   timeout: 'account.inboxErrorTimeout',
   denied: 'account.inboxErrorDenied',
   not_configured: 'account.inboxNotConfigured',
+  credentials_key_missing: 'account.inboxErrorKeyMissing',
+  credentials_key_invalid: 'account.inboxErrorKeyInvalid',
+  use_oauth: 'account.inboxErrorUseOAuth',
   invalid_provider: 'account.inboxErrorImapFailed',
   imap_error: 'account.inboxErrorImapFailed',
+  connect_failed: 'account.inboxErrorImapFailed',
 };
 
-// Connect form for the IMAP providers (iCloud, Yahoo): mailbox address plus an
-// app-specific password, with provider-specific help text. The server verifies
-// the credentials against the real IMAP server before anything is stored.
+// Connect form for iCloud — the only app-password provider (Yahoo connects with
+// OAuth). The server verifies the password against the real IMAP server before
+// anything is stored, then keeps it AES-GCM encrypted with an identified key.
 export default function InboxCredentialSheet({ open, provider, label, onOpenChange, onConnected }) {
   const { t } = useI18n();
   const [email, setEmail] = useState('');
@@ -36,7 +41,7 @@ export default function InboxCredentialSheet({ open, provider, label, onOpenChan
     setBusy(false);
   }, [open]);
 
-  const helpKey = provider === 'yahoo' ? 'account.inboxYahooHelp' : 'account.inboxIcloudHelp';
+  const helpKey = 'account.inboxIcloudHelp';
 
   const submit = async (event) => {
     event.preventDefault();
@@ -66,6 +71,9 @@ export default function InboxCredentialSheet({ open, provider, label, onOpenChan
     >
       <form onSubmit={submit} className="space-y-4">
         <p className="text-xs text-ink-deep/60 leading-relaxed">{t(helpKey)}</p>
+        <p className="text-[0.6875rem] text-ink-deep/45 leading-relaxed rounded-xl bg-foreground/5 border border-ink-charcoal/10 px-3 py-2">
+          {t('account.inboxIcloudSecurityHint')}
+        </p>
 
         <div className="space-y-1.5">
           <Label htmlFor="inbox-imap-email">{t('account.inboxImapEmailLabel')}</Label>

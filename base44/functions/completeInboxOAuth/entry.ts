@@ -47,7 +47,10 @@ export default async function(req) {
     const tokens = await exchangeAuthorizationCode(provider, { code, redirectUri });
     if (!tokens.accessToken) return fail('no_access_token');
 
-    const providerAccountEmail = await fetchProviderAccountEmail(provider, tokens.accessToken);
+    const providerAccountEmail = (await fetchProviderAccountEmail(provider, tokens.accessToken) || '').trim();
+    // Yahoo mailboxes are keyed by address and sign in to IMAP with it, so an
+    // unidentified mailbox cannot be stored.
+    if (provider === 'yahoo' && !providerAccountEmail) return fail('missing_account_email');
 
     await upsertConnection(base44, {
       provider,
