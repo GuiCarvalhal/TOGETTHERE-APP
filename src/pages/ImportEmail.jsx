@@ -7,31 +7,85 @@ import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Mail, AlertTriangle, Sparkles } from 'lucide-react';
+import { Loader2, Mail, AlertTriangle, Sparkles, Upload } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { toast } from '@/components/ui/use-toast';
 import DetailActionBar from '@/components/tt/DetailActionBar';
 
-// Import a journey segment from a forwarded booking email — without connecting
-// any inbox. The user pastes the email content; we extract a draft with the
-// built-in LLM (extractJourneyFromEmail) and show it as a prefilled, editable
-// JourneyItemForm for review. Nothing is created, sent, or persisted until the
-// user confirms the draft. A duplicate check (by confirmation number) warns
-// before saving so a segment is never silently duplicated.
+// Import a journey segment from reservation content (uploaded text-based file
+// or pasted text) without connecting inboxes/accounts. We extract a draft with
+// the built-in LLM (extractJourneyFromEmail) and show it as a prefilled,
+// editable JourneyItemForm for review. Nothing is created, sent, or persisted
+// until the user confirms the draft. A duplicate check (by confirmation number)
+// warns before saving so a segment is never silently duplicated.
 export default function ImportEmail() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { gatheringId, gathering, members, currentMember, role } = useGathering();
   const [text, setText] = useState('');
+  const [sourceFileName, setSourceFileName] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [draft, setDraft] = useState(null);
   const [extractError, setExtractError] = useState('');
   const [duplicate, setDuplicate] = useState(null);
 
   const canAdd = canAddJourney(role);
+  const MAX_TEXT_CHARS = 20000;
+  const MAX_UPLOAD_BYTES = 1024 * 1024;
+  const SUPPORTED_EXTENSIONS = ['txt', 'eml', 'csv', 'ics', 'json', 'xml', 'html', 'htm'];
 
   function back() {
     navigate(`/gathering/${gatheringId}/journey`);
+  }
+
+  async function handleFileSelect(file) {
+    if (!file) return;
+    setExtractError('');
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+      setSourceFileName('');
+      setText('');
+      setDraft(null);
+      setDuplicate(null);
+      setExtractError(t('importEmail.unsupportedFile'));
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setSourceFileName('');
+      setText('');
+      setDraft(null);
+      setDuplicate(null);
+      setExtractError(t('importEmail.fileTooLarge'));
+      return;
+    }
+    try {
+      const raw = await file.text();
+      const normalized = raw.replace(/^\uFEFF/, '');
+      if (!normalized.trim()) {
+        setSourceFileName('');
+        setText('');
+        setDraft(null);
+        setDuplicate(null);
+        setExtractError(t('importEmail.fileEmpty'));
+        return;
+      }
+      const cropped = normalized.slice(0, MAX_TEXT_CHARS);
+      setSourceFileName(file.name);
+      setText(cropped);
+      setDraft(null);
+      setDuplicate(null);
+      if (normalized.length > MAX_TEXT_CHARS) {
+        toast({ title: t('importEmail.fileTrimmed') });
+      } else {
+        toast({ title: t('importEmail.fileLoaded', { name: file.name }) });
+      }
+    } catch (e) {
+      setSourceFileName('');
+      setText('');
+      setDraft(null);
+      setDuplicate(null);
+      setExtractError(e.message || t('importEmail.fileLoadFailed'));
+    }
   }
 
   async function handleExtract() {
@@ -56,10 +110,10 @@ export default function ImportEmail() {
   }
 
   // Duplicate review: when the draft has a confirmation number, look for an
-  // existing segment with the same number in this gathering. Read-only — it
+  // existing segment with the same number in this gathering. Read-only ??? it
   // never creates or changes anything. Warns the user; they decide whether to
   // keep saving. (Non-flight segments without a confirmation number are not
-  // checked — the user reviews the draft manually.)
+  // checked ??? the user reviews the draft manually.)
   useEffect(() => {
     let active = true;
     const code = draft?.confirmation_number?.trim();
@@ -140,6 +194,23 @@ export default function ImportEmail() {
         <p className="text-sm text-ink-deep/60 mb-5">{t('importEmail.intro')}</p>
 
         <div className="tt-card p-4 space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-ink-deep">{t('importEmail.uploadLabel')}</Label>
+            <label className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg border border-dashed border-ink-charcoal/30 text-xs text-ink-deep/70 cursor-pointer hover:bg-cream-pale">
+              <Upload className="w-3.5 h-3.5" />
+              {t('importEmail.upload')}
+              <input
+                type="file"
+                className="hidden"
+                accept=".txt,.eml,.csv,.ics,.json,.xml,.html,.htm,text/plain,text/csv,text/calendar,text/html,application/json,application/xml,text/xml,message/rfc822"
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+              />
+            </label>
+            <p className="text-xs text-ink-deep/55">{t('importEmail.uploadHint')}</p>
+            {sourceFileName && (
+              <p className="text-xs text-ink-deep/70">{t('importEmail.sourceFile', { name: sourceFileName })}</p>
+            )}
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="import-email-text" className="text-ink-deep">{t('importEmail.pasteLabel')}</Label>
             <Textarea
