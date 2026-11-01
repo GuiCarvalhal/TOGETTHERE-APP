@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { waitUntil } from 'base44:runtime';
 import { resolveMyMembers, overlayUserDisplay } from '../../shared/gatheringAcl.ts';
 import { normalizeEmail } from '../../shared/reservationImport.ts';
+import { maybeSyncInboxInBackground } from '../../shared/inboxConnectors.ts';
 
 // Returns the current user's gatherings plus a display-safe member preview
 // (full_name, photo, role only) per gathering, for avatar stacks on Home, AND
@@ -13,6 +15,10 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Throttled, fire-and-forget mailbox sync. It runs after the response is
+    // sent, at most once per throttle window, and never surfaces an error here.
+    waitUntil(maybeSyncInboxInBackground(base44, user).catch(() => {}));
 
     const { members: myMembers } = await resolveMyMembers(base44, user);
     const gids = (myMembers || []).map((m) => m.gathering_id).filter(Boolean);

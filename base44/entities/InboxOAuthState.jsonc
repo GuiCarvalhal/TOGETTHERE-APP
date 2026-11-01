@@ -1,0 +1,64 @@
+{
+  "name": "InboxOAuthState",
+  "type": "object",
+  "properties": {
+    "state_token": {
+      "type": "string",
+      "description": "Random, single-use CSRF token returned by the provider on the OAuth callback."
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "gmail",
+        "outlook"
+      ]
+    },
+    "target_user_id": {
+      "type": "string"
+    },
+    "target_user_email": {
+      "type": "string"
+    },
+    "target_user_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "used_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "state_token",
+    "provider",
+    "target_user_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

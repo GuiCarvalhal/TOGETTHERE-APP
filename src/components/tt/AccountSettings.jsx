@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/theme';
 import { useI18n } from '@/lib/i18n';
 import LanguageSelector from '@/components/tt/LanguageSelector';
+import InboxConnectors from '@/components/account/InboxConnectors';
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Monitor, LogOut, Settings as SettingsIcon, Smartphone, ChevronRight } from 'lucide-react';
 
@@ -63,6 +64,11 @@ export default function AccountSettings() {
         </span>
         <ChevronRight className="w-4 h-4 text-ink-deep/40" />
       </Link>
+
+      {/* Inbox connectors — Gmail + Outlook.com */}
+      <div className="pt-3 border-t border-ink-charcoal/10">
+        <InboxConnectors />
+      </div>
 
       {/* Sign out */}
       <div className="pt-2 border-t border-ink-charcoal/10">

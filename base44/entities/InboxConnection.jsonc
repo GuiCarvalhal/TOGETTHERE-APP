@@ -1,0 +1,101 @@
+{
+  "name": "InboxConnection",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": [
+        "gmail",
+        "outlook"
+      ],
+      "description": "Mailbox provider this connection reads from."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "attention",
+        "disconnected"
+      ],
+      "default": "connected",
+      "description": "connected = syncing normally; attention = token/permission problem the user must fix; disconnected = user turned it off."
+    },
+    "target_user_id": {
+      "type": "string",
+      "description": "App user whose reservations are imported from this mailbox."
+    },
+    "target_user_email": {
+      "type": "string"
+    },
+    "target_user_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Read-ACL keys (user id and/or normalized email) stamped onto imports."
+    },
+    "provider_account_email": {
+      "type": "string",
+      "description": "Address of the connected mailbox, shown in the UI."
+    },
+    "access_token": {
+      "type": "string"
+    },
+    "refresh_token": {
+      "type": "string"
+    },
+    "access_token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sync_cursor": {
+      "type": "string",
+      "description": "ISO timestamp of the newest message already scanned; subsequent syncs only look past it."
+    },
+    "connected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_sync_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "disabled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "provider",
+    "target_user_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
