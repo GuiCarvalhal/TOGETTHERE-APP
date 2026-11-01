@@ -28,7 +28,7 @@ export default function InboxConnectors() {
       setConnections(data.connections || []);
       setConfigured(data.configured || {});
       setError('');
-    } catch (e) {
+    } catch {
       setError(t('account.inboxLoadFailed'));
     } finally {
       setLoading(false);
@@ -61,7 +61,7 @@ export default function InboxConnectors() {
       const url = res.data?.url;
       if (!url) throw new Error('missing url');
       window.location.href = url;
-    } catch (e) {
+    } catch {
       setError(t('account.inboxConnectFailed'));
       setBusy('');
     }
@@ -77,7 +77,7 @@ export default function InboxConnectors() {
       if (result && result.ok === false) setError(result.error || t('account.inboxSyncFailed'));
       else setNotice(t('account.inboxSyncDone', { count: result?.ingested ?? 0 }));
       await load();
-    } catch (e) {
+    } catch {
       setError(t('account.inboxSyncFailed'));
     } finally {
       setBusy('');
@@ -92,7 +92,7 @@ export default function InboxConnectors() {
       await base44.functions.invoke('disconnectInboxConnection', { provider });
       setNotice(t('account.inboxDisconnected'));
       await load();
-    } catch (e) {
+    } catch {
       setError(t('account.inboxDisconnectFailed'));
     } finally {
       setBusy('');

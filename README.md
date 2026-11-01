@@ -98,6 +98,45 @@ Optional: pass `targetUserEmail` if you want deterministic user routing.
 - If the sender/target email maps to a TOGETTHERE member and the date match is clear, item is created automatically.
 - If confidence is low, Home shows a pending import card with a gathering picker and one-click create/discard.
 
+## Inbox connectors (Gmail + Outlook.com)
+
+Native mailbox connectors import reservation emails straight into Journey. They
+reuse the same ingestion pipeline as `receiveReservationEmail` (`base44/shared/reservationIngestion.ts`),
+so there is no second parser to keep in sync.
+
+### Required secrets
+
+| Secret | Purpose |
+| --- | --- |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth **Web application** client for Gmail (`gmail.readonly`). |
+| `MICROSOFT_OAUTH_CLIENT_ID` / `MICROSOFT_OAUTH_CLIENT_SECRET` | Microsoft Entra app registration for Outlook.com (`Mail.Read`, `User.Read`, `offline_access`). |
+| `INBOX_OAUTH_CALLBACK_URL` *(optional)* | Exact redirect URI registered with the providers. Default: `<app url>/functions/completeInboxOAuth`. |
+| `INBOX_OAUTH_SUCCESS_URL` *(optional)* | Where the browser lands after connecting. Default: `<app url>/account`. |
+
+### OAuth app setup
+
+1. **Google** — Cloud Console → APIs & Services → enable **Gmail API** → Credentials → Create OAuth client ID → **Web application**.
+   Authorized redirect URI: `https://<your app domain>/functions/completeInboxOAuth`
+   (register it once per domain users sign in from: the `base44.app` host and any custom domain).
+2. **Microsoft** — Entra admin center → App registrations → New registration → "Accounts in any organizational directory and personal Microsoft accounts".
+   Redirect URI (platform: **Web**): `https://<your app domain>/functions/completeInboxOAuth`
+   API permissions → Microsoft Graph → Delegated → `Mail.Read`, `User.Read`, `offline_access`. Then Certificates & secrets → new client secret.
+3. Paste the four values (plus the optional URLs) into the dashboard **Secrets** page.
+
+Both providers require the callback to be an exact string match; if you set
+`INBOX_OAUTH_CALLBACK_URL`, it must be identical in the provider console.
+
+### How syncing works
+
+- Connect from **Account → Inbox connectors**. `startInboxOAuth` mints a single-use state token,
+  `completeInboxOAuth` verifies it, exchanges the code, and stores tokens on `InboxConnection`
+  (admin-only RLS; tokens never reach the client).
+- `syncInboxConnections` scans recent inbox mail (Gmail: last 30 days or after the cursor; Outlook:
+  since the cursor), keeps messages whose subject/body match reservation hints (EN + PT), and passes
+  each to the shared pipeline. Source ids are prefixed `gmail:` / `outlook:`, so re-scans are idempotent.
+- Home calls a throttled background sync (10 minutes) for due connections; failures stay silent there
+  and surface as "Needs attention" in Account settings.
+
 ## Docs & Support
 
 GitHub integration: [https://docs.base44.com/developers/app-code/local-development/github](https://docs.base44.com/developers/app-code/local-development/github)
@@ -105,4 +144,3 @@ GitHub integration: [https://docs.base44.com/developers/app-code/local-developme
 Local development: [https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview)
 
 Support: [https://app.base44.com/support](https://app.base44.com/support)
-
