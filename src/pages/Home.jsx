@@ -14,6 +14,7 @@ import JourneyCard from '@/components/tt/cards/JourneyCard';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
+import InboxSyncBar from '@/components/tt/InboxSyncBar';
 import { useI18n } from '@/lib/i18n';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
@@ -36,6 +37,7 @@ export default function Home() {
   const [previews, setPreviews] = useState({});
   const [itemsByGathering, setItemsByGathering] = useState({});
   const [pendingImports, setPendingImports] = useState([]);
+  const [inboxConnections, setInboxConnections] = useState([]);
   const [importChoiceById, setImportChoiceById] = useState({});
   const [resolvingImportId, setResolvingImportId] = useState('');
   const [userId, setUserId] = useState(null);
@@ -43,8 +45,8 @@ export default function Home() {
   const [filter, setFilter] = useState('all');
   const [nextUpcoming, setNextUpcoming] = useState(null);
 
-  async function load() {
-    setLoading(true);
+  async function load({ silent = false } = {}) {
+    if (!silent) setLoading(true);
     try {
       const res = await base44.functions.invoke('getHomePreviews', {});
       const data = res.data || res;
@@ -53,6 +55,7 @@ export default function Home() {
       setPreviews(data.previews || {});
       setItemsByGathering(data.itemsByGathering || {});
       setPendingImports(data.pendingImports || []);
+      setInboxConnections(data.inboxConnections || []);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
     } catch (e) {
@@ -177,6 +180,11 @@ export default function Home() {
       {/* Install prompt ??? sits above the gatherings list; hidden when running as an installed app */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
         <InstallBanner />
+      </section>
+
+      {/* Mailbox sync — one global action for every connected inbox */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
+        <InboxSyncBar connections={inboxConnections} onSynced={() => load({ silent: true })} />
       </section>
 
       {pendingImports.length > 0 && (

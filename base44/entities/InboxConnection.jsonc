@@ -36,6 +36,14 @@
       },
       "description": "Read-ACL keys (user id and/or normalized email) stamped onto imports."
     },
+    "account_key": {
+      "type": "string",
+      "description": "Stable per-account identifier: '<provider>:<lowercased mailbox address>'. Lets one user hold several mailboxes of the same provider, and makes reconnecting the SAME mailbox update its existing row instead of adding a duplicate. Legacy rows without it are healed on the next connect/sync."
+    },
+    "display_label": {
+      "type": "string",
+      "description": "User-visible label for this mailbox. Defaults to provider_account_email."
+    },
     "provider_account_email": {
       "type": "string",
       "description": "Address of the connected mailbox, shown in the UI."
@@ -61,6 +69,32 @@
     "uid_cursor": {
       "type": "number",
       "description": "IMAP only: highest INBOX UID already scanned. Lets iCloud/Yahoo sync fetch strictly newer messages instead of re-reading a time window."
+    },
+    "sync_interval_minutes": {
+      "type": "number",
+      "enum": [
+        5,
+        15,
+        30,
+        60
+      ],
+      "default": 30,
+      "description": "How often this mailbox may be synced in the background. Manual 'Sync now' bypasses it. Absent on legacy rows and treated as 30."
+    },
+    "next_sync_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Earliest background sync instant, persisted as last_attempt_at + sync_interval_minutes for display. The authoritative check always recomputes from last_attempt_at."
+    },
+    "last_attempt_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When a sync was last ATTEMPTED, successful or not. Cadence is measured from here so a failing mailbox is not retried on every Home load."
+    },
+    "sync_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Lease marker set when a sync starts and cleared when it ends, so overlapping background jobs skip a mailbox already being synced."
     },
     "connected_at": {
       "type": "string",

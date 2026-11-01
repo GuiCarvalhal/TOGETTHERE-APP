@@ -7,6 +7,11 @@ import {
   testImapLogin,
 } from '../../shared/imapInbox.ts';
 import { normalizeUserKeys } from '../../shared/reservationImport.ts';
+import {
+  DEFAULT_SYNC_INTERVAL_MINUTES,
+  connectionAccountKey,
+  findAccountConnection,
+} from '../../shared/inboxConnectors.ts';
 
 // Connects an iCloud or Yahoo mailbox with an app password (no OAuth). The
 // password is verified against the real IMAP server first, then stored
@@ -37,10 +42,9 @@ export default async function (req: Request): Promise<Response> {
 
     const credential = await encryptImapCredential(appPassword);
     const now = new Date().toISOString();
-    const existing = await base44.asServiceRole.entities.InboxConnection.filter({
-      target_user_id: user.id,
-      provider,
-    });
+    // Keyed by mailbox address: reconnecting the same address refreshes its row,
+    // a different address becomes an additional account for the same provider.
+    const existing = await findAccountConnection(base44, { userId: user.id, provider, email });
 
     const payload = {
       provider,
@@ -48,28 +52,42 @@ export default async function (req: Request): Promise<Response> {
       target_user_id: user.id,
       target_user_email: user.email || '',
       target_user_keys: normalizeUserKeys(user.id, user.email || ''),
+      account_key: connectionAccountKey(provider, email),
+      display_label: existing?.display_label || email,
       provider_account_email: email,
       credential_secret: credential,
       uid_cursor: 0,
       sync_cursor: '',
+      sync_started_at: '',
       last_error: '',
       connected_at: now,
       updated_at: now,
     };
 
-    if (existing && existing[0]) {
-      await base44.asServiceRole.entities.InboxConnection.update(existing[0].id, payload);
+    let connectionId = existing?.id || '';
+    if (existing) {
+      await base44.asServiceRole.entities.InboxConnection.update(existing.id, payload);
     } else {
-      await base44.asServiceRole.entities.InboxConnection.create({
+      const created = await base44.asServiceRole.entities.InboxConnection.create({
         ...payload,
+        sync_interval_minutes: DEFAULT_SYNC_INTERVAL_MINUTES,
         access_token: '',
         refresh_token: '',
         access_token_expires_at: '',
         last_sync_at: '',
+        last_attempt_at: '',
+        next_sync_at: '',
       });
+      connectionId = created?.id || '';
     }
 
-    return Response.json({ ok: true, provider, providerAccountEmail: email });
+    return Response.json({
+      ok: true,
+      provider,
+      providerAccountEmail: email,
+      connectionId,
+      created: !existing,
+    });
   } catch (error: any) {
     return Response.json({ error: error?.message || 'Could not connect mailbox' }, { status: 500 });
   }

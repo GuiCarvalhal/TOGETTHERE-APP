@@ -98,7 +98,7 @@ Optional: pass `targetUserEmail` if you want deterministic user routing.
 - If the sender/target email maps to a TOGETTHERE member and the date match is clear, item is created automatically.
 - If confidence is low, Home shows a pending import card with a gathering picker and one-click create/discard.
 
-## Inbox connectors (Gmail + Outlook.com)
+## Inbox connectors (Gmail, Outlook.com, iCloud, Yahoo)
 
 Native mailbox connectors import reservation emails straight into Journey. They
 reuse the same ingestion pipeline as `receiveReservationEmail` (`base44/shared/reservationIngestion.ts`),
@@ -161,8 +161,33 @@ encrypted with AES-GCM, and stored on their own `InboxConnection` record
   since the cursor), keeps messages whose subject/body match reservation hints (EN + PT), and passes
   each to the shared pipeline. Source ids are prefixed `gmail:` / `outlook:` / `icloud:` / `yahoo:`,
   so re-scans are idempotent.
-- Home calls a throttled background sync (10 minutes) for due connections; failures stay silent there
-  and surface as "Needs attention" in Account settings.
+- Home runs one background sync per load, for the most overdue mailbox whose own cadence has
+  elapsed. Failures are recorded on the connection ("Needs attention") and shown in Account.
+
+### Multiple accounts per provider
+
+- Identity is (user, provider, address): `account_key` = `<provider>:<address>`. Connecting a
+  **second** Gmail/iCloud account adds a second `InboxConnection` row; reconnecting the **same**
+  address updates its existing row and keeps its cursors, so nothing is imported twice.
+- Rows created before multi-account support have no `account_key`; the next connect matches them by
+  address and heals them in place, so existing users keep their tokens, cursors and history.
+- Each account owns its cursors, status, last error and cadence, so one broken mailbox never blocks
+  the others. `disconnectInboxConnection` accepts `connection_id` (one account) or `provider`
+  (every account of that provider, kept for clients that predate multi-account support).
+
+### Sync cadence
+
+- `sync_interval_minutes` is per account and one of **5 / 15 / 30 / 60**; absent means 30.
+- A mailbox is due when `last_attempt_at + interval` has elapsed. Failures also consume the window
+  (they move `last_attempt_at`), so a broken token is not retried on every page load.
+- `sync_started_at` is a 2-minute lease: overlapping jobs (two Home loads, or Home plus Sync now)
+  skip a mailbox that is already syncing and report `in_flight` instead of fetching it twice.
+- `syncInboxConnections` takes `{ connection_id }` for one account, `{ provider }` for every account
+  of a provider, or neither for a batch across all accounts. `force: true` (the **Sync now**
+  buttons on Home and in Account) ignores the cadence, never the lease and never a disconnected
+  mailbox. It returns `results` per account plus a `summary` (`synced`, `imported`, `skipped`,
+  `failed`).
+- `updateInboxConnection` changes `sync_interval_minutes` and/or `display_label` for one account.
 
 ## Docs & Support
 

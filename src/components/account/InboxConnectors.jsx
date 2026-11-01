@@ -4,27 +4,24 @@ import { useI18n } from '@/lib/i18n';
 import { Inbox } from 'lucide-react';
 import InboxConnectorCard from './InboxConnectorCard';
 import InboxCredentialSheet from './InboxCredentialSheet';
+import InboxCadenceSheet from './InboxCadenceSheet';
+import { DEFAULT_INBOX_INTERVALS, INBOX_PROVIDERS } from './inboxProviders';
 
-const PROVIDERS = [
-  { provider: 'gmail', labelKey: 'account.inboxGmail', auth: 'oauth' },
-  { provider: 'outlook', labelKey: 'account.inboxOutlook', auth: 'oauth' },
-  { provider: 'icloud', labelKey: 'account.inboxIcloud', auth: 'credential' },
-  { provider: 'yahoo', labelKey: 'account.inboxYahoo', auth: 'credential' },
-];
-
-// Inbox connectors section on the Account page: Gmail/Outlook.com (OAuth) and
-// iCloud/Yahoo (IMAP app password) mailboxes that feed the reservation import
-// pipeline. Connection state comes from getInboxConnections (credentials never
-// leave the server).
+// Inbox connectors section on the Account page. Each provider can hold SEVERAL
+// mailboxes (say, two Gmails), so connections are listed per account, grouped
+// by provider, with per-account Sync now / Cadence / Disconnect plus a
+// "Connect another account" action. Credentials never leave the server.
 export default function InboxConnectors() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState([]);
   const [configured, setConfigured] = useState({});
-  const [busy, setBusy] = useState('');
+  const [intervals, setIntervals] = useState(DEFAULT_INBOX_INTERVALS);
+  const [busyKey, setBusyKey] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [credentialProvider, setCredentialProvider] = useState('');
+  const [cadenceConnection, setCadenceConnection] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -32,6 +29,9 @@ export default function InboxConnectors() {
       const data = res.data || {};
       setConnections(data.connections || []);
       setConfigured(data.configured || {});
+      if (Array.isArray(data.sync_intervals) && data.sync_intervals.length) {
+        setIntervals(data.sync_intervals);
+      }
       setError('');
     } catch {
       setError(t('account.inboxLoadFailed'));
@@ -55,8 +55,6 @@ export default function InboxConnectors() {
     window.history.replaceState({}, '', window.location.pathname + (search ? `?${search}` : ''));
   }, [t]);
 
-  const findConnection = (provider) => connections.find((c) => c.provider === provider) || null;
-
   const handleConnect = async (provider, auth) => {
     setError('');
     setNotice('');
@@ -65,7 +63,7 @@ export default function InboxConnectors() {
       setCredentialProvider(provider);
       return;
     }
-    setBusy(provider);
+    setBusyKey(`connect:${provider}`);
     try {
       const res = await base44.functions.invoke('startInboxOAuth', { provider });
       const url = res.data?.url;
@@ -73,39 +71,43 @@ export default function InboxConnectors() {
       window.location.href = url;
     } catch {
       setError(t('account.inboxConnectFailed'));
-      setBusy('');
+      setBusyKey('');
     }
   };
 
-  const handleSync = async (provider) => {
-    setBusy(provider);
+  const handleSync = async (connection) => {
+    setBusyKey(connection.id);
     setError('');
     setNotice('');
     try {
-      const res = await base44.functions.invoke('syncInboxConnections', { provider, force: true });
+      const res = await base44.functions.invoke('syncInboxConnections', {
+        connection_id: connection.id,
+        force: true,
+      });
       const result = (res.data?.results || [])[0];
-      if (result && result.ok === false) setError(result.error || t('account.inboxSyncFailed'));
+      if (result?.ok === false) setError(result.error || t('account.inboxSyncFailed'));
+      else if (result?.reason === 'in_flight') setError(t('account.inboxInFlight'));
       else setNotice(t('account.inboxSyncDone', { count: result?.ingested ?? 0 }));
       await load();
     } catch {
       setError(t('account.inboxSyncFailed'));
     } finally {
-      setBusy('');
+      setBusyKey('');
     }
   };
 
-  const handleDisconnect = async (provider) => {
-    setBusy(provider);
+  const handleDisconnect = async (connection) => {
+    setBusyKey(connection.id);
     setError('');
     setNotice('');
     try {
-      await base44.functions.invoke('disconnectInboxConnection', { provider });
+      await base44.functions.invoke('disconnectInboxConnection', { connection_id: connection.id });
       setNotice(t('account.inboxDisconnected'));
       await load();
     } catch {
       setError(t('account.inboxDisconnectFailed'));
     } finally {
-      setBusy('');
+      setBusyKey('');
     }
   };
 
@@ -123,19 +125,51 @@ export default function InboxConnectors() {
           <div className="tt-skeleton h-24 w-full" />
         </div>
       ) : (
-        <div className="space-y-2">
-          {PROVIDERS.map(({ provider, labelKey, auth }) => (
-            <InboxConnectorCard
-              key={provider}
-              label={t(labelKey)}
-              connection={findConnection(provider)}
-              configured={configured[provider] !== false}
-              busy={busy === provider}
-              onConnect={() => handleConnect(provider, auth)}
-              onSync={() => handleSync(provider)}
-              onDisconnect={() => handleDisconnect(provider)}
-            />
-          ))}
+        <div className="space-y-4">
+          {INBOX_PROVIDERS.map(({ provider, labelKey, auth }) => {
+            const rows = connections.filter((c) => c.provider === provider);
+            const isConfigured = configured[provider] !== false;
+            return (
+              <div key={provider} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-ink-deep">{t(labelKey)}</p>
+                  {rows.length > 0 && isConfigured ? (
+                    <button
+                      type="button"
+                      onClick={() => handleConnect(provider, auth)}
+                      className="text-[0.6875rem] font-semibold text-terra-deep hover:underline shrink-0"
+                    >
+                      {t('account.inboxAddAnother')}
+                    </button>
+                  ) : null}
+                </div>
+
+                {rows.length === 0 ? (
+                  <InboxConnectorCard
+                    label={t(labelKey)}
+                    connection={null}
+                    configured={isConfigured}
+                    busy={busyKey === `connect:${provider}`}
+                    onConnect={() => handleConnect(provider, auth)}
+                  />
+                ) : (
+                  rows.map((connection) => (
+                    <InboxConnectorCard
+                      key={connection.id}
+                      label={t(labelKey)}
+                      connection={connection}
+                      configured={isConfigured}
+                      busy={busyKey === connection.id}
+                      onConnect={() => handleConnect(provider, auth)}
+                      onSync={() => handleSync(connection)}
+                      onDisconnect={() => handleDisconnect(connection)}
+                      onEditCadence={() => setCadenceConnection(connection)}
+                    />
+                  ))
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -150,6 +184,17 @@ export default function InboxConnectors() {
         onConnected={() => {
           load();
           setNotice(t('account.inboxConnectedNotice'));
+        }}
+      />
+
+      <InboxCadenceSheet
+        open={Boolean(cadenceConnection)}
+        connection={cadenceConnection}
+        intervals={intervals}
+        onOpenChange={(open) => { if (!open) setCadenceConnection(null); }}
+        onSaved={() => {
+          setNotice(t('account.inboxCadenceSaved'));
+          load();
         }}
       />
     </div>

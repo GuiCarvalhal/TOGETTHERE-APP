@@ -1,13 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
+  SYNC_INTERVALS,
   inboxProviderConfigStatus,
   listUserConnections,
   sanitizeConnection,
 } from '../../shared/inboxConnectors.ts';
 
-// Returns the signed-in user's mailbox connections without any token material,
-// plus which providers currently have OAuth credentials configured so the UI
-// can disable Connect instead of sending the user into a dead end.
+// Returns the signed-in user's mailbox connections (one entry per mailbox, so a
+// user may have several per provider) without any token material, plus which
+// providers are configured and the allowed cadences so the UI stays in sync
+// with the server's rules.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -19,6 +21,7 @@ export default async function(req) {
     return Response.json({
       connections: (connections || []).map(sanitizeConnection),
       configured: inboxProviderConfigStatus(),
+      sync_intervals: SYNC_INTERVALS,
     });
   } catch (error: any) {
     return Response.json({ error: error.message || 'Could not load inbox connections' }, { status: 500 });

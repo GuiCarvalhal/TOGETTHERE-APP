@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { waitUntil } from 'base44:runtime';
 import { resolveMyMembers, overlayUserDisplay } from '../../shared/gatheringAcl.ts';
 import { normalizeEmail } from '../../shared/reservationImport.ts';
-import { maybeSyncInboxInBackground } from '../../shared/inboxConnectors.ts';
+import { listUserConnections, maybeSyncInboxInBackground, sanitizeConnection } from '../../shared/inboxConnectors.ts';
 
 // Returns the current user's gatherings plus a display-safe member preview
 // (full_name, photo, role only) per gathering, for avatar stacks on Home, AND
@@ -110,9 +110,15 @@ export default async function(req) {
         extracted_draft: row.extracted_draft || {},
       }));
 
+    // Home shows a single "Sync now" entry point, so it needs to know whether the
+    // user has any mailbox at all (and its state) without a second round trip.
+    const inboxConnections = (await listUserConnections(base44, user).catch(() => []))
+      .map(sanitizeConnection);
+
     const chosen = ongoing || nextUpcoming;
     return Response.json({
       gatherings: mine,
+      inboxConnections,
       memberships: (myMembers || []).map((m) => ({ gathering_id: m.gathering_id, role: m.role })),
       previews,
       itemsByGathering,
