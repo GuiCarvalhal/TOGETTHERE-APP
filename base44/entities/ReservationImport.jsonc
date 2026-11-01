@@ -1,0 +1,116 @@
+{
+  "name": "ReservationImport",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "auto_created",
+        "manual_created",
+        "duplicate",
+        "discarded",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "source_message_id": {
+      "type": "string"
+    },
+    "source_subject": {
+      "type": "string"
+    },
+    "source_sender": {
+      "type": "string"
+    },
+    "source_recipient": {
+      "type": "string"
+    },
+    "source_received_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_excerpt": {
+      "type": "string"
+    },
+    "target_user_id": {
+      "type": "string"
+    },
+    "target_user_email": {
+      "type": "string"
+    },
+    "target_user_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Read-ACL keys for the owner of this import. Includes canonical user id and/or normalized email to support pre-heal memberships."
+    },
+    "suggested_gathering_id": {
+      "type": "string"
+    },
+    "candidate_gathering_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "auto_match_score": {
+      "type": "number"
+    },
+    "auto_match_reason": {
+      "type": "string"
+    },
+    "extracted_draft": {
+      "type": "object"
+    },
+    "created_item_id": {
+      "type": "string"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_by_user_id": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.target_user_keys": "{{user.id}}"
+        },
+        {
+          "data.target_user_keys": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
