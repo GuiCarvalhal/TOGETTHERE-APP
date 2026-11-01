@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { resolveMyMembers, overlayUserDisplay } from '../../shared/gatheringAcl.ts';
+import { normalizeEmail } from '../../shared/reservationImport.ts';
 
 // Returns the current user's gatherings plus a display-safe member preview
 // (full_name, photo, role only) per gathering, for avatar stacks on Home, AND
@@ -15,14 +16,14 @@ export default async function(req) {
 
     const { members: myMembers } = await resolveMyMembers(base44, user);
     const gids = (myMembers || []).map((m) => m.gathering_id).filter(Boolean);
-    if (!gids.length) return Response.json({ gatherings: [], memberships: [], previews: {}, itemsByGathering: {}, userId: user.id });
 
     const gatherings = await base44.entities.Gathering.list('-created_date', 100);
     const mine = gatherings.filter((g) => gids.includes(g.id));
 
     const previews = {};
     const itemsByGathering = {};
-    // The user's "current" journey item to surface on Home — an ONGOING activity
+    const userKeys = new Set([user.id, normalizeEmail(user.email || '')].filter(Boolean));
+    // The user's "current" journey item to surface on Home ??? an ONGOING activity
     // (started, not yet ended) takes priority; otherwise the next UPCOMING one
     // (start in the future). Participant = item creator (owner_id) or explicit
     // attendee (attendee_user_ids), matching the Journey page's MINE scope.
@@ -55,7 +56,7 @@ export default async function(req) {
       const memberByUid = {};
       overlaidMs.forEach((m) => { if (m.user_id) memberByUid[m.user_id] = m; });
       const resolveParticipants = (it) => {
-        // Flights never fall back to the creator for avatar display — an empty
+        // Flights never fall back to the creator for avatar display ??? an empty
         // attendee list means "no one joined yet", not the owner. Other types
         // keep the existing creator fallback.
         const pids = (it.attendee_user_ids || []).length
@@ -84,12 +85,32 @@ export default async function(req) {
       }
     }));
 
+    const pendingRaw = await base44.asServiceRole.entities.ReservationImport.list('-created_date', 100).catch(() => []);
+    const pendingImports = (pendingRaw || [])
+      .filter((row) => {
+        if (row.status !== 'pending') return false;
+        const keys = Array.isArray(row.target_user_keys) ? row.target_user_keys : [];
+        return keys.some((k) => userKeys.has(normalizeEmail(k || '') || k));
+      })
+      .slice(0, 10)
+      .map((row) => ({
+        id: row.id,
+        source_subject: row.source_subject || '',
+        source_sender: row.source_sender || '',
+        source_received_at: row.source_received_at || '',
+        content_excerpt: row.content_excerpt || '',
+        suggested_gathering_id: row.suggested_gathering_id || '',
+        candidate_gathering_ids: row.candidate_gathering_ids || [],
+        extracted_draft: row.extracted_draft || {},
+      }));
+
     const chosen = ongoing || nextUpcoming;
     return Response.json({
       gatherings: mine,
       memberships: (myMembers || []).map((m) => ({ gathering_id: m.gathering_id, role: m.role })),
       previews,
       itemsByGathering,
+      pendingImports,
       userId: user.id,
       nextUpcoming: chosen
         ? { item: chosen.item, gatheringId: chosen.gatheringId, participants: chosen.participants, ongoing: chosen === ongoing }
