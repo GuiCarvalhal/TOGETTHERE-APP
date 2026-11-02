@@ -98,6 +98,10 @@
       "type": "string",
       "description": "Reason code when nothing was created: low_confidence, denied_promotional, denied_account_security, denied_non_travel_receipt."
     },
+    "pending_reason": {
+      "type": "string",
+      "description": "Comma-separated reason codes explaining why this pending import cannot be filed yet because it misses the standard item form's minimum data: title, start_datetime, flight_number, flight_origin, flight_destination. Cleared once the item is created."
+    },
     "created_item_id": {
       "type": "string"
     },

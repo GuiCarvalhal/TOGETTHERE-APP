@@ -1,10 +1,17 @@
 // Shared reservation ingestion used by BOTH entry points:
 //   - receiveReservationEmail  (external inbound-token endpoint / forwarded mail)
-//   - the native inbox connectors (Gmail + Outlook.com sync)
+//   - the native inbox connectors (Gmail + Outlook.com + iCloud + Yahoo sync)
 //
-// Keeping parse -> match -> create in one place means the two paths can never
-// drift apart: whatever an inbound webhook produces today, an inbox sync
+// Keeping parse -> adapt -> match -> create in one place means the paths can
+// never drift apart: whatever an inbound webhook produces today, an inbox sync
 // produces identically.
+//
+// Creation goes through the SAME pipeline as the standard item form: the
+// classifier draft is adapted per type (resolved places/airports + UTC times,
+// see journeyFormAdapter.ts), validated against the form's minimum data, and
+// persisted by the canonical create (journeyItemPersist.ts). Nothing is written
+// straight to the database, and an incomplete draft stays pending with an
+// explicit reason instead of creating a half-empty item.
 
 import { extractJourneyDraft } from './extractJourneyDraft.ts';
 import {
@@ -12,11 +19,11 @@ import {
   decideReservationPolicy,
   isReservationAiFallbackEnabled,
 } from './reservationClassifier.ts';
+import { adaptReservationDraft } from './journeyFormAdapter.ts';
+import { createJourneyItemCanonical, JourneyItemError } from './journeyItemPersist.ts';
 import {
-  buildJourneyPayloadFromDraft,
   chooseGatheringMatch,
-  createJourneyItemFromImport,
-  findDuplicateItem,
+  findDuplicateForItem,
   isParticipantRole,
   normalizeEmail,
   normalizeUserKeys,
@@ -82,8 +89,9 @@ export type IngestInput = {
 };
 
 // Parses one message into a ReservationImport row, auto-creating a JourneyItem
-// when the gathering match is confident. Returns { record, reused } — reused
-// means this source message id was already ingested (no LLM call happens).
+// when the gathering match is confident AND the draft holds the standard form's
+// minimum data. Returns { record, reused } — reused means this source message id
+// was already ingested (no LLM call happens).
 export async function ingestReservationMessage(base44: any, input: IngestInput) {
   const messageId = (input?.messageId || '').trim();
 
@@ -153,28 +161,40 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
   let status = hasDraft ? 'pending' : 'ignored';
   let createdItemId = '';
   let error = '';
+  let pendingReason = '';
+
   if (hasDraft && policy.outcome === 'auto_create' && target.targetUserId && match.confident && match.suggestedGatheringId) {
-    try {
-      const duplicate = findDuplicateItem(itemsByGathering[match.suggestedGatheringId], draft);
-      if (duplicate) {
-        status = 'duplicate';
-        createdItemId = duplicate.item.id;
-      } else {
-        const gathering = byId.get(match.suggestedGatheringId);
-        const members = await base44.asServiceRole.entities.Member.filter({ gathering_id: match.suggestedGatheringId });
-        const payload = buildJourneyPayloadFromDraft(draft, sourceSubject || 'Imported reservation');
-        const created = await createJourneyItemFromImport(base44, {
-          gathering,
-          members,
-          targetUserId: target.targetUserId,
-          payload,
+    const gatheringId = match.suggestedGatheringId;
+    // Adapt the draft exactly like the manual path does, then dedupe on the
+    // adapted shape (UTC instants + resolved places) with the raw draft as a
+    // fallback for items stored before adaptation existed.
+    const adapted = await adaptReservationDraft(draft, sourceSubject || 'Imported reservation');
+    const duplicate = findDuplicateForItem(itemsByGathering[gatheringId], [adapted.payload, draft]);
+
+    if (duplicate) {
+      status = 'duplicate';
+      createdItemId = duplicate.item.id;
+    } else if (adapted.status === 'incomplete') {
+      // Never create a half-empty segment silently: keep it pending, say why.
+      status = 'pending';
+      pendingReason = adapted.missing.join(',');
+    } else {
+      try {
+        const membership = participantMemberships.find((m: any) => m.gathering_id === gatheringId);
+        const created = await createJourneyItemCanonical(base44, {
+          gatheringId,
+          actorUserId: target.targetUserId,
+          actorName: membership?.full_name || '',
+          actorEmail: target.targetUserEmail || '',
+          payload: adapted.payload,
         });
         status = 'auto_created';
         createdItemId = created.id;
+      } catch (e: any) {
+        status = 'pending';
+        pendingReason = e instanceof JourneyItemError ? (e.missing || []).join(',') : '';
+        error = e?.message || 'Could not auto-create journey item';
       }
-    } catch (e: any) {
-      status = 'pending';
-      error = e?.message || 'Could not auto-create journey item';
     }
   }
 
@@ -200,6 +220,7 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
     classification_reason: classification.reason,
     classification_source: classificationSource,
     ignored_reason: ignoredReason || '',
+    pending_reason: pendingReason || '',
     created_item_id: createdItemId || '',
     error: error || '',
     resolved_at: status === 'auto_created' || status === 'duplicate' || status === 'ignored'

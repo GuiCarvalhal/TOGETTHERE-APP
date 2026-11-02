@@ -1,11 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import {
-  buildJourneyPayloadFromDraft,
-  createJourneyItemFromImport,
-  findDuplicateItem,
-  isParticipantRole,
-  normalizeEmail,
-} from '../../shared/reservationImport.ts';
+import { adaptReservationDraft } from '../../shared/journeyFormAdapter.ts';
+import { createJourneyItemCanonical, JourneyItemError } from '../../shared/journeyItemPersist.ts';
+import { findDuplicateForItem, isParticipantRole, normalizeEmail } from '../../shared/reservationImport.ts';
 
 function isAuthorizedForImport(imp: any, user: any) {
   const keys = Array.isArray(imp?.target_user_keys) ? imp.target_user_keys : [];
@@ -76,7 +72,12 @@ export default async function(req: Request) {
     }
 
     const draft = imp.extracted_draft || {};
-    const duplicate = findDuplicateItem(existingItems, draft);
+
+    // Same adapter the automatic path uses: resolves places/airports + UTC
+    // instants and applies the standard form's minimum-data rules.
+    const adapted = await adaptReservationDraft(draft, imp.source_subject || 'Imported reservation');
+
+    const duplicate = findDuplicateForItem(existingItems, [adapted.payload, draft]);
     if (duplicate) {
       const updated = await base44.asServiceRole.entities.ReservationImport.update(importId, {
         status: 'duplicate',
@@ -88,21 +89,47 @@ export default async function(req: Request) {
       return Response.json({ import: updated, duplicate: true, item: duplicate });
     }
 
-    const payload = buildJourneyPayloadFromDraft(
-      draft,
-      imp.source_subject || 'Imported reservation'
-    );
-    const created = await createJourneyItemFromImport(base44, {
-      gathering,
-      members,
-      targetUserId: member.user_id || user.id,
-      payload,
-    });
+    // Not enough data for the standard schema: keep it pending and report the
+    // missing fields instead of creating an incomplete segment.
+    if (adapted.status === 'incomplete') {
+      const updated = await base44.asServiceRole.entities.ReservationImport.update(importId, {
+        suggested_gathering_id: gatheringId,
+        pending_reason: adapted.missing.join(','),
+      });
+      return Response.json({
+        error: 'This reservation is missing required details',
+        reason: 'incomplete',
+        missing: adapted.missing,
+        import: updated,
+      }, { status: 422 });
+    }
+
+    let created;
+    try {
+      created = await createJourneyItemCanonical(base44, {
+        gatheringId,
+        actorUserId: member.user_id || user.id,
+        actorName: member.full_name || user.full_name || '',
+        actorEmail: user.email || '',
+        payload: adapted.payload,
+        origin: req.headers.get('origin') || '',
+      });
+    } catch (e: any) {
+      if (e instanceof JourneyItemError) {
+        const updated = await base44.asServiceRole.entities.ReservationImport.update(importId, {
+          suggested_gathering_id: gatheringId,
+          pending_reason: (e.missing || []).join(','),
+        });
+        return Response.json({ error: e.message, missing: e.missing || [], import: updated }, { status: e.status });
+      }
+      throw e;
+    }
 
     const updated = await base44.asServiceRole.entities.ReservationImport.update(importId, {
       status: 'manual_created',
       suggested_gathering_id: gatheringId,
       created_item_id: created.id,
+      pending_reason: '',
       resolved_at: new Date().toISOString(),
       resolved_by_user_id: user.id,
     });

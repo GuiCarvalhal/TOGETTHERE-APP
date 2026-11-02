@@ -25,6 +25,10 @@ export default function PendingImportCard({
   const title = item?.extracted_draft?.title || item.source_subject || t('home.importFallbackTitle');
   const subtitle = [item?.extracted_draft?.start_datetime, item?.source_sender].filter(Boolean).join(' · ');
 
+  // Why this reservation can't be filed yet (missing standard-form data).
+  const blockedCodes = String(item?.pending_reason || '').split(',').map((c) => c.trim()).filter(Boolean);
+  const blockedFields = blockedCodes.map((code) => t('home.importBlocked_' + code));
+
   // Suggested (auto-detected) first, then the other ingestion candidates, then
   // every remaining gathering — nothing is ever hidden from the list.
   const suggested = item.suggested_gathering_id || '';
@@ -41,6 +45,11 @@ export default function PendingImportCard({
         <p className="text-sm font-semibold text-ink-deep">{title}</p>
         {subtitle && <p className="text-xs text-ink-deep/60 mt-0.5">{subtitle}</p>}
         <ImportClassificationNote item={item} />
+        {blockedFields.length > 0 && (
+          <p className="text-xs text-terra-deep mt-1">
+            {t('home.importBlockedHint', { fields: blockedFields.join(', ') })}
+          </p>
+        )}
       </div>
 
       {ordered.length === 0 ? (

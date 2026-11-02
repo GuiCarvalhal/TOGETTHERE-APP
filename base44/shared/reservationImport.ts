@@ -1,5 +1,3 @@
-import { allMemberUserIds, gatheringOwnerUserId, participantUserIds } from './gatheringAcl.ts';
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function startOfDayIso(dateOnly: string) {
@@ -153,46 +151,6 @@ export function chooseGatheringMatch(draft: any, gatherings: any[], itemsByGathe
   };
 }
 
-export function buildJourneyPayloadFromDraft(draft: any, fallbackTitle = '') {
-  const title = normalizeText(draft?.title) || fallbackTitle || 'Imported reservation';
-  const payload: any = {
-    type: normalizeText(draft?.type) || 'other',
-    title,
-    notes: normalizeText(draft?.notes),
-    location_from: normalizeText(draft?.location_from),
-    location_to: normalizeText(draft?.location_to),
-    location_name: normalizeText(draft?.location_name),
-    confirmation_number: normalizeText(draft?.confirmation_number),
-    booking_reference: normalizeText(draft?.booking_reference),
-    airline: normalizeText(draft?.airline),
-  };
-  if (normalizeText(draft?.start_datetime)) payload.start_datetime = draft.start_datetime;
-  if (normalizeText(draft?.end_datetime)) payload.end_datetime = draft.end_datetime;
-  return payload;
-}
-
-export async function createJourneyItemFromImport(base44: any, opts: {
-  gathering: any;
-  members: any[];
-  targetUserId: string;
-  payload: any;
-}) {
-  const { gathering, members, targetUserId, payload } = opts;
-  const ownerUid = gatheringOwnerUserId(gathering, members);
-  const memberUserIds = allMemberUserIds(members);
-  const participantUids = new Set(participantUserIds(members));
-  const attendeeUserIds = participantUids.has(targetUserId) ? [targetUserId] : [];
-
-  return base44.asServiceRole.entities.JourneyItem.create({
-    ...payload,
-    gathering_id: gathering.id,
-    owner_id: targetUserId,
-    owner_user_id: ownerUid,
-    member_user_ids: memberUserIds,
-    attendee_user_ids: attendeeUserIds,
-  });
-}
-
 export function normalizeUserKeys(userId: string, userEmail: string) {
   const keys = new Set<string>();
   if (normalizeText(userId)) keys.add(normalizeText(userId));
@@ -263,5 +221,17 @@ export function findDuplicateItem(existingItems: any[], draft: any) {
     if (hit) return { item: hit, reason: 'fingerprint' };
   }
 
+  return null;
+}
+
+// Try several representations of the same booking (the adapted standard payload
+// first, then the raw draft for rows stored before adaptation existed). Any hit
+// means the booking is already in the journey.
+export function findDuplicateForItem(existingItems: any[], candidates: any[]) {
+  for (const candidate of candidates || []) {
+    if (!candidate) continue;
+    const hit = findDuplicateItem(existingItems, candidate);
+    if (hit) return hit;
+  }
   return null;
 }

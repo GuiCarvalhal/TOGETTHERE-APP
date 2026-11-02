@@ -129,7 +129,19 @@ export default function Home() {
       });
       toast({ title: action === 'create' ? t('home.importResolved') : t('home.importDismissed') });
     } catch (e) {
-      toast({ title: t('home.importResolveFailed'), description: e.message || t('common.error'), variant: 'destructive' });
+      // 422 = the reservation misses the standard item's minimum data; say
+      // which fields instead of a generic failure.
+      const data = e?.response?.data || {};
+      if (data.reason === 'incomplete') {
+        const fields = (data.missing || []).map((code) => t('home.importBlocked_' + code)).join(', ');
+        toast({
+          title: t('home.importBlockedToastTitle'),
+          description: t('home.importBlockedHint', { fields }),
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: t('home.importResolveFailed'), description: e.message || t('common.error'), variant: 'destructive' });
+      }
     } finally {
       setResolvingImportId('');
       // Always resync: on success the card must disappear, and on a 409 (already

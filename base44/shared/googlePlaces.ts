@@ -222,6 +222,19 @@ export async function resolveAirportPlace(key, iata) {
   };
 }
 
+// Resolve the IANA timezone id for coordinates via the Time Zone API. Returns ''
+// when the provider can't answer, so callers keep an honest empty tz.
+export async function resolveTimezoneFromCoords(key, lat, lng) {
+  try {
+    const ts = Math.floor(Date.now() / 1000);
+    const res = await fetch(`https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${ts}&key=${key}`);
+    const data = await res.json();
+    return data.status === 'OK' ? (data.timeZoneId || '') : '';
+  } catch {
+    return '';
+  }
+}
+
 // Resolve an IANA timezone id (e.g. "Europe/Rome") for a place name via Google
 // Geocoding + Time Zone API. Used by backend functions that must render times
 // in the destination's local timezone (journey reminders). Returns null on any
