@@ -189,6 +189,11 @@ export const en = {
     inboxSyncImported: { one: '{count} new import', other: '{count} new imports' },
     inboxSyncFailedCount: { one: '{count} mailbox failed', other: '{count} mailboxes failed' },
     inboxSyncFailed: 'Sync failed. Try again.',
+    couldNotLoad: "Couldn't load your gatherings.",
+    importCreateGathering: 'Create new gathering',
+    importNoGatherings: 'No gatherings yet. Create one to file this reservation.',
+    newGatheringTitle: 'New gathering',
+    newGatheringHint: 'Just a name to start — you can add dates, places and a cover later.',
   },
 
   howItWorks: {

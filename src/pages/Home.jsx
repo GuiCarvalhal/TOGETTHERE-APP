@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Plus, CalendarDays, Compass, Route, Receipt, Sparkles, Inbox, Loader2, Check, X } from 'lucide-react';
+import { Plus, CalendarDays, Compass, Route, Receipt, Sparkles, Inbox, RotateCw } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, deriveGatheringMeta } from '@/lib/gatheringDates';
 import { journeyIcon } from '@/lib/journeyIcons';
 import { format, differenceInCalendarDays } from 'date-fns';
@@ -15,9 +15,9 @@ import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
 import InboxSyncBar from '@/components/tt/InboxSyncBar';
-import ImportClassificationNote from '@/components/tt/ImportClassificationNote';
+import PendingImportCard from '@/components/home/PendingImportCard';
+import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import { useI18n } from '@/lib/i18n';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 
 const FILTER_KEYS = [
@@ -41,15 +41,23 @@ export default function Home() {
   const [inboxConnections, setInboxConnections] = useState([]);
   const [importChoiceById, setImportChoiceById] = useState({});
   const [resolvingImportId, setResolvingImportId] = useState('');
+  const [createForImportId, setCreateForImportId] = useState('');
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState('all');
   const [nextUpcoming, setNextUpcoming] = useState(null);
+  // Every refresh takes a ticket; only the newest one may apply its response, so
+  // a background sync finishing after an explicit refresh can never overwrite
+  // fresher data (or resurrect an import that was just resolved).
+  const loadSeqRef = useRef(0);
 
   async function load({ silent = false } = {}) {
+    const seq = ++loadSeqRef.current;
     if (!silent) setLoading(true);
     try {
       const res = await base44.functions.invoke('getHomePreviews', {});
+      if (seq !== loadSeqRef.current) return;
       const data = res.data || res;
       setGatherings(data.gatherings || []);
       setMemberships(data.memberships || []);
@@ -59,10 +67,12 @@ export default function Home() {
       setInboxConnections(data.inboxConnections || []);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
+      setLoadError(false);
     } catch (e) {
       console.error(e);
+      if (seq === loadSeqRef.current) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (seq === loadSeqRef.current) setLoading(false);
     }
   }
 
@@ -91,33 +101,51 @@ export default function Home() {
   const sorted = [...filtered].sort((a, b) =>
     a.sortKey.bucket - b.sortKey.bucket || a.sortKey.ts - b.sortKey.ts
   );
-  const gatheringById = Object.fromEntries(gatherings.map((g) => [g.id, g]));
-
+  // Default each import to its suggested gathering, but never overwrite a choice
+  // the user already made while a refresh is in flight.
   useEffect(() => {
-    const next = {};
-    pendingImports.forEach((it) => {
-      const candidates = Array.isArray(it.candidate_gathering_ids) ? it.candidate_gathering_ids : [];
-      next[it.id] = it.suggested_gathering_id || candidates[0] || '';
+    const knownIds = new Set(gatherings.map((g) => g.id));
+    setImportChoiceById((cur) => {
+      const next = {};
+      pendingImports.forEach((it) => {
+        const candidates = Array.isArray(it.candidate_gathering_ids) ? it.candidate_gathering_ids : [];
+        const kept = cur[it.id];
+        if (kept && knownIds.has(kept)) next[it.id] = kept;
+        else next[it.id] = it.suggested_gathering_id || candidates[0] || '';
+      });
+      return next;
     });
-    setImportChoiceById(next);
-  }, [pendingImports]);
+  }, [pendingImports, gatherings]);
 
   async function resolveImport(importId, action) {
+    if (resolvingImportId === importId) return;
+    const gatheringId = importChoiceById[importId];
     setResolvingImportId(importId);
     try {
-      const gatheringId = importChoiceById[importId];
       await base44.functions.invoke('resolveReservationImport', {
         import_id: importId,
         action,
         ...(action === 'create' ? { gathering_id: gatheringId } : {}),
       });
       toast({ title: action === 'create' ? t('home.importResolved') : t('home.importDismissed') });
-      await load();
     } catch (e) {
       toast({ title: t('home.importResolveFailed'), description: e.message || t('common.error'), variant: 'destructive' });
     } finally {
       setResolvingImportId('');
+      // Always resync: on success the card must disappear, and on a 409 (already
+      // resolved elsewhere, e.g. another tab or device) the stale card must too.
+      await load({ silent: true });
     }
+  }
+
+  async function handleGatheringCreated(gathering) {
+    const importId = createForImportId;
+    setCreateForImportId('');
+    if (!gathering?.id) return;
+    setGatherings((cur) => (cur.some((g) => g.id === gathering.id) ? cur : [...cur, gathering]));
+    if (importId) setImportChoiceById((cur) => ({ ...cur, [importId]: gathering.id }));
+    toast({ title: t('newGathering.created') });
+    await load({ silent: true });
   }
 
   // Featured eyebrow: date-focused relative + absolute timing for the next
@@ -198,63 +226,32 @@ export default function Home() {
             <p className="text-sm text-ink-deep/65">{t('home.pendingImportsBody')}</p>
             <div className="space-y-3">
               {pendingImports.map((it) => {
-                const disabled = resolvingImportId === it.id;
-                const candidates = (Array.isArray(it.candidate_gathering_ids) && it.candidate_gathering_ids.length)
-                  ? it.candidate_gathering_ids
-                  : gatherings.map((g) => g.id);
-                const availableGatheringIds = candidates.filter((gid) => !!gatheringById[gid]);
-                const selected = availableGatheringIds.includes(importChoiceById[it.id]) ? importChoiceById[it.id] : '';
-                const title = it?.extracted_draft?.title || it.source_subject || t('home.importFallbackTitle');
-                const subtitle = [it?.extracted_draft?.start_datetime, it?.source_sender].filter(Boolean).join(' ?? ');
+                const choice = importChoiceById[it.id];
                 return (
-                  <div key={it.id} className="rounded-xl border border-ink-charcoal/15 bg-cream-soft p-3.5 space-y-3">
-                    <div>
-                      <p className="text-sm font-semibold text-ink-deep">{title}</p>
-                      {subtitle && <p className="text-xs text-ink-deep/60 mt-0.5">{subtitle}</p>}
-                      <ImportClassificationNote item={it} />
-                    </div>
-                    <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2.5 items-center">
-                      <Select
-                        value={selected}
-                        onValueChange={(v) => setImportChoiceById((cur) => ({ ...cur, [it.id]: v }))}
-                      >
-                        <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10">
-                          <SelectValue placeholder={t('home.selectGathering')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableGatheringIds
-                            .map((gid) => gatheringById[gid])
-                            .filter(Boolean)
-                            .map((g) => (
-                              <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="sm"
-                        disabled={disabled || !selected}
-                        onClick={() => resolveImport(it.id, 'create')}
-                      >
-                        {disabled ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                        {t('home.importCreate')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={disabled}
-                        onClick={() => resolveImport(it.id, 'discard')}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        {t('home.importDismiss')}
-                      </Button>
-                    </div>
-                  </div>
+                  <PendingImportCard
+                    key={it.id}
+                    item={it}
+                    gatherings={gatherings}
+                    selectedId={gatherings.some((g) => g.id === choice) ? choice : ''}
+                    onSelect={(v) => setImportChoiceById((cur) => ({ ...cur, [it.id]: v }))}
+                    onRefresh={() => load({ silent: true })}
+                    onCreateNew={() => setCreateForImportId(it.id)}
+                    onConfirm={() => resolveImport(it.id, 'create')}
+                    onDiscard={() => resolveImport(it.id, 'discard')}
+                    busy={resolvingImportId === it.id}
+                  />
                 );
               })}
             </div>
           </div>
         </section>
       )}
+
+      <NewGatheringSheet
+        open={!!createForImportId}
+        onOpenChange={(open) => { if (!open) setCreateForImportId(''); }}
+        onCreated={handleGatheringCreated}
+      />
 
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
@@ -275,6 +272,16 @@ export default function Home() {
           <Button onClick={() => navigate('/gathering/new')} size="sm" className="shrink-0"><Plus /> {t('home.new')}</Button>
         </div>
 
+        {loadError && !loading && (
+          <div className="tt-card p-4 mb-5 flex items-center justify-between gap-3">
+            <p className="text-sm text-ink-deep/70">{t('home.couldNotLoad')}</p>
+            <Button size="sm" variant="secondary" onClick={() => load()} className="shrink-0">
+              <RotateCw className="w-3.5 h-3.5" />
+              {t('common.tryAgain')}
+            </Button>
+          </div>
+        )}
+
         {loading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[0, 1, 2].map((i) => (
@@ -291,7 +298,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-        ) : gatherings.length === 0 ? (
+        ) : gatherings.length === 0 && !loadError ? (
           <EmptyState
             icon={Compass}
             title={t('home.noGatherings')}

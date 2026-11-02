@@ -184,6 +184,11 @@ export const ptBR = {
     inboxSyncImported: { one: '{count} nova importação', other: '{count} novas importações' },
     inboxSyncFailedCount: { one: '{count} caixa com falha', other: '{count} caixas com falha' },
     inboxSyncFailed: 'Falha na sincronização. Tente novamente.',
+    couldNotLoad: 'Não foi possível carregar seus gatherings.',
+    importCreateGathering: 'Criar novo gathering',
+    importNoGatherings: 'Nenhum gathering ainda. Crie um para arquivar esta reserva.',
+    newGatheringTitle: 'Novo gathering',
+    newGatheringHint: 'Só um nome para começar — você pode adicionar datas, lugares e capa depois.',
     importResolveFailed: 'N??o foi poss??vel resolver a reserva importada',
   },
 

@@ -300,6 +300,14 @@ failed call falls back to the deterministic result. Unset = fully deterministic.
    repeats only the reference still matches an item stored before that reference was
    known, and a code-less reminder matches on the same venue + slot.
 
+## Milestones
+
+- **Email classification precision + gathering refresh/create UX** — deterministic
+  classifier with an explicit confidence policy, symmetric dedupe for amended
+  threads, safe drop of promotional/non-booking mail, plus the reservation-import
+  flow on Home: live gathering list (refreshed on open and after creation), inline
+  "create gathering" and a stale-response guard for concurrent syncs.
+
 ## Docs & Support
 
 GitHub integration: [https://docs.base44.com/developers/app-code/local-development/github](https://docs.base44.com/developers/app-code/local-development/github)
