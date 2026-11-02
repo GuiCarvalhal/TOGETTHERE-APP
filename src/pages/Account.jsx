@@ -7,6 +7,7 @@ import ProfileActionBar from '@/components/tt/ProfileActionBar';
 import OwnProfileEdit from '@/components/profile/OwnProfileEdit';
 import OwnProfileView from '@/components/profile/OwnProfileView';
 import AccountSettings from '@/components/tt/AccountSettings';
+import FinancialAccounts from '@/components/account/FinancialAccounts';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n';
 
@@ -118,6 +119,12 @@ export default function Account() {
           ) : (
             <OwnProfileView data={data} userId={user?.id} onChanged={onSaved} />
           )}
+        </div>
+
+        {/* Banks & cards — imported transactions stay suggestions until the
+            user creates an expense from one through the standard form. */}
+        <div className="mt-6">
+          <FinancialAccounts />
         </div>
 
         {/* App Settings — global, immediate effect, always visible */}

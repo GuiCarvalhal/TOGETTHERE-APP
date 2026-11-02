@@ -1,0 +1,191 @@
+{
+  "name": "FinancialTransaction",
+  "type": "object",
+  "properties": {
+    "connection_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "account_mask": {
+      "type": "string",
+      "description": "Copy of the connection's last 4 digits, so a row is readable without a join."
+    },
+    "owner_user_id": {
+      "type": "string"
+    },
+    "target_user_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Read-ACL keys (user id and normalized email) of the account owner."
+    },
+    "external_id": {
+      "type": "string",
+      "description": "Provider's own transaction id. First idempotency key: a transaction id already stored for this connection is never inserted again."
+    },
+    "fingerprint": {
+      "type": "string",
+      "description": "Symmetric dedupe key built from the normalized shape (date | amount | currency | normalized merchant). Catches the same charge arriving twice under different provider ids, and matches an amended/duplicated provider row."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Normalized instant (UTC). Kept alongside the calendar date so ordering never depends on a timezone."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Normalized calendar date (YYYY-MM-DD) of the transaction."
+    },
+    "description": {
+      "type": "string",
+      "description": "Provider description as received (trimmed)."
+    },
+    "merchant": {
+      "type": "string",
+      "description": "Normalized merchant name (provider merchant field, or derived from an all-caps bank descriptor)."
+    },
+    "raw_category": {
+      "type": "string",
+      "description": "The provider's ORIGINAL category code, kept verbatim as the audit trail of what the bank said (never overwritten by our suggestion)."
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Positive magnitude in `currency`. The sign is carried by `direction`, so a refund and a charge can never be confused."
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "debit",
+        "credit"
+      ],
+      "default": "debit",
+      "description": "debit = money out (a candidate expense); credit = money in (refund/payment \u2014 never auto-suggested as an expense)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "posted"
+      ],
+      "default": "posted",
+      "description": "Provider settlement state. Pending charges are imported but visibly marked, since their amount can still change."
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "suggested",
+        "linked",
+        "ignored"
+      ],
+      "default": "new",
+      "description": "new = imported, nothing suggested; suggested = a category and/or gathering was proposed; linked = the user created a TOGETTHERE expense from it; ignored = the user dismissed it."
+    },
+    "category_suggestion": {
+      "type": "string",
+      "enum": [
+        "food",
+        "lodging",
+        "transport",
+        "activities",
+        "other"
+      ],
+      "description": "Expense category proposed for this transaction (same enum the expense form uses)."
+    },
+    "category_confidence": {
+      "type": "number",
+      "description": "0-1 confidence of the category suggestion."
+    },
+    "category_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Signal CODES that produced the suggestion (e.g. merchant_food, raw_category_lodging). Codes only, never message or card data."
+    },
+    "gathering_suggestion_id": {
+      "type": "string",
+      "description": "Gathering whose date range best matches the transaction date. A suggestion only \u2014 nothing is written to the gathering until the user confirms."
+    },
+    "gathering_confidence": {
+      "type": "number"
+    },
+    "gathering_reason": {
+      "type": "string",
+      "description": "Reason code: date_in_range, date_near_item, date_near_trip, no_signal."
+    },
+    "participant_suggestion_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User ids of the suggested gathering's participants, pre-selected when the user opens the expense form."
+    },
+    "linked_expense_id": {
+      "type": "string",
+      "description": "Optional link to the TOGETTHERE Expense created from this transaction."
+    },
+    "linked_gathering_id": {
+      "type": "string"
+    },
+    "linked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "linked_by_user_id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "description": "Which adapter produced the row: demo, provider_sync or provider_webhook."
+    }
+  },
+  "required": [
+    "connection_id",
+    "external_id",
+    "amount",
+    "currency",
+    "direction",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.target_user_keys": "{{user.id}}"
+        },
+        {
+          "data.target_user_keys": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

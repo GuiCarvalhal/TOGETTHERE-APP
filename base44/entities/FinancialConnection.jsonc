@@ -1,0 +1,122 @@
+{
+  "name": "FinancialConnection",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": [
+        "demo",
+        "plaid",
+        "tink",
+        "belvo"
+      ],
+      "default": "demo",
+      "description": "Aggregator that owns this connection. 'demo' is the built-in stub used until a real provider (Plaid/Tink/Belvo) is plugged in; the sync adapter is chosen from this value."
+    },
+    "institution_name": {
+      "type": "string",
+      "description": "User-visible bank or card name (e.g. 'Chase', 'Nubank')."
+    },
+    "account_mask": {
+      "type": "string",
+      "description": "Last 4 digits ONLY. The full account/card number is never collected or stored."
+    },
+    "account_type": {
+      "type": "string",
+      "enum": [
+        "checking",
+        "savings",
+        "credit"
+      ],
+      "default": "checking"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD",
+      "description": "Account's reporting currency (expense currency of its transactions)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "attention",
+        "disconnected"
+      ],
+      "default": "connected",
+      "description": "connected = syncing; attention = the provider rejected the last sync (user must reconnect); disconnected = user turned it off."
+    },
+    "provider_item_ref": {
+      "type": "string",
+      "description": "Opaque provider-side item/account id used to re-fetch this account. It is an identifier, NOT a credential: access tokens for a real provider live in the app's encrypted credential path, never on this record in clear."
+    },
+    "target_user_id": {
+      "type": "string"
+    },
+    "target_user_email": {
+      "type": "string"
+    },
+    "target_user_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Read-ACL keys for the owner of this connection (user id and normalized email), matching the pattern used by ReservationImport and InboxConnection."
+    },
+    "connected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_sync_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_attempt_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Fixed, non-sensitive reason code from the last failed sync (e.g. provider_auth_failed). Never provider wording or payload content."
+    },
+    "disabled_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "provider",
+    "target_user_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.target_user_keys": "{{user.id}}"
+        },
+        {
+          "data.target_user_keys": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

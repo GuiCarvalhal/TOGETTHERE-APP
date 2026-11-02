@@ -33,7 +33,9 @@ function writePrefs(uid, p) {
   try { localStorage.setItem(PREFS_KEY(uid), JSON.stringify(p)); } catch {}
 }
 
-export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, baseCurrency, onClose, onSaved, onDelete }) {
+// `initial` optionally prefills a NEW expense (e.g. from an imported bank
+// transaction). It never overrides an existing expense being edited.
+export default function ExpenseForm({ gatheringId, members, currentMember, expense, splits, baseCurrency, initial, onClose, onSaved, onDelete }) {
   const { t, fmt } = useI18n();
   const participants = participantMembers(members);
   const isEdit = !!expense;
@@ -46,15 +48,15 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   // legacy-viewer guard below blocks the save regardless.
   const eligibleInitialPayer = (mid) => participants.some((m) => m.id === mid);
   const [form, setForm] = useState({
-    title: expense?.title || '',
-    amount: expense?.amount || '',
-    currency: expense?.currency || prefs?.currency || 'USD',
-    category: expense?.category || 'other',
+    title: expense?.title || initial?.title || '',
+    amount: expense?.amount || initial?.amount || '',
+    currency: expense?.currency || initial?.currency || prefs?.currency || 'USD',
+    category: expense?.category || initial?.category || 'other',
     split_method: expense?.split_method || prefs?.split_method || 'equal',
     payer_member_id: (isEdit && expense?.payer_member_id && eligibleInitialPayer(expense.payer_member_id))
       ? expense.payer_member_id
       : (currentMember?.id || participants[0]?.id || ''),
-    date: expense?.date || new Date().toISOString().slice(0, 10),
+    date: expense?.date || initial?.date || new Date().toISOString().slice(0, 10),
     receipt: expense?.receipt || '',
     place_name: expense?.place_name || '',
     place_photo: expense?.place_photo || '',
@@ -215,10 +217,13 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           });
         });
       });
+      let savedExpense = null;
       if (expense) {
         await base44.functions.invoke('updateExpense', { gathering_id: gatheringId, expense_id: expense.id, expense: expensePayload, splits: splitInputs });
+        savedExpense = { id: expense.id };
       } else {
-        await base44.functions.invoke('createExpense', { gathering_id: gatheringId, expense: expensePayload, splits: splitInputs });
+        const res = await base44.functions.invoke('createExpense', { gathering_id: gatheringId, expense: expensePayload, splits: splitInputs });
+        savedExpense = (res.data || res)?.expense || null;
       }
       // Remember the last split method + selected units + currency for the
       // current user, only after a successful save.
@@ -230,7 +235,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           currency: form.currency,
         });
       }
-      onSaved();
+      onSaved(savedExpense);
       onClose();
     } catch (err) {
       alert(err.message || t('expenseForm.couldNotSave'));
