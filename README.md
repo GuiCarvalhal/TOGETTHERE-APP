@@ -294,8 +294,11 @@ failed call falls back to the deterministic result. Unset = fully deterministic.
 1. Source message id (unchanged) — a message is ingested once.
 2. Same `confirmation_number`.
 3. Same `booking_reference` (≥ 4 chars).
-4. Same fingerprint: type + reference + day, or type + title/venue + exact date
-   range (`bookingFingerprint`), which catches thread updates that carry no code.
+4. Shared fingerprint key (`bookingFingerprints`): either `ref:<type>|<reference>|<day>`
+   or `slot:<type>|<venue-or-title>|<start>|<end>`. Each record produces both keys
+   when it can, and a match on **any** shared key counts — so a thread update that
+   repeats only the reference still matches an item stored before that reference was
+   known, and a code-less reminder matches on the same venue + slot.
 
 ## Docs & Support
 
