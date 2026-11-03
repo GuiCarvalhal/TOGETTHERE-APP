@@ -489,6 +489,7 @@ export const ptBR = {
 
   inbox: {
     title: 'Caixa de entrada do roteiro',
+    back: 'Voltar',
     intro: 'Cada reserva encontrada nos seus e-mails fica aqui como um item próprio, com o e-mail completo anexado. Adicione a um gathering quando quiser.',
     empty: 'Nada esperando aqui',
     emptyBody: 'Reservas importadas que ainda não foram para um gathering aparecem nesta caixa de entrada.',

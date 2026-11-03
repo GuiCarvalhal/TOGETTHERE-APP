@@ -493,6 +493,7 @@ export const en = {
 
   inbox: {
     title: 'Journey inbox',
+    back: 'Back',
     intro: 'Every booking found in your emails is kept here as its own item, with the full email attached. Add it to a gathering whenever you need it.',
     empty: 'Nothing waiting here',
     emptyBody: 'Imported reservations that are not filed into a gathering yet show up in this inbox.',

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Inbox as InboxIcon, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Inbox as InboxIcon, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import AppHeader from '@/components/tt/AppHeader';
 import InboxItemCard from '@/components/inbox/InboxItemCard';
@@ -16,6 +17,7 @@ import { useI18n } from '@/lib/i18n';
 // instead of getting lost, and they render with the standard journey card.
 export default function Inbox() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [gatherings, setGatherings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,13 @@ export default function Inbox() {
   }, [t]);
 
   useEffect(() => { load(); }, [load]);
+
+  // The inbox opens from Home (and from the journey import flow), so it always
+  // needs a way back; a direct link with no history falls back to Home.
+  const onBack = useCallback(() => {
+    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    else navigate('/');
+  }, [navigate]);
 
   async function fileItem(itemId, gatheringId) {
     setFiling(true);
@@ -80,6 +89,13 @@ export default function Inbox() {
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-deep/60 hover:text-ink-deep transition-colors mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" /> {t('inbox.back')}
+        </button>
+
         <div className="flex items-center gap-2 mb-1">
           <InboxIcon className="w-6 h-6 text-terra-deep" />
           <h1 className="font-display text-2xl font-bold text-ink-deep">{t('inbox.title')}</h1>
