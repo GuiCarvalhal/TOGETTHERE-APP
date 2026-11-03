@@ -1,0 +1,130 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Inbox as InboxIcon, Loader2 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import AppHeader from '@/components/tt/AppHeader';
+import InboxItemCard from '@/components/inbox/InboxItemCard';
+import FileInboxItemSheet from '@/components/inbox/FileInboxItemSheet';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
+import { useI18n } from '@/lib/i18n';
+
+// Journey inbox — the durable home for imported reservation segments.
+//
+// Every booking found in an email (two flights, or flights plus a hotel) is
+// stored here as its own item with the FULL source email attached, whether or not
+// it already made it into a gathering. Items that are not used yet wait here
+// instead of getting lost, and they render with the standard journey card.
+export default function Inbox() {
+  const { t } = useI18n();
+  const [items, setItems] = useState([]);
+  const [gatherings, setGatherings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [fileTarget, setFileTarget] = useState(null);
+  const [busyId, setBusyId] = useState('');
+  const [filing, setFiling] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const [inboxRes, gatheringRows] = await Promise.all([
+        base44.functions.invoke('getJourneyInbox', {}),
+        base44.entities.Gathering.filter({}),
+      ]);
+      setItems((inboxRes.data || inboxRes).items || []);
+      setGatherings(Array.isArray(gatheringRows) ? gatheringRows : (gatheringRows?.items || []));
+      setError('');
+    } catch (e) {
+      setError(e.message || t('inbox.loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function fileItem(itemId, gatheringId) {
+    setFiling(true);
+    setBusyId(itemId);
+    try {
+      const res = await base44.functions.invoke('fileJourneyInboxItem', {
+        item_id: itemId,
+        gathering_id: gatheringId,
+        action: 'file',
+      });
+      const data = res.data || res;
+      toast({ title: data?.duplicate ? t('inbox.alreadyFiled') : t('inbox.filed') });
+      setFileTarget(null);
+      setItems((cur) => cur.filter((it) => it.id !== itemId));
+    } catch (e) {
+      toast({ title: t('inbox.fileFailed'), description: e.message, variant: 'destructive' });
+    } finally {
+      setFiling(false);
+      setBusyId('');
+    }
+  }
+
+  async function dismissItem(itemId) {
+    setBusyId(itemId);
+    try {
+      await base44.functions.invoke('fileJourneyInboxItem', { item_id: itemId, action: 'dismiss' });
+      setItems((cur) => cur.filter((it) => it.id !== itemId));
+      toast({ title: t('inbox.dismissed') });
+    } catch (e) {
+      toast({ title: t('inbox.fileFailed'), description: e.message, variant: 'destructive' });
+    } finally {
+      setBusyId('');
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <AppHeader />
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        <div className="flex items-center gap-2 mb-1">
+          <InboxIcon className="w-6 h-6 text-terra-deep" />
+          <h1 className="font-display text-2xl font-bold text-ink-deep">{t('inbox.title')}</h1>
+        </div>
+        <p className="text-sm text-ink-deep/60 mb-6">{t('inbox.intro')}</p>
+
+        {loading ? (
+          <div className="tt-card p-10 flex items-center justify-center text-ink-deep/50">
+            <Loader2 className="w-5 h-5 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="tt-card p-8 text-center space-y-3">
+            <p className="text-sm text-ink-deep/60">{error}</p>
+            <Button size="sm" variant="outline" onClick={() => { setLoading(true); load(); }}>
+              {t('common.tryAgain')}
+            </Button>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="tt-card p-8 text-center">
+            <p className="font-display text-lg font-bold text-ink-deep mb-1">{t('inbox.empty')}</p>
+            <p className="text-sm text-ink-deep/60">{t('inbox.emptyBody')}</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {items.map((item) => (
+              <InboxItemCard
+                key={item.id}
+                item={item}
+                busy={busyId === item.id}
+                onFile={(it) => setFileTarget(it)}
+                onDismiss={(it) => dismissItem(it.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <FileInboxItemSheet
+        open={!!fileTarget}
+        onOpenChange={(open) => { if (!open) setFileTarget(null); }}
+        item={fileTarget}
+        gatherings={gatherings}
+        busy={filing}
+        onConfirm={(gatheringId) => fileTarget && fileItem(fileTarget.id, gatheringId)}
+      />
+    </div>
+  );
+}

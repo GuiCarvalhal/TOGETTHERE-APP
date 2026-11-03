@@ -11,6 +11,22 @@ function isAuthorizedForImport(imp: any, user: any) {
   return byId || byEmail;
 }
 
+// A segment that finally lands in a gathering leaves the journey inbox.
+async function markInboxFiled(base44: any, importId: string, itemId: string, gatheringId: string) {
+  try {
+    const rows = await base44.asServiceRole.entities.JourneyInboxItem.filter({ import_id: importId });
+    await Promise.all((rows || []).map((row: any) => base44.asServiceRole.entities.JourneyInboxItem.update(row.id, {
+      status: 'filed',
+      filed_item_id: itemId,
+      filed_gathering_id: gatheringId,
+      filed_at: new Date().toISOString(),
+      missing: [],
+    })));
+  } catch {
+    // The inbox copy is convenience only.
+  }
+}
+
 function resolveMemberForUser(members: any[], user: any) {
   const byId = (members || []).find((m) => m.user_id === user.id);
   if (byId) return byId;
@@ -86,6 +102,7 @@ export default async function(req: Request) {
         resolved_at: new Date().toISOString(),
         resolved_by_user_id: user.id,
       });
+      await markInboxFiled(base44, importId, duplicate.item.id, gatheringId);
       return Response.json({ import: updated, duplicate: true, item: duplicate });
     }
 
@@ -133,6 +150,7 @@ export default async function(req: Request) {
       resolved_at: new Date().toISOString(),
       resolved_by_user_id: user.id,
     });
+    await markInboxFiled(base44, importId, created.id, gatheringId);
     return Response.json({ import: updated, item: created });
   } catch (error: any) {
     return Response.json({ error: error.message }, { status: 500 });
