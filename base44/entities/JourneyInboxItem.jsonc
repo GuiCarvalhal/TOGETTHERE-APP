@@ -1,0 +1,175 @@
+{
+  "name": "JourneyInboxItem",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string",
+      "description": "App user who owns this imported segment."
+    },
+    "target_user_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Read-ACL keys (canonical user id and normalized email), matching the pattern used by ReservationImport."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "filed",
+        "dismissed"
+      ],
+      "default": "new",
+      "description": "new = waiting in the inbox; filed = already added to a gathering (filed_item_id); dismissed = the user discarded it."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "flight",
+        "car",
+        "train",
+        "hotel",
+        "activity",
+        "cruise",
+        "main_event",
+        "other"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "start_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant, resolved exactly like the standard item form stores it."
+    },
+    "end_datetime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "location_from": {
+      "type": "string"
+    },
+    "location_to": {
+      "type": "string"
+    },
+    "location_name": {
+      "type": "string"
+    },
+    "confirmation_number": {
+      "type": "string",
+      "description": "Flight number for flights, as the standard item stores it."
+    },
+    "booking_reference": {
+      "type": "string"
+    },
+    "airline": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Files carried with the segment. For an imported reservation this holds the FULL source email (private storage uri), so every created item keeps its original email."
+    },
+    "place_photo": {
+      "type": "string"
+    },
+    "place": {
+      "type": "object"
+    },
+    "from_place": {
+      "type": "object"
+    },
+    "to_place": {
+      "type": "object"
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Standard-form reason codes still missing before this segment can be filed (title, start_datetime, flight_number, ...)."
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "inbox_sync",
+        "webhook",
+        "manual"
+      ],
+      "default": "inbox_sync"
+    },
+    "source_subject": {
+      "type": "string"
+    },
+    "source_sender": {
+      "type": "string"
+    },
+    "source_received_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_content": {
+      "type": "string",
+      "description": "Plain text of the source email, so the full message is always readable in the app even without downloading the attachment."
+    },
+    "import_id": {
+      "type": "string",
+      "description": "ReservationImport row this segment came from."
+    },
+    "filed_item_id": {
+      "type": "string"
+    },
+    "filed_gathering_id": {
+      "type": "string"
+    },
+    "filed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "status",
+    "type",
+    "title"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.target_user_keys": "{{user.id}}"
+        },
+        {
+          "data.target_user_keys": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
