@@ -40,7 +40,6 @@ export default function Home() {
   const [itemsByGathering, setItemsByGathering] = useState({});
   const [pendingImports, setPendingImports] = useState([]);
   const [inboxConnections, setInboxConnections] = useState([]);
-  const [inboxItems, setInboxItems] = useState([]);
   const [inboxCount, setInboxCount] = useState(0);
   const [importChoiceById, setImportChoiceById] = useState({});
   const [resolvingImportId, setResolvingImportId] = useState('');
@@ -59,7 +58,10 @@ export default function Home() {
     const seq = ++loadSeqRef.current;
     if (!silent) setLoading(true);
     try {
-      const res = await base44.functions.invoke('getHomePreviews', {});
+      // The user's timezone decides what "today" means for the featured card.
+      const res = await base44.functions.invoke('getHomePreviews', {
+        tz_offset_minutes: new Date().getTimezoneOffset(),
+      });
       if (seq !== loadSeqRef.current) return;
       const data = res.data || res;
       setGatherings(data.gatherings || []);
@@ -68,7 +70,6 @@ export default function Home() {
       setItemsByGathering(data.itemsByGathering || {});
       setPendingImports(data.pendingImports || []);
       setInboxConnections(data.inboxConnections || []);
-      setInboxItems(data.inboxItems || []);
       setInboxCount(data.inboxCount || 0);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
@@ -186,11 +187,11 @@ export default function Home() {
         {nextUpcoming ? (
           <div>
             {featuredEyebrow && (
-              <p className="text-sm font-bold mb-3 tracking-wide flex flex-wrap items-baseline gap-x-1.5">
+              <p className="text-sm font-bold mb-3 tracking-wide flex flex-wrap items-center gap-x-2">
                 <span className="text-terra-coral uppercase">{featuredEyebrow.statusLabel}</span>
-                <span className="text-ink-deep/30">??</span>
+                <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-deep/25" />
                 <span className="text-ink-deep uppercase">{featuredEyebrow.relative}</span>
-                <span className="text-ink-deep/30">??</span>
+                <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-deep/25" />
                 <span className="text-ink-deep/75">{featuredEyebrow.absDate}</span>
               </p>
             )}
@@ -210,6 +211,9 @@ export default function Home() {
             <h1 className="font-display text-4xl sm:text-6xl font-bold leading-[1.05] tt-text-balance max-w-3xl">
               {t('home.heroLine1')}<br /><span className="italic text-terra-coral">{t('home.heroLine2')}</span>
             </h1>
+            {gatherings.length > 0 && (
+              <p className="mt-4 text-sm text-ink-deep/60">{t('home.featuredEmpty')}</p>
+            )}
           </>
         )}
       </section>
@@ -225,7 +229,6 @@ export default function Home() {
           mailbox sync controls for the inboxes that feed it. */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
         <JourneyInboxPanel
-          items={inboxItems}
           count={inboxCount}
           connections={inboxConnections}
           onSynced={() => load({ silent: true })}

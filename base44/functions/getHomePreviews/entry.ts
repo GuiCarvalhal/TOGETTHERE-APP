@@ -16,6 +16,8 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const body = await req.json().catch(() => ({}));
+
     // Throttled, fire-and-forget mailbox sync. It runs after the response is
     // sent, at most once per throttle window, and never surfaces an error here.
     waitUntil(maybeSyncInboxInBackground(base44, user).catch(() => {}));
@@ -33,12 +35,17 @@ export default async function(req) {
     // (started, not yet ended) takes priority; otherwise the next UPCOMING one
     // (start in the future). Participant = item creator (owner_id) or explicit
     // attendee (attendee_user_ids), matching the Journey page's MINE scope.
-    // Ongoing = start <= now AND (no end OR end >= now); among ongoing, the one
-    // that started most recently wins. Upcoming = start >= now (strictly future
-    // or starting now); the earliest-start such item wins. Participants are the
-    // item's actual attendees (or the creator fallback) resolved to minimal
-    // member previews so the card avatars match the Journey.
-    const now = Date.now();
+    // Among ongoing, the one that started most recently wins; among upcoming, the
+    // earliest start wins. Participants are the item's actual attendees (or the
+    // creator fallback) resolved to minimal member previews so the card avatars
+    // match the Journey. The timezone boundary below is what keeps the past out.
+    // Only TODAY OR AHEAD may be featured, judged in the USER's timezone: the
+    // client sends its offset (minutes, as getTimezoneOffset returns it), so an
+    // item that already happened earlier today is never offered as the next one.
+    const nowMs = Date.now();
+    const tzOffsetMinutes = Number(body?.tz_offset_minutes);
+    const offsetMs = Number.isFinite(tzOffsetMinutes) ? tzOffsetMinutes * 60000 : 0;
+    const startOfTodayMs = Math.floor((nowMs - offsetMs) / 86400000) * 86400000 + offsetMs;
     let ongoing = null;
     let nextUpcoming = null;
     await Promise.all(gids.map(async (gid) => {
@@ -78,12 +85,16 @@ export default async function(req) {
         if (!isParticipant || !it.start_datetime) continue;
         const startMs = new Date(it.start_datetime).getTime();
         const endMs = it.end_datetime ? new Date(it.end_datetime).getTime() : null;
-        const isOngoing = startMs <= now && (endMs === null || endMs >= now);
+        // An item with NO end date stops being "ongoing" at the end of its start
+        // day, so a past activity can never be featured indefinitely.
+        const isOngoing = startMs <= nowMs && (endMs !== null ? endMs >= nowMs : startMs >= startOfTodayMs);
+        // Nothing from the past: either happening now, or starting today onwards.
+        if (!isOngoing && startMs < startOfTodayMs) continue;
         if (isOngoing) {
           if (!ongoing || startMs > ongoing.startMs) {
             ongoing = { item: it, gatheringId: gid, participants: resolveParticipants(it), startMs };
           }
-        } else if (startMs >= now) {
+        } else if (startMs >= nowMs) {
           if (!nextUpcoming || startMs < nextUpcoming.startMs) {
             nextUpcoming = { item: it, gatheringId: gid, participants: resolveParticipants(it), startMs };
           }
@@ -100,14 +111,6 @@ export default async function(req) {
     const inboxRows = (Array.isArray(inboxRaw) ? inboxRaw : (inboxRaw?.items || []))
       .slice()
       .sort((a: any, b: any) => String(a.start_datetime || '').localeCompare(String(b.start_datetime || '')));
-    const inboxPreview = inboxRows.slice(0, 3).map((row: any) => ({
-      id: row.id,
-      type: row.type || 'other',
-      title: row.title || '',
-      start_datetime: row.start_datetime || null,
-      source_sender: row.source_sender || '',
-      missing: row.missing || [],
-    }));
     const inboxImportIds = new Set(inboxRows.map((row: any) => row.import_id).filter(Boolean));
 
     const pendingRaw = await base44.asServiceRole.entities.ReservationImport.list('-created_date', 100).catch(() => []);
@@ -148,7 +151,6 @@ export default async function(req) {
       previews,
       itemsByGathering,
       pendingImports,
-      inboxItems: inboxPreview,
       inboxCount: inboxRows.length,
       userId: user.id,
       nextUpcoming: chosen
