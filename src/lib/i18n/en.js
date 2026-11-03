@@ -17,6 +17,7 @@ export const en = {
     tryAgain: 'Try again',
     loading: 'Loading???',
     error: 'Something went wrong.',
+    fileOpenFailed: 'Could not open this attachment.',
     search: 'Search',
     copy: 'Copy',
     copied: 'Copied',
@@ -508,6 +509,9 @@ export const en = {
     noGatherings: 'No gatherings yet. Create one first.',
     missingHint: 'Needs {fields} before it can be added.',
     loadFailed: 'Could not load your inbox.',
+    viewEmail: 'View the original email',
+    createGathering: 'Create a gathering',
+    alreadyResolved: 'This item was already handled',
     open: 'Open the journey inbox',
   },
 

@@ -179,18 +179,25 @@ function fingerprintLabel(source: any) {
 }
 
 // Identity keys for "the same booking, mentioned again". Two shapes:
-//   ref:<type>|<reference>|<day>        — thread updates that repeat the reference
-//   slot:<type>|<label>|<start>|<end>   — updates carrying no code for the same slot
+//   ref:<type>|<reference>|<day>|<segment>  — thread updates that repeat the code
+//   slot:<type>|<label>|<start>|<end>       — updates carrying no code, same slot
 // Two records match when they share ANY key, so a draft that knows the reference
 // still matches an item stored before that reference was available.
+//
+// A reference (PNR) belongs to the whole TRIP: every leg of a round trip, and
+// every hotel of a multi-city package, repeats it. The segment part of the ref
+// key therefore has to be there too, or the return leg would look like the
+// outbound one and never be imported.
 export function bookingFingerprints(source: any): string[] {
   const type = normalizeTextLower(source?.type) || 'other';
   const reference = normalizeCode(source?.booking_reference) || normalizeCode(source?.pnr);
   const start = normalizeText(source?.start_datetime).slice(0, 16);
   const end = normalizeText(source?.end_datetime).slice(0, 16) || start;
-  const keys: string[] = [];
-  if (reference.length >= 4 && start.length >= 10) keys.push(`ref:${type}|${reference}|${dayKey(start)}`);
   const label = fingerprintLabel(source);
+  const keys: string[] = [];
+  if (reference.length >= 4 && start.length >= 10) {
+    keys.push(`ref:${type}|${reference}|${dayKey(start)}|${label || start}`);
+  }
   if (label.length >= 4 && start.length >= 10) keys.push(`slot:${type}|${label}|${start}|${end}`);
   return keys;
 }
@@ -199,8 +206,26 @@ export function bookingFingerprint(source: any) {
   return bookingFingerprints(source)[0] || '';
 }
 
-// Primary: same confirmation/code. Secondary: same booking reference, then a
-// shared fingerprint (thread update with no code, same type + label + slot).
+// A reference (PNR) identifies the whole TRIP, not one segment: a round trip
+// carries the SAME reference on its outbound and return leg, and a multi-city
+// ticket on every leg. So a shared reference only means "the same booking" when
+// both records also describe the same slot. Otherwise they are different
+// segments of one booking and must never be collapsed into one item.
+function sameSegmentSlot(a: any, b: any) {
+  const typeA = normalizeTextLower(a?.type);
+  const typeB = normalizeTextLower(b?.type);
+  if (typeA && typeB && typeA !== typeB) return false;
+  const dayA = dayKey(a?.start_datetime);
+  const dayB = dayKey(b?.start_datetime);
+  if (dayA && dayB && dayA !== dayB) return false;
+  const labelA = fingerprintLabel(a);
+  const labelB = fingerprintLabel(b);
+  if (labelA.length >= 4 && labelB.length >= 4 && labelA !== labelB) return false;
+  return true;
+}
+
+// Primary: same confirmation/code. Secondary: same booking reference on the same
+// slot, then a shared fingerprint (thread update with no code, same slot).
 export function findDuplicateItem(existingItems: any[], draft: any) {
   const items = existingItems || [];
   const code = normalizeText(draft?.confirmation_number);
@@ -211,7 +236,7 @@ export function findDuplicateItem(existingItems: any[], draft: any) {
 
   const reference = normalizeCode(draft?.booking_reference);
   if (reference.length >= 4) {
-    const hit = items.find((it) => normalizeCode(it?.booking_reference) === reference);
+    const hit = items.find((it) => normalizeCode(it?.booking_reference) === reference && sameSegmentSlot(it, draft));
     if (hit) return { item: hit, reason: 'booking_reference' };
   }
 

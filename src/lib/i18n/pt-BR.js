@@ -17,6 +17,7 @@ export const ptBR = {
     tryAgain: 'Tentar novamente',
     loading: 'Carregando???',
     error: 'Algo deu errado.',
+    fileOpenFailed: 'Não foi possível abrir este anexo.',
     search: 'Buscar',
     copy: 'Copiar',
     copied: 'Copiado',
@@ -504,6 +505,9 @@ export const ptBR = {
     noGatherings: 'Nenhum gathering ainda. Crie um primeiro.',
     missingHint: 'Falta {fields} para poder adicionar.',
     loadFailed: 'Não foi possível carregar sua caixa de entrada.',
+    viewEmail: 'Ver o e-mail original',
+    createGathering: 'Criar um gathering',
+    alreadyResolved: 'Este item já foi tratado',
     open: 'Abrir a caixa de entrada do roteiro',
   },
 

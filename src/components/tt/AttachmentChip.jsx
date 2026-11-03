@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { FileText, Loader2, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { toast } from '@/components/ui/use-toast';
+import { useI18n } from '@/lib/i18n';
 
 function isRemote(url = '') {
   return /^https?:\/\//i.test(url);
@@ -14,6 +16,7 @@ function isImage(url = '') {
 // (an imported email is stored privately) are opened through a short-lived signed
 // URL created on demand, so nothing private is ever exposed by a permanent link.
 export default function AttachmentChip({ url, onRemove }) {
+  const { t } = useI18n();
   const [opening, setOpening] = useState(false);
   const name = decodeURIComponent((url.split('/').pop() || 'file').split('?')[0]).slice(0, 22);
   const remote = isRemote(url);
@@ -25,7 +28,12 @@ export default function AttachmentChip({ url, onRemove }) {
     try {
       const res = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: url });
       const signed = (res.data || res)?.signed_url;
-      if (signed) window.open(signed, '_blank', 'noopener');
+      // A private file whose signed URL cannot be created must tell the reader
+      // why, instead of silently doing nothing.
+      if (!signed) throw new Error('signed_url_unavailable');
+      window.open(signed, '_blank', 'noopener');
+    } catch {
+      toast({ title: t('common.fileOpenFailed'), variant: 'destructive' });
     } finally {
       setOpening(false);
     }

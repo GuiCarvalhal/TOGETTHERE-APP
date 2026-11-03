@@ -18,6 +18,7 @@ import JourneyInboxPanel from '@/components/home/JourneyInboxPanel';
 import PendingImportCard from '@/components/home/PendingImportCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import { useI18n } from '@/lib/i18n';
+import { describeImportFailure } from '@/lib/importErrors';
 import { toast } from '@/components/ui/use-toast';
 
 const FILTER_KEYS = [
@@ -133,18 +134,11 @@ export default function Home() {
       });
       toast({ title: action === 'create' ? t('home.importResolved') : t('home.importDismissed') });
     } catch (e) {
-      // 422 = the reservation misses the standard item's minimum data; say
-      // which fields instead of a generic failure.
-      const data = e?.response?.data || {};
-      if (data.reason === 'incomplete') {
-        const fields = (data.missing || []).map((code) => t('home.importBlocked_' + code)).join(', ');
-        toast({
-          title: t('home.importBlockedToastTitle'),
-          description: t('home.importBlockedHint', { fields }),
-          variant: 'destructive',
-        });
-      } else {
-        toast({ title: t('home.importResolveFailed'), description: e.message || t('common.error'), variant: 'destructive' });
+      // 422 = the reservation misses the standard item's minimum data; say which
+      // fields instead of a generic failure. 409 = already resolved elsewhere.
+      const failure = describeImportFailure(e, t, t('home.importResolveFailed'));
+      if (!failure.resolved) {
+        toast({ title: failure.title, description: failure.description, variant: 'destructive' });
       }
     } finally {
       setResolvingImportId('');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, FolderPlus } from 'lucide-react';
+import { Loader2, FolderPlus, Plus } from 'lucide-react';
 import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +8,7 @@ import { useI18n } from '@/lib/i18n';
 // Pick the gathering an inbox segment belongs to. Filing is what actually creates
 // the journey item (through the canonical create), so the transaction only
 // happens after this confirmation.
-export default function FileInboxItemSheet({ open, onOpenChange, item, gatherings, onConfirm, busy }) {
+export default function FileInboxItemSheet({ open, onOpenChange, item, gatherings, onConfirm, onCreateGathering, busy }) {
   const { t } = useI18n();
   const [gatheringId, setGatheringId] = useState('');
 
@@ -22,7 +22,16 @@ export default function FileInboxItemSheet({ open, onOpenChange, item, gathering
         <p className="text-sm text-ink-deep/60">{t('inbox.chooseGatheringHint')}</p>
 
         {gatherings.length === 0 ? (
-          <p className="text-sm text-ink-deep/60">{t('inbox.noGatherings')}</p>
+          // Without a gathering there is nothing to file into: offer the way out
+          // instead of a sheet whose only action can never become enabled.
+          <div className="space-y-3">
+            <p className="text-sm text-ink-deep/60">{t('inbox.noGatherings')}</p>
+            {onCreateGathering && (
+              <Button variant="outline" className="w-full" onClick={onCreateGathering}>
+                <Plus /> {t('inbox.createGathering')}
+              </Button>
+            )}
+          </div>
         ) : (
           <Select value={gatheringId} onValueChange={setGatheringId}>
             <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-11">
@@ -36,14 +45,16 @@ export default function FileInboxItemSheet({ open, onOpenChange, item, gathering
           </Select>
         )}
 
-        <Button
-          className="w-full"
-          disabled={busy || !gatheringId}
-          onClick={() => onConfirm(gatheringId)}
-        >
-          {busy ? <Loader2 className="animate-spin" /> : <FolderPlus />}
-          {t('inbox.addToGathering')}
-        </Button>
+        {gatherings.length > 0 && (
+          <Button
+            className="w-full"
+            disabled={busy || !gatheringId}
+            onClick={() => onConfirm(gatheringId)}
+          >
+            {busy ? <Loader2 className="animate-spin" /> : <FolderPlus />}
+            {t('inbox.addToGathering')}
+          </Button>
+        )}
       </div>
     </FormSheet>
   );

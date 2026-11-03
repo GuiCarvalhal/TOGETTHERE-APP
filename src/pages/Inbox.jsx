@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Inbox as InboxIcon, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import AppHeader from '@/components/tt/AppHeader';
+import EmptyState from '@/components/tt/EmptyState';
 import InboxItemCard from '@/components/inbox/InboxItemCard';
 import FileInboxItemSheet from '@/components/inbox/FileInboxItemSheet';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { useI18n } from '@/lib/i18n';
+import { describeImportFailure } from '@/lib/importErrors';
 
 // Journey inbox — the durable home for imported reservation segments.
 //
@@ -65,7 +67,21 @@ export default function Inbox() {
       setFileTarget(null);
       setItems((cur) => cur.filter((it) => it.id !== itemId));
     } catch (e) {
-      toast({ title: t('inbox.fileFailed'), description: e.message, variant: 'destructive' });
+      const failure = describeImportFailure(e, t);
+      const missing = e?.response?.data?.missing;
+      if (failure.resolved) {
+        // Resolved elsewhere (another tab or device): drop the stale card.
+        setItems((cur) => cur.filter((it) => it.id !== itemId));
+        toast({ title: failure.title });
+      } else {
+        if (Array.isArray(missing) && missing.length) {
+          // The backend just refreshed what this segment still needs: show it on
+          // the card instead of leaving the sheet open on a dead end.
+          setItems((cur) => cur.map((it) => (it.id === itemId ? { ...it, missing } : it)));
+          setFileTarget(null);
+        }
+        toast({ title: failure.title, description: failure.description, variant: 'destructive' });
+      }
     } finally {
       setFiling(false);
       setBusyId('');
@@ -79,7 +95,13 @@ export default function Inbox() {
       setItems((cur) => cur.filter((it) => it.id !== itemId));
       toast({ title: t('inbox.dismissed') });
     } catch (e) {
-      toast({ title: t('inbox.fileFailed'), description: e.message, variant: 'destructive' });
+      const failure = describeImportFailure(e, t);
+      if (failure.resolved) {
+        setItems((cur) => cur.filter((it) => it.id !== itemId));
+        toast({ title: failure.title });
+      } else {
+        toast({ title: failure.title, description: failure.description, variant: 'destructive' });
+      }
     } finally {
       setBusyId('');
     }
@@ -114,10 +136,7 @@ export default function Inbox() {
             </Button>
           </div>
         ) : items.length === 0 ? (
-          <div className="tt-card p-8 text-center">
-            <p className="font-display text-lg font-bold text-ink-deep mb-1">{t('inbox.empty')}</p>
-            <p className="text-sm text-ink-deep/60">{t('inbox.emptyBody')}</p>
-          </div>
+          <EmptyState icon={InboxIcon} title={t('inbox.empty')} body={t('inbox.emptyBody')} />
         ) : (
           <div className="space-y-6">
             {items.map((item) => (
@@ -140,6 +159,7 @@ export default function Inbox() {
         gatherings={gatherings}
         busy={filing}
         onConfirm={(gatheringId) => fileTarget && fileItem(fileTarget.id, gatheringId)}
+        onCreateGathering={() => { setFileTarget(null); navigate('/gathering/new'); }}
       />
     </div>
   );

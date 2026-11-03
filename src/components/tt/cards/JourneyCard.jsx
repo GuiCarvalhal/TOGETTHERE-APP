@@ -85,7 +85,10 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const railTime = leg === 'check-out' ? endTime : startTime;
   const railAbbr = primaryIso ? tzAbbrAt(primaryIso, primaryTz) : '';
 
-  const open = () => { if (to) navigate(to); };
+  // Only a card that leads somewhere is presented as clickable; an inbox card
+  // with no destination must not advertise a chevron and a pointer cursor.
+  const interactive = !!to;
+  const open = () => { if (interactive) navigate(to); };
 
   const mainText = onCover ? 'text-white' : 'text-ink-deep';
   const subText = onCover ? 'text-white/85' : 'text-ink-deep/55';
@@ -97,11 +100,11 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
 
   return (
     <div
-      className="flex gap-2 items-stretch cursor-pointer rounded-2xl min-h-[131.5px] focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
-      role="link"
-      tabIndex={to ? 0 : undefined}
-      onClick={open}
-      onKeyDown={to ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}
+      className={`flex gap-2 items-stretch ${interactive ? 'cursor-pointer' : ''} rounded-2xl min-h-[131.5px] focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40`}
+      role={interactive ? 'link' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? open : undefined}
+      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}
     >
       {/* Left rail column: icon medallion + primary time. Opaque page-surface
           backgrounds so the rail line never shows through them. */}
@@ -140,7 +143,9 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           </>
         )}
         <div className="relative p-3 flex flex-col h-full">
-          <ChevronRight className="absolute top-3 right-3 w-4 h-4 shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
+          {interactive && (
+            <ChevronRight className="absolute top-3 right-3 w-4 h-4 shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
+          )}
 
           {/* Metadata line — the first line of the card (no item-type label) */}
           {metaLine && <p className={`text-[0.6875rem] truncate pr-5 ${metaText}`}>{metaLine}</p>}

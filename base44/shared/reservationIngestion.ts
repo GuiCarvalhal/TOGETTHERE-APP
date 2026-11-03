@@ -111,6 +111,10 @@ type SegmentContext = {
   classification: any;
   classificationSource: string;
   autoCreateGathering?: { gatheringId: string; score: number; reason: string; candidateIds: string[] };
+  // The owner's inbox rows still waiting, loaded once per message and extended
+  // as this message's segments are stored, so the same booking is never queued
+  // twice (same message or a re-send of the same confirmation email).
+  existingInboxItems: any[];
 };
 
 // Files ONE segment: adapts it to the standard payload, tries the automatic
@@ -206,9 +210,14 @@ async function ingestSegment(ctx: SegmentContext, draft: any, index: number, tot
 
   // The journey inbox: the durable home for this segment. A segment that landed
   // in a gathering is stored as filed so it never shows up as an unfinished item.
-  if (target.targetUserId) {
+  // A booking already waiting in the inbox is not queued a second time.
+  const existingInbox = target.targetUserId
+    ? findDuplicateForItem(ctx.existingInboxItems, [adapted.payload])
+    : null;
+
+  if (target.targetUserId && !existingInbox) {
     try {
-      await createInboxItem(base44, {
+      const inboxRow = await createInboxItem(base44, {
         payload: adapted.payload,
         ownerUserId: target.targetUserId,
         ownerEmail: target.targetUserEmail || '',
@@ -223,9 +232,21 @@ async function ingestSegment(ctx: SegmentContext, draft: any, index: number, tot
         filedItemId: createdItemId,
         filedGatheringId: createdItemId ? (match.suggestedGatheringId || '') : '',
       });
+      ctx.existingInboxItems.push(inboxRow);
     } catch {
       // The inbox is a convenience copy: a failure must not lose the import row.
     }
+  }
+
+  // Nothing was created for this segment AND the booking is already queued in the
+  // inbox: resolve the row as a duplicate so Home does not ask about it again.
+  if (existingInbox && status === 'pending') {
+    const resolved = await base44.asServiceRole.entities.ReservationImport.update(importRecord.id, {
+      status: 'duplicate',
+      created_item_id: existingInbox.filed_item_id || '',
+      resolved_at: new Date().toISOString(),
+    }).catch(() => null);
+    return resolved || importRecord;
   }
 
   return importRecord;
@@ -277,6 +298,9 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
   let draft = classification.draft;
   let classificationSource: 'rules' | 'ai' | 'none' = policy.outcome === 'ignore' ? 'none' : 'rules';
   let ignoredReason = policy.outcome === 'ignore' ? policy.reasonCode : '';
+  // Kept so the extraction the fallback already paid for is reused below instead
+  // of asking the model twice for the same message.
+  let aiSegments: any[] | null = null;
 
   // 2) Optional AI fallback, OFF unless RESERVATION_AI_FALLBACK=true. Runs only
   //    for messages the rules could not classify confidently, and its draft can
@@ -286,6 +310,7 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
       const aiDrafts = await extractJourneyDrafts(base44, content, sourceSubject || 'Imported reservation');
       const aiDraft = aiDrafts[0];
       if (aiDraft && (aiDraft.type !== 'other' || aiDraft.start_datetime)) {
+        aiSegments = aiDrafts;
         draft = aiDraft;
         classificationSource = 'ai';
         policy = { outcome: 'pending', reasonCode: 'ai_fallback' };
@@ -326,15 +351,17 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
 
   // 3) Split the message into every booking it describes. The model returns the
   //    segments; the rule-based draft is the fallback when it finds nothing.
-  let segments = [draft];
-  try {
-    const extracted = await extractJourneyDrafts(base44, content, sourceSubject || 'Imported reservation');
-    if (extracted.length) {
-      segments = extracted.slice(0, MAX_SEGMENTS);
-      if (extracted.length > 1) classificationSource = 'ai';
+  let segments = aiSegments ? aiSegments.slice(0, MAX_SEGMENTS) : [draft];
+  if (!aiSegments) {
+    try {
+      const extracted = await extractJourneyDrafts(base44, content, sourceSubject || 'Imported reservation');
+      if (extracted.length) {
+        segments = extracted.slice(0, MAX_SEGMENTS);
+        if (extracted.length > 1) classificationSource = 'ai';
+      }
+    } catch {
+      // Keep the single rule-based draft.
     }
-  } catch {
-    // Keep the single rule-based draft.
   }
 
   // 4) The source email, attached to every segment (uploaded once per message).
@@ -368,9 +395,17 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
     }
   }
 
+  const inboxRows = target.targetUserId
+    ? await base44.asServiceRole.entities.JourneyInboxItem
+      .filter({ owner_user_id: target.targetUserId, status: INBOX_STATUS.new })
+      .catch(() => [])
+    : [];
+  const existingInboxItems = Array.isArray(inboxRows) ? inboxRows : (inboxRows?.items || []);
+
   const ctx: SegmentContext = {
     base44,
     target,
+    existingInboxItems,
     participantMemberships,
     emailFileUri,
     emailContent: content,
@@ -404,12 +439,40 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
       }
       : undefined;
 
-    records.push(await ingestSegment(
-      { ...ctx, autoCreateGathering },
-      segment,
-      index,
-      segments.length,
-    ));
+    try {
+      records.push(await ingestSegment(
+        { ...ctx, autoCreateGathering },
+        segment,
+        index,
+        segments.length,
+      ));
+    } catch (e: any) {
+      // One failing segment must never swallow the rest of the message, or the
+      // remaining bookings would be lost for good (the message id is already
+      // marked as processed). Record it as failed instead.
+      const failed = await base44.asServiceRole.entities.ReservationImport.create({
+        status: 'failed',
+        segment_index: index,
+        segment_count: segments.length,
+        source_message_id: messageId || '',
+        source_subject: sourceSubject || '',
+        source_sender: sourceSender || '',
+        source_recipient: sourceRecipient || '',
+        source_received_at: sourceReceivedAt || undefined,
+        content_excerpt: content.slice(0, 500),
+        target_user_id: target.targetUserId || '',
+        target_user_email: target.targetUserEmail || '',
+        target_user_keys: normalizeUserKeys(target.targetUserId || '', target.targetUserEmail || ''),
+        classification_type: classification.type,
+        classification_confidence: Math.round((classification.confidence || 0) * 100) / 100,
+        classification_signals: classification.signals,
+        classification_reason: classification.reason,
+        classification_source: classificationSource,
+        error: e?.message || 'Could not import this segment',
+        resolved_at: new Date().toISOString(),
+      }).catch(() => null);
+      if (failed) records.push(failed);
+    }
   }
 
   return { record: records[0] || null, records, reused: false };
