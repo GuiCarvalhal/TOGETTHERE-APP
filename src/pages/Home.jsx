@@ -234,6 +234,9 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Inbox className="w-4 h-4 text-terra-coral" />
               <h3 className="font-display text-lg font-bold text-ink-deep">{t('home.pendingImportsTitle')}</h3>
+              <Link to="/inbox" className="ml-auto text-xs font-semibold text-terra-deep underline-offset-4 hover:underline">
+                {t('inbox.title')}
+              </Link>
             </div>
             <p className="text-sm text-ink-deep/65">{t('home.pendingImportsBody')}</p>
             <div className="space-y-3">

@@ -31,6 +31,7 @@ import GatheringSettings from '@/pages/GatheringSettings';
 import Profile from '@/pages/Profile';
 import ProfileRedirect from '@/components/ProfileRedirect';
 import Account from '@/pages/Account';
+import Inbox from '@/pages/Inbox';
 import AddToHomeScreen from '@/pages/AddToHomeScreen';
 import JoinGathering from '@/pages/JoinGathering';
 import { useOfflinePruneOnMount } from '@/lib/useOfflineSync';
@@ -65,6 +66,7 @@ function App() {
             <Route element={<ProtectedRoute unauthenticatedElement={<UnauthenticatedRedirect />} />}>
               <Route path="/" element={<Home />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/inbox" element={<Inbox />} />
               <Route path="/add-to-home-screen" element={<AddToHomeScreen />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/gathering/new" element={<NewGathering />} />

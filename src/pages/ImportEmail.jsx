@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { canAddJourney } from '@/lib/gatheringHelpers';
-import JourneyItemForm from '@/components/journey/JourneyItemForm';
+import InboxItemCard from '@/components/inbox/InboxItemCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -12,22 +12,23 @@ import { useI18n } from '@/lib/i18n';
 import { toast } from '@/components/ui/use-toast';
 import DetailActionBar from '@/components/tt/DetailActionBar';
 
-// Import a journey segment from reservation content (uploaded text-based file
-// or pasted text) without connecting inboxes/accounts. We extract a draft with
-// the built-in LLM (extractJourneyFromEmail) and show it as a prefilled,
-// editable JourneyItemForm for review. Nothing is created, sent, or persisted
-// until the user confirms the draft. A duplicate check (by confirmation number)
-// warns before saving so a segment is never silently duplicated.
+// Import booking content (uploaded file or pasted text) into this gathering.
+//
+// The content is split into EVERY booking it describes — a round trip is two
+// flights, a package is a flight plus a hotel — and each segment is shown as a
+// standard journey card with the FULL email attached. Adding a segment files it
+// into this gathering; anything left unadded stays in the journey inbox, so it is
+// never lost.
 export default function ImportEmail() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { gatheringId, gathering, members, currentMember, role } = useGathering();
+  const { gatheringId, role } = useGathering();
   const [text, setText] = useState('');
   const [sourceFileName, setSourceFileName] = useState('');
   const [extracting, setExtracting] = useState(false);
-  const [draft, setDraft] = useState(null);
+  const [items, setItems] = useState([]);
   const [extractError, setExtractError] = useState('');
-  const [duplicate, setDuplicate] = useState(null);
+  const [busyId, setBusyId] = useState('');
 
   const canAdd = canAddJourney(role);
   const MAX_TEXT_CHARS = 20000;
@@ -38,23 +39,24 @@ export default function ImportEmail() {
     navigate(`/gathering/${gatheringId}/journey`);
   }
 
+  function resetResult() {
+    setItems([]);
+    setExtractError('');
+  }
+
   async function handleFileSelect(file) {
     if (!file) return;
-    setExtractError('');
+    resetResult();
     const ext = (file.name.split('.').pop() || '').toLowerCase();
     if (!SUPPORTED_EXTENSIONS.includes(ext)) {
       setSourceFileName('');
       setText('');
-      setDraft(null);
-      setDuplicate(null);
       setExtractError(t('importEmail.unsupportedFile'));
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       setSourceFileName('');
       setText('');
-      setDraft(null);
-      setDuplicate(null);
       setExtractError(t('importEmail.fileTooLarge'));
       return;
     }
@@ -64,16 +66,12 @@ export default function ImportEmail() {
       if (!normalized.trim()) {
         setSourceFileName('');
         setText('');
-        setDraft(null);
-        setDuplicate(null);
         setExtractError(t('importEmail.fileEmpty'));
         return;
       }
       const cropped = normalized.slice(0, MAX_TEXT_CHARS);
       setSourceFileName(file.name);
       setText(cropped);
-      setDraft(null);
-      setDuplicate(null);
       if (normalized.length > MAX_TEXT_CHARS) {
         toast({ title: t('importEmail.fileTrimmed') });
       } else {
@@ -82,8 +80,6 @@ export default function ImportEmail() {
     } catch (e) {
       setSourceFileName('');
       setText('');
-      setDraft(null);
-      setDuplicate(null);
       setExtractError(e.message || t('importEmail.fileLoadFailed'));
     }
   }
@@ -94,14 +90,15 @@ export default function ImportEmail() {
       return;
     }
     setExtracting(true);
-    setExtractError('');
-    setDraft(null);
-    setDuplicate(null);
+    resetResult();
     try {
-      const res = await base44.functions.invoke('extractJourneyFromEmail', { text });
-      const d = (res.data || res).draft;
-      if (!d) throw new Error('No draft');
-      setDraft(d);
+      const res = await base44.functions.invoke('importReservationContent', {
+        text,
+        file_name: sourceFileName || '',
+      });
+      const data = res.data || res;
+      if (!data?.items?.length) throw new Error(t('importEmail.extractFailed'));
+      setItems(data.items);
     } catch (e) {
       setExtractError(e.message || t('importEmail.extractFailed'));
     } finally {
@@ -109,27 +106,35 @@ export default function ImportEmail() {
     }
   }
 
-  // Duplicate review: when the draft has a confirmation number, look for an
-  // existing segment with the same number in this gathering. Read-only ??? it
-  // never creates or changes anything. Warns the user; they decide whether to
-  // keep saving. (Non-flight segments without a confirmation number are not
-  // checked ??? the user reviews the draft manually.)
-  useEffect(() => {
-    let active = true;
-    const code = draft?.confirmation_number?.trim();
-    if (!draft || !code) { setDuplicate(null); return; }
-    (async () => {
-      try {
-        const data = await base44.entities.JourneyItem.filter({
-          gathering_id: gatheringId, confirmation_number: code,
-        });
-        if (active) setDuplicate(data && data.length > 0 ? code : null);
-      } catch {
-        if (active) setDuplicate(null);
-      }
-    })();
-    return () => { active = false; };
-  }, [draft, gatheringId]);
+  async function addToGathering(item) {
+    setBusyId(item.id);
+    try {
+      const res = await base44.functions.invoke('fileJourneyInboxItem', {
+        item_id: item.id,
+        gathering_id: gatheringId,
+        action: 'file',
+      });
+      const data = res.data || res;
+      setItems((cur) => cur.filter((it) => it.id !== item.id));
+      toast({ title: data?.duplicate ? t('inbox.alreadyFiled') : t('importEmail.saved') });
+    } catch (e) {
+      toast({ title: t('inbox.fileFailed'), description: e.message, variant: 'destructive' });
+    } finally {
+      setBusyId('');
+    }
+  }
+
+  async function dismiss(item) {
+    setBusyId(item.id);
+    try {
+      await base44.functions.invoke('fileJourneyInboxItem', { item_id: item.id, action: 'dismiss' });
+      setItems((cur) => cur.filter((it) => it.id !== item.id));
+    } catch (e) {
+      toast({ title: t('inbox.fileFailed'), description: e.message, variant: 'destructive' });
+    } finally {
+      setBusyId('');
+    }
+  }
 
   if (!canAdd) {
     return (
@@ -143,41 +148,34 @@ export default function ImportEmail() {
     );
   }
 
-  if (draft) {
-    const isFlight = draft.type === 'flight';
+  if (items.length > 0) {
     return (
       <div className="space-y-4">
-        <DetailActionBar onBack={() => { setDraft(null); setDuplicate(null); }} />
-        <div className="mt-5">
-          <h1 className="font-display text-2xl font-bold text-ink-deep mb-1">{t('importEmail.reviewTitle')}</h1>
-          <p className="text-sm text-ink-deep/55 mb-4">{t('importEmail.reviewBody')}</p>
-          {duplicate && (
-            <div className="mb-4 flex items-start gap-2.5 p-3 rounded-xl border border-terra/25 bg-terra/8">
-              <AlertTriangle className="w-4 h-4 text-terra-deep mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-deep">{t('importEmail.duplicateWarning', { code: duplicate })}</p>
-                <p className="text-xs text-ink-deep/60 mt-0.5">{t('importEmail.duplicateHint')}</p>
-              </div>
-            </div>
-          )}
-          {isFlight && (
-            <p className="mb-3 text-xs text-ink-deep/55 italic">{t('importEmail.flightManualHint')}</p>
-          )}
-          <JourneyItemForm
-            gatheringId={gatheringId}
-            gatheringStartDate={gathering?.start_date}
-            currentMember={currentMember}
-            members={members}
-            item={null}
-            initial={draft}
-            initialManual={isFlight}
-            inline
-            onClose={() => { setDraft(null); setDuplicate(null); }}
-            onSaved={() => {
-              toast({ title: t('importEmail.saved') });
-              navigate(`/gathering/${gatheringId}/journey`, { replace: true });
-            }}
-          />
+        <DetailActionBar onBack={back} />
+        <div className="mt-5 max-w-2xl">
+          <h1 className="font-display text-2xl font-bold text-ink-deep mb-1">
+            {t('importEmail.foundTitle', { count: items.length })}
+          </h1>
+          <p className="text-sm text-ink-deep/55 mb-5">{t('importEmail.foundBody')}</p>
+
+          <div className="space-y-5">
+            {items.map((item) => (
+              <InboxItemCard
+                key={item.id}
+                item={{ ...item, missing: item.missing || [] }}
+                busy={busyId === item.id}
+                onFile={addToGathering}
+                onDismiss={dismiss}
+              />
+            ))}
+          </div>
+
+          <div className="mt-6 flex items-center gap-3 flex-wrap">
+            <Button variant="outline" size="sm" onClick={back}>{t('importEmail.backToJourney')}</Button>
+            <Link to="/inbox" className="text-sm font-semibold text-terra-deep underline-offset-4 hover:underline">
+              {t('inbox.open')}
+            </Link>
+          </div>
         </div>
       </div>
     );

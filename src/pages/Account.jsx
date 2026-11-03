@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { Inbox as InboxIcon, ChevronRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/tt/Skeleton';
 import AppHeader from '@/components/tt/AppHeader';
@@ -125,6 +126,19 @@ export default function Account() {
             user creates an expense from one through the standard form. */}
         <div className="mt-6">
           <FinancialAccounts />
+        </div>
+
+        {/* Journey inbox — imported reservation segments wait here until they
+            are filed into a gathering. */}
+        <div className="mt-6">
+          <Link to="/inbox" className="tt-card p-4 flex items-center gap-3 hover:bg-cream-pale transition-colors">
+            <InboxIcon className="w-5 h-5 text-terra-deep shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-ink-deep">{t('inbox.title')}</p>
+              <p className="text-xs text-ink-deep/60">{t('inbox.intro')}</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-ink-deep/40 shrink-0" />
+          </Link>
         </div>
 
         {/* App Settings — global, immediate effect, always visible */}
