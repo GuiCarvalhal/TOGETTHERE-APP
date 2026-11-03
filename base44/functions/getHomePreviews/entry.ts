@@ -118,6 +118,23 @@ export default async function(req) {
     const inboxConnections = (await listUserConnections(base44, user).catch(() => []))
       .map(sanitizeConnection);
 
+    // The journey inbox lives on Home, so it needs its own summary: how many
+    // imported segments are still waiting plus a short preview of the soonest.
+    const inboxRaw = await base44.asServiceRole.entities.JourneyInboxItem
+      .filter({ owner_user_id: user.id, status: 'new' })
+      .catch(() => []);
+    const inboxRows = (Array.isArray(inboxRaw) ? inboxRaw : (inboxRaw?.items || []))
+      .slice()
+      .sort((a: any, b: any) => String(a.start_datetime || '').localeCompare(String(b.start_datetime || '')));
+    const inboxPreview = inboxRows.slice(0, 3).map((row: any) => ({
+      id: row.id,
+      type: row.type || 'other',
+      title: row.title || '',
+      start_datetime: row.start_datetime || null,
+      source_sender: row.source_sender || '',
+      missing: row.missing || [],
+    }));
+
     const chosen = ongoing || nextUpcoming;
     return Response.json({
       gatherings: mine,
@@ -126,6 +143,8 @@ export default async function(req) {
       previews,
       itemsByGathering,
       pendingImports,
+      inboxItems: inboxPreview,
+      inboxCount: inboxRows.length,
       userId: user.id,
       nextUpcoming: chosen
         ? { item: chosen.item, gatheringId: chosen.gatheringId, participants: chosen.participants, ongoing: chosen === ongoing }

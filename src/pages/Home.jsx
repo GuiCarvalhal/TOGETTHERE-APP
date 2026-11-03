@@ -14,7 +14,7 @@ import JourneyCard from '@/components/tt/cards/JourneyCard';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
-import InboxSyncBar from '@/components/tt/InboxSyncBar';
+import JourneyInboxPanel from '@/components/home/JourneyInboxPanel';
 import PendingImportCard from '@/components/home/PendingImportCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import { useI18n } from '@/lib/i18n';
@@ -39,6 +39,8 @@ export default function Home() {
   const [itemsByGathering, setItemsByGathering] = useState({});
   const [pendingImports, setPendingImports] = useState([]);
   const [inboxConnections, setInboxConnections] = useState([]);
+  const [inboxItems, setInboxItems] = useState([]);
+  const [inboxCount, setInboxCount] = useState(0);
   const [importChoiceById, setImportChoiceById] = useState({});
   const [resolvingImportId, setResolvingImportId] = useState('');
   const [createForImportId, setCreateForImportId] = useState('');
@@ -65,6 +67,8 @@ export default function Home() {
       setItemsByGathering(data.itemsByGathering || {});
       setPendingImports(data.pendingImports || []);
       setInboxConnections(data.inboxConnections || []);
+      setInboxItems(data.inboxItems || []);
+      setInboxCount(data.inboxCount || 0);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
       setLoadError(false);
@@ -223,9 +227,15 @@ export default function Home() {
         <InstallBanner />
       </section>
 
-      {/* Mailbox sync — one global action for every connected inbox */}
+      {/* Journey inbox — imported reservations waiting to be reviewed, with the
+          mailbox sync controls for the inboxes that feed it. */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
-        <InboxSyncBar connections={inboxConnections} onSynced={() => load({ silent: true })} />
+        <JourneyInboxPanel
+          items={inboxItems}
+          count={inboxCount}
+          connections={inboxConnections}
+          onSynced={() => load({ silent: true })}
+        />
       </section>
 
       {pendingImports.length > 0 && (
@@ -234,9 +244,6 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Inbox className="w-4 h-4 text-terra-coral" />
               <h3 className="font-display text-lg font-bold text-ink-deep">{t('home.pendingImportsTitle')}</h3>
-              <Link to="/inbox" className="ml-auto text-xs font-semibold text-terra-deep underline-offset-4 hover:underline">
-                {t('inbox.title')}
-              </Link>
             </div>
             <p className="text-sm text-ink-deep/65">{t('home.pendingImportsBody')}</p>
             <div className="space-y-3">

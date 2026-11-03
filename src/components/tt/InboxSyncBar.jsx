@@ -7,7 +7,8 @@ import { CheckCircle2, Inbox, Loader2, RefreshCw, AlertTriangle } from 'lucide-r
 // Home entry point for mailbox sync: one tap syncs every eligible mailbox
 // (cadence is bypassed for an explicit tap) and reports a compact result. It
 // renders nothing until the user has connected at least one mailbox.
-export default function InboxSyncBar({ connections = [], onSynced }) {
+// `embedded` drops the card chrome so it can sit inside the journey inbox panel.
+export default function InboxSyncBar({ connections = [], onSynced, embedded = false }) {
   const { t, fmt } = useI18n();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
@@ -41,7 +42,7 @@ export default function InboxSyncBar({ connections = [], onSynced }) {
   };
 
   return (
-    <div className="tt-card p-4 sm:p-5 space-y-3">
+    <div className={embedded ? 'space-y-3' : 'tt-card p-4 sm:p-5 space-y-3'}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Inbox className="w-4 h-4 text-terra-coral shrink-0" />
