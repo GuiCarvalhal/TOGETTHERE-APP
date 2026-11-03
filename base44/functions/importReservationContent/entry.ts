@@ -70,9 +70,6 @@ export default async function (req: Request) {
       items.push({ ...row, missing: adapted.missing });
     }
 
-    // ACL keys are written by createInboxItem; nothing else to persist here.
-    void normalizeUserKeys;
-
     return Response.json({ items, count: items.length });
   } catch (error: any) {
     return Response.json({ error: error.message }, { status: 500 });
