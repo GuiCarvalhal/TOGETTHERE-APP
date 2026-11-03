@@ -60,6 +60,12 @@ function firstOfRoute(value: unknown) {
   return parts[0] || raw;
 }
 
+// Attachments travel with the draft: an imported segment always carries the
+// FULL source email, and the standard form's own uploads use the same field.
+function attachmentsOf(draft: any) {
+  return Array.isArray(draft?.attachments) ? draft.attachments.filter((url: any) => typeof url === 'string' && url) : [];
+}
+
 function looksLikeIata(value: unknown) {
   return /^[A-Za-z]{3}$/.test(text(value)) ? text(value).toUpperCase() : '';
 }
@@ -176,6 +182,7 @@ async function adaptFlight(draft: any, mapsKey: string, rapidKey: string) {
     booking_reference: draft.booking_reference,
     airline,
     notes: draft.notes,
+    attachments: attachmentsOf(draft),
   });
 }
 
@@ -193,6 +200,7 @@ async function adaptPlaceItem(type: string, draft: any, mapsKey: string) {
     booking_reference: draft.booking_reference,
     airline: draft.airline,
     notes: draft.notes,
+    attachments: attachmentsOf(draft),
   });
 }
 
@@ -221,6 +229,7 @@ async function adaptRouteItem(type: string, draft: any, mapsKey: string) {
     booking_reference: draft.booking_reference,
     airline: draft.airline,
     notes: draft.notes,
+    attachments: attachmentsOf(draft),
   });
 }
 

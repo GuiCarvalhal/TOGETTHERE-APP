@@ -2,18 +2,23 @@
 //   - receiveReservationEmail  (external inbound-token endpoint / forwarded mail)
 //   - the native inbox connectors (Gmail + Outlook.com + iCloud + Yahoo sync)
 //
-// Keeping parse -> adapt -> match -> create in one place means the paths can
-// never drift apart: whatever an inbound webhook produces today, an inbox sync
+// Keeping parse -> split -> adapt -> match -> create in one place means the paths
+// can never drift apart: whatever an inbound webhook produces today, an inbox sync
 // produces identically.
 //
-// Creation goes through the SAME pipeline as the standard item form: the
-// classifier draft is adapted per type (resolved places/airports + UTC times,
-// see journeyFormAdapter.ts), validated against the form's minimum data, and
-// persisted by the canonical create (journeyItemPersist.ts). Nothing is written
-// straight to the database, and an incomplete draft stays pending with an
-// explicit reason instead of creating a half-empty item.
+// One message can hold SEVERAL bookings (a round trip is two flights, a package is
+// a flight plus a hotel). The content is therefore split into segments, and each
+// segment becomes its own ReservationImport row and its own journey-inbox item,
+// with the FULL source email attached to every one of them.
+//
+// Creation goes through the SAME pipeline as the standard item form: the segment
+// draft is adapted per type (resolved places/airports + UTC times, see
+// journeyFormAdapter.ts), validated against the form's minimum data, and persisted
+// by the canonical create (journeyItemPersist.ts). Nothing is written straight to
+// the database, and an incomplete segment stays pending with an explicit reason
+// instead of creating a half-empty item.
 
-import { extractJourneyDraft } from './extractJourneyDraft.ts';
+import { extractJourneyDrafts } from './extractJourneyDraft.ts';
 import {
   classifyReservation,
   decideReservationPolicy,
@@ -21,6 +26,8 @@ import {
 } from './reservationClassifier.ts';
 import { adaptReservationDraft } from './journeyFormAdapter.ts';
 import { createJourneyItemCanonical, JourneyItemError } from './journeyItemPersist.ts';
+import { uploadSourceEmail } from './reservationAttachment.ts';
+import { createInboxItem, INBOX_STATUS } from './journeyInbox.ts';
 import {
   chooseGatheringMatch,
   findDuplicateForItem,
@@ -30,6 +37,7 @@ import {
 } from './reservationImport.ts';
 
 const MAX_CONTENT = 20000;
+const MAX_SEGMENTS = 8;
 
 export function normalizeEmailLike(value: unknown) {
   if (typeof value !== 'string') return '';
@@ -86,22 +94,171 @@ export type IngestInput = {
   // Raw hint bag consumed by resolveTargetUser (targetUserId / targetUserEmail
   // or the inbound webhook's from/sender/userEmail fields).
   targetHints?: any;
+  // Where this message came from (stored on the inbox rows).
+  source?: 'inbox_sync' | 'webhook' | 'manual';
 };
 
-// Parses one message into a ReservationImport row, auto-creating a JourneyItem
-// when the gathering match is confident AND the draft holds the standard form's
-// minimum data. Returns { record, reused } — reused means this source message id
-// was already ingested (no LLM call happens).
+type SegmentContext = {
+  base44: any;
+  target: any;
+  participantMemberships: any[];
+  emailFileUri: string;
+  emailContent: string;
+  source: string;
+  sourceMeta: { subject: string; sender: string; recipient: string; receivedAt: string };
+  messageId: string;
+  policy: any;
+  classification: any;
+  classificationSource: string;
+  autoCreateGathering?: { gatheringId: string; score: number; reason: string; candidateIds: string[] };
+};
+
+// Files ONE segment: adapts it to the standard payload, tries the automatic
+// gathering match, creates the item when everything lines up, and always stores
+// the segment in the journey inbox so an unused reservation is never lost.
+async function ingestSegment(ctx: SegmentContext, draft: any, index: number, total: number) {
+  const { base44, target, sourceMeta, emailFileUri } = ctx;
+  const fallbackTitle = total > 1
+    ? `${sourceMeta.subject || 'Imported reservation'} (${index + 1}/${total})`
+    : (sourceMeta.subject || 'Imported reservation');
+
+  const withAttachment = {
+    ...draft,
+    attachments: emailFileUri ? [emailFileUri] : (Array.isArray(draft?.attachments) ? draft.attachments : []),
+  };
+
+  const adapted = await adaptReservationDraft(withAttachment, fallbackTitle);
+
+  let match: any = { confident: false, suggestedGatheringId: '', topScore: 0, reason: '', candidateGatheringIds: [] };
+  let status = 'pending';
+  let createdItemId = '';
+  let error = '';
+  let pendingReason = adapted.status === 'incomplete' ? adapted.missing.join(',') : '';
+
+  const autoCreate = ctx.autoCreateGathering && ctx.policy.outcome === 'auto_create' && target.targetUserId;
+  if (autoCreate) {
+    const gatheringId = ctx.autoCreateGathering!.gatheringId;
+    match = {
+      confident: true,
+      suggestedGatheringId: gatheringId,
+      topScore: ctx.autoCreateGathering!.score,
+      reason: ctx.autoCreateGathering!.reason,
+      candidateGatheringIds: ctx.autoCreateGathering!.candidateIds,
+    };
+
+    const membership = ctx.participantMemberships.find((m: any) => m.gathering_id === gatheringId);
+    const duplicate = await findDuplicateInGathering(base44, gatheringId, adapted.payload, withAttachment);
+
+    if (duplicate) {
+      status = 'duplicate';
+      createdItemId = duplicate.id;
+    } else if (adapted.status === 'incomplete') {
+      // Never create a half-empty segment silently: keep it pending, say why.
+      status = 'pending';
+    } else {
+      try {
+        const created = await createJourneyItemCanonical(base44, {
+          gatheringId,
+          actorUserId: target.targetUserId,
+          actorName: membership?.full_name || '',
+          actorEmail: target.targetUserEmail || '',
+          payload: adapted.payload,
+        });
+        status = 'auto_created';
+        createdItemId = created.id;
+      } catch (e: any) {
+        status = 'pending';
+        pendingReason = e instanceof JourneyItemError ? (e.missing || []).join(',') : pendingReason;
+        error = e?.message || 'Could not auto-create journey item';
+      }
+    }
+  }
+
+  const importRecord = await base44.asServiceRole.entities.ReservationImport.create({
+    status,
+    segment_index: index,
+    segment_count: total,
+    source_message_id: ctx.messageId || '',
+    source_subject: sourceMeta.subject || '',
+    source_sender: sourceMeta.sender || '',
+    source_recipient: sourceMeta.recipient || '',
+    source_received_at: sourceMeta.receivedAt || undefined,
+    content_excerpt: ctx.emailContent.slice(0, 500),
+    target_user_id: target.targetUserId || '',
+    target_user_email: target.targetUserEmail || '',
+    target_user_keys: normalizeUserKeys(target.targetUserId || '', target.targetUserEmail || ''),
+    suggested_gathering_id: match.suggestedGatheringId || '',
+    candidate_gathering_ids: match.candidateGatheringIds || [],
+    auto_match_score: match.topScore || 0,
+    auto_match_reason: match.reason || '',
+    extracted_draft: withAttachment,
+    classification_type: ctx.classification.type,
+    classification_confidence: Math.round((ctx.classification.confidence || 0) * 100) / 100,
+    classification_signals: ctx.classification.signals,
+    classification_reason: ctx.classification.reason,
+    classification_source: ctx.classificationSource,
+    ignored_reason: '',
+    pending_reason: pendingReason || '',
+    created_item_id: createdItemId || '',
+    error: error || '',
+    resolved_at: status === 'auto_created' || status === 'duplicate' ? new Date().toISOString() : undefined,
+  });
+
+  // The journey inbox: the durable home for this segment. A segment that landed
+  // in a gathering is stored as filed so it never shows up as an unfinished item.
+  if (target.targetUserId) {
+    try {
+      await createInboxItem(base44, {
+        payload: adapted.payload,
+        ownerUserId: target.targetUserId,
+        ownerEmail: target.targetUserEmail || '',
+        missing: adapted.missing,
+        source: ctx.source as any,
+        sourceSubject: sourceMeta.subject || '',
+        sourceSender: sourceMeta.sender || '',
+        sourceReceivedAt: sourceMeta.receivedAt || '',
+        sourceContent: ctx.emailContent.slice(0, MAX_CONTENT),
+        importId: importRecord.id,
+        status: createdItemId ? INBOX_STATUS.filed : INBOX_STATUS.new,
+        filedItemId: createdItemId,
+        filedGatheringId: createdItemId ? (match.suggestedGatheringId || '') : '',
+      });
+    } catch {
+      // The inbox is a convenience copy: a failure must not lose the import row.
+    }
+  }
+
+  return importRecord;
+}
+
+async function findDuplicateInGathering(base44: any, gatheringId: string, payload: any, draft: any) {
+  try {
+    const items = await base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gatheringId });
+    const duplicate = findDuplicateForItem(items || [], [payload, draft]);
+    return duplicate?.item || null;
+  } catch {
+    return null;
+  }
+}
+
+// Parses one message into ReservationImport rows (one per detected segment),
+// auto-creating JourneyItems when the gathering match is confident AND the
+// segment holds the standard form's minimum data. Returns
+// { record, records, reused } — `record` is the first segment (kept for callers
+// that only care about one), `reused` means this source message id was already
+// ingested so no model call happens.
 export async function ingestReservationMessage(base44: any, input: IngestInput) {
   const messageId = (input?.messageId || '').trim();
 
   if (messageId) {
     const existing = await base44.asServiceRole.entities.ReservationImport.filter({ source_message_id: messageId });
-    if (existing && existing[0]) return { record: existing[0], reused: true };
+    if (existing && existing.length) {
+      return { record: existing[0], records: existing, reused: true };
+    }
   }
 
   const text = (input?.text || '').trim();
-  if (!text) return { record: null, reused: false };
+  if (!text) return { record: null, records: [], reused: false };
 
   const sourceSubject = (input?.subject || '').trim();
   const sourceSender = normalizeEmailLike(input?.sender);
@@ -126,7 +283,8 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
   //    only ever reach the pending queue — never an automatic item.
   if (policy.outcome !== 'auto_create' && !classification.denied && isReservationAiFallbackEnabled()) {
     try {
-      const aiDraft = await extractJourneyDraft(base44, content, sourceSubject || 'Imported reservation');
+      const aiDrafts = await extractJourneyDrafts(base44, content, sourceSubject || 'Imported reservation');
+      const aiDraft = aiDrafts[0];
       if (aiDraft && (aiDraft.type !== 'other' || aiDraft.start_datetime)) {
         draft = aiDraft;
         classificationSource = 'ai';
@@ -140,93 +298,119 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
 
   const hasDraft = policy.outcome !== 'ignore';
 
+  if (!hasDraft) {
+    const target = await resolveTargetUser(base44, input?.targetHints || {});
+    const record = await base44.asServiceRole.entities.ReservationImport.create({
+      status: 'ignored',
+      segment_index: 0,
+      segment_count: 0,
+      source_message_id: messageId || '',
+      source_subject: sourceSubject || '',
+      source_sender: sourceSender || '',
+      source_recipient: sourceRecipient || '',
+      source_received_at: sourceReceivedAt || undefined,
+      content_excerpt: content.slice(0, 500),
+      target_user_id: target.targetUserId || '',
+      target_user_email: target.targetUserEmail || '',
+      target_user_keys: normalizeUserKeys(target.targetUserId || '', target.targetUserEmail || ''),
+      classification_type: classification.type,
+      classification_confidence: Math.round(classification.confidence * 100) / 100,
+      classification_signals: classification.signals,
+      classification_reason: classification.reason,
+      classification_source: 'none',
+      ignored_reason: ignoredReason || '',
+      resolved_at: new Date().toISOString(),
+    });
+    return { record, records: [record], reused: false };
+  }
+
+  // 3) Split the message into every booking it describes. The model returns the
+  //    segments; the rule-based draft is the fallback when it finds nothing.
+  let segments = [draft];
+  try {
+    const extracted = await extractJourneyDrafts(base44, content, sourceSubject || 'Imported reservation');
+    if (extracted.length) {
+      segments = extracted.slice(0, MAX_SEGMENTS);
+      if (extracted.length > 1) classificationSource = 'ai';
+    }
+  } catch {
+    // Keep the single rule-based draft.
+  }
+
+  // 4) The source email, attached to every segment (uploaded once per message).
+  const emailFileUri = await uploadSourceEmail(base44, {
+    subject: sourceSubject,
+    sender: sourceSender,
+    recipient: sourceRecipient,
+    receivedAt: sourceReceivedAt,
+    text: content,
+    messageId,
+  });
+
   const target = await resolveTargetUser(base44, input?.targetHints || {});
   const participantMemberships = (target.memberships || []).filter((m: any) => isParticipantRole(m.role));
   const gatheringIds = [...new Set(participantMemberships.map((m: any) => m.gathering_id).filter(Boolean))];
 
-  let match: any = { confident: false, suggestedGatheringId: '', topScore: 0, reason: '', candidateGatheringIds: [] };
-  const byId = new Map<string, any>();
+  // 5) Candidate gatherings + their existing items, loaded once for every segment.
+  const candidateGatherings: any[] = [];
   const itemsByGathering: Record<string, any[]> = {};
-  if (hasDraft && gatheringIds.length) {
+  if (gatheringIds.length) {
     const [gatherings, journeyItems] = await Promise.all([
       base44.asServiceRole.entities.Gathering.list('-created_date', 500),
       Promise.all(gatheringIds.map((gid: string) => base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gid }))),
     ]);
+    const byId = new Map<string, any>();
     for (const g of gatherings || []) byId.set(g.id, g);
     gatheringIds.forEach((gid: string, idx: number) => { itemsByGathering[gid] = journeyItems[idx] || []; });
-    const candidateGatherings = gatheringIds.map((id: string) => byId.get(id)).filter(Boolean);
-    match = chooseGatheringMatch(draft, candidateGatherings, itemsByGathering);
-  }
-
-  let status = hasDraft ? 'pending' : 'ignored';
-  let createdItemId = '';
-  let error = '';
-  let pendingReason = '';
-
-  if (hasDraft && policy.outcome === 'auto_create' && target.targetUserId && match.confident && match.suggestedGatheringId) {
-    const gatheringId = match.suggestedGatheringId;
-    // Adapt the draft exactly like the manual path does, then dedupe on the
-    // adapted shape (UTC instants + resolved places) with the raw draft as a
-    // fallback for items stored before adaptation existed.
-    const adapted = await adaptReservationDraft(draft, sourceSubject || 'Imported reservation');
-    const duplicate = findDuplicateForItem(itemsByGathering[gatheringId], [adapted.payload, draft]);
-
-    if (duplicate) {
-      status = 'duplicate';
-      createdItemId = duplicate.item.id;
-    } else if (adapted.status === 'incomplete') {
-      // Never create a half-empty segment silently: keep it pending, say why.
-      status = 'pending';
-      pendingReason = adapted.missing.join(',');
-    } else {
-      try {
-        const membership = participantMemberships.find((m: any) => m.gathering_id === gatheringId);
-        const created = await createJourneyItemCanonical(base44, {
-          gatheringId,
-          actorUserId: target.targetUserId,
-          actorName: membership?.full_name || '',
-          actorEmail: target.targetUserEmail || '',
-          payload: adapted.payload,
-        });
-        status = 'auto_created';
-        createdItemId = created.id;
-      } catch (e: any) {
-        status = 'pending';
-        pendingReason = e instanceof JourneyItemError ? (e.missing || []).join(',') : '';
-        error = e?.message || 'Could not auto-create journey item';
-      }
+    for (const id of gatheringIds) {
+      const gathering = byId.get(id);
+      if (gathering) candidateGatherings.push(gathering);
     }
   }
 
-  const record = await base44.asServiceRole.entities.ReservationImport.create({
-    status,
-    source_message_id: messageId || '',
-    source_subject: sourceSubject || '',
-    source_sender: sourceSender || '',
-    source_recipient: sourceRecipient || '',
-    source_received_at: sourceReceivedAt || undefined,
-    content_excerpt: content.slice(0, 500),
-    target_user_id: target.targetUserId || '',
-    target_user_email: target.targetUserEmail || '',
-    target_user_keys: normalizeUserKeys(target.targetUserId || '', target.targetUserEmail || ''),
-    suggested_gathering_id: match.suggestedGatheringId || '',
-    candidate_gathering_ids: match.candidateGatheringIds || [],
-    auto_match_score: match.topScore || 0,
-    auto_match_reason: match.reason || '',
-    extracted_draft: draft,
-    classification_type: classification.type,
-    classification_confidence: Math.round(classification.confidence * 100) / 100,
-    classification_signals: classification.signals,
-    classification_reason: classification.reason,
-    classification_source: classificationSource,
-    ignored_reason: ignoredReason || '',
-    pending_reason: pendingReason || '',
-    created_item_id: createdItemId || '',
-    error: error || '',
-    resolved_at: status === 'auto_created' || status === 'duplicate' || status === 'ignored'
-      ? new Date().toISOString()
-      : undefined,
-  });
+  const ctx: SegmentContext = {
+    base44,
+    target,
+    participantMemberships,
+    emailFileUri,
+    emailContent: content,
+    source: input?.source || 'inbox_sync',
+    sourceMeta: {
+      subject: sourceSubject,
+      sender: sourceSender,
+      recipient: sourceRecipient,
+      receivedAt: sourceReceivedAt,
+    },
+    messageId,
+    policy,
+    classification,
+    classificationSource,
+  };
 
-  return { record, reused: false };
+  const records = [];
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    // The automatic match is decided per segment (a hotel leg can point at a
+    // different gathering than its flight does), reusing the loaded data.
+    const match = candidateGatherings.length
+      ? chooseGatheringMatch(segment, candidateGatherings, itemsByGathering)
+      : null;
+    const autoCreateGathering = match && match.confident && match.suggestedGatheringId
+      ? {
+        gatheringId: match.suggestedGatheringId,
+        score: match.topScore,
+        reason: match.reason,
+        candidateIds: match.candidateGatheringIds || [],
+      }
+      : undefined;
+
+    records.push(await ingestSegment(
+      { ...ctx, autoCreateGathering },
+      segment,
+      index,
+      segments.length,
+    ));
+  }
+
+  return { record: records[0] || null, records, reused: false };
 }

@@ -16,6 +16,14 @@
       "default": "pending",
       "description": "pending = needs the user's decision; ignored = the classifier was not confident enough (see ignored_reason) and nothing was created. ignored rows are kept so the same source message is never re-processed."
     },
+    "segment_index": {
+      "type": "number",
+      "description": "0-based position of this booking inside its source message. One message can hold several bookings (a round trip, a flight plus a hotel), and each one is its own import row."
+    },
+    "segment_count": {
+      "type": "number",
+      "description": "How many bookings were detected in the source message, so the UI can say '1 of 3'."
+    },
     "source_message_id": {
       "type": "string"
     },
@@ -64,7 +72,8 @@
       "type": "string"
     },
     "extracted_draft": {
-      "type": "object"
+      "type": "object",
+      "description": "The standard-form draft for THIS segment. Its attachments array carries the full source email (private storage uri)."
     },
     "classification_type": {
       "type": "string",
@@ -92,7 +101,7 @@
         "ai",
         "none"
       ],
-      "description": "Which classifier produced the draft. 'ai' only appears when the RESERVATION_AI_FALLBACK feature flag is enabled."
+      "description": "Which classifier produced the draft. 'ai' appears when the model split the message into several segments or the optional AI fallback ran."
     },
     "ignored_reason": {
       "type": "string",

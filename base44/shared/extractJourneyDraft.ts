@@ -42,6 +42,66 @@ export function normalizeDraft(raw: any, fallbackTitle = '') {
   };
 }
 
+const SEGMENT_SCHEMA = {
+  type: 'object',
+  properties: {
+    type: { type: 'string', enum: ['flight', 'car', 'train', 'hotel', 'activity', 'cruise', 'main_event', 'other', ''] },
+    title: { type: 'string' },
+    start_datetime: { type: 'string' },
+    end_datetime: { type: 'string' },
+    location_from: { type: 'string' },
+    location_to: { type: 'string' },
+    location_name: { type: 'string' },
+    confirmation_number: { type: 'string' },
+    booking_reference: { type: 'string' },
+    airline: { type: 'string' },
+    notes: { type: 'string' },
+  },
+};
+
+// Splits ONE message into every separate travel segment it describes. A round
+// trip is two flights, a package is a flight plus a hotel, a multi-city ticket is
+// one segment per leg. Each segment becomes its own journey item, and every one
+// of them carries the same source email as an attachment.
+export async function extractJourneyDrafts(base44: any, content: string, fallbackTitle = '') {
+  const prompt = [
+    'You extract travel booking details from reservation content the user provided.',
+    'Return EVERY separate travel segment described in the content, one entry per segment.',
+    'Rules for splitting:',
+    '- Each flight leg is its own segment (a round trip is 2 segments, a connection is 1 segment only if the content presents it as a single booking with one flight number per leg ??? otherwise one segment per flight number).',
+    '- A hotel stay is its own segment, separate from the flights around it.',
+    '- A car rental, train trip, cruise or ticketed activity/event is its own segment.',
+    '- Never merge different bookings into one entry, and never repeat the same booking twice.',
+    'Only include a field when it is clearly stated in the content; leave it empty when unknown. Never invent data.',
+    'Datetimes must be "YYYY-MM-DDTHH:MM" in 24-hour local time as written in the content, with no timezone suffix. If only a date is known, use "YYYY-MM-DDT00:00".',
+    'For a flight: type "flight", location_from = origin airport or city, location_to = destination airport or city, confirmation_number = the flight number (e.g. BA208), airline = operating airline.',
+    'For a hotel: type "hotel", location_name = hotel name, start_datetime = check-in, end_datetime = check-out.',
+    'For a train: type "train". For a car rental or drive: type "car". For an activity, tour or event: type "activity".',
+    'If the content holds a single booking, return a single entry.',
+    'Return JSON only, matching the schema.',
+    '',
+    'CONTENT:',
+    content,
+  ].join('\n');
+
+  const raw = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    prompt,
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        segments: { type: 'array', items: SEGMENT_SCHEMA },
+      },
+    },
+  });
+
+  const list = Array.isArray(raw?.segments) ? raw.segments : [];
+  const drafts = list
+    .map((entry: any) => normalizeDraft(entry, fallbackTitle))
+    .filter((draft: any) => draft.title || draft.start_datetime || draft.location_name || draft.location_from);
+
+  return drafts;
+}
+
 export async function extractJourneyDraft(base44: any, text: string, fallbackTitle = '') {
   const prompt = [
     'You extract travel booking details from reservation content the user provided.',
@@ -78,4 +138,3 @@ export async function extractJourneyDraft(base44: any, text: string, fallbackTit
   });
   return normalizeDraft(raw, fallbackTitle);
 }
-
