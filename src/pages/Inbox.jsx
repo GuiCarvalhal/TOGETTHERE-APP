@@ -1,22 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Inbox as InboxIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Inbox as InboxIcon, Loader2, Plus, RefreshCw } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import AppHeader from '@/components/tt/AppHeader';
 import EmptyState from '@/components/tt/EmptyState';
+import StickyBar from '@/components/tt/StickyBar';
 import InboxItemCard from '@/components/inbox/InboxItemCard';
+import InboxImportSheet from '@/components/inbox/InboxImportSheet';
 import FileInboxItemSheet from '@/components/inbox/FileInboxItemSheet';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { useI18n } from '@/lib/i18n';
 import { describeImportFailure } from '@/lib/importErrors';
+import { setInboxCount } from '@/lib/inboxBadge';
 
-// Journey inbox — the durable home for imported reservation segments.
-//
-// Every booking found in an email (two flights, or flights plus a hotel) is
-// stored here as its own item with the FULL source email attached, whether or not
-// it already made it into a gathering. Items that are not used yet wait here
-// instead of getting lost, and they render with the standard journey card.
+// Journey inbox — the durable home for imported reservation segments, and the ONE
+// place bookings are imported (PDF, screenshot or pasted text). Chrome matches the
+// rest of the app: the shared sticky action bar (back + page title + the page's
+// actions), and the same journey card used on the timeline.
 export default function Inbox() {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -27,6 +28,8 @@ export default function Inbox() {
   const [fileTarget, setFileTarget] = useState(null);
   const [busyId, setBusyId] = useState('');
   const [filing, setFiling] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -46,12 +49,35 @@ export default function Inbox() {
 
   useEffect(() => { load(); }, [load]);
 
-  // The inbox opens from Home (and from the journey import flow), so it always
+  // Keep the global header badge in sync with what is actually listed here.
+  useEffect(() => { if (!loading) setInboxCount(items.length); }, [items, loading]);
+
+  // The inbox opens from the header, Home and the journey page, so it always
   // needs a way back; a direct link with no history falls back to Home.
   const onBack = useCallback(() => {
     if (window.history.state && window.history.state.idx > 0) navigate(-1);
     else navigate('/');
   }, [navigate]);
+
+  async function syncNow() {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const res = await base44.functions.invoke('syncInboxConnections', { force: true });
+      const s = res.data?.summary || {};
+      toast({
+        title: t('home.inboxSynced', { count: s.synced || 0 }),
+        description: `${t('home.inboxSyncImported', { count: s.imported || 0 })}${
+          s.failed ? ` · ${t('home.inboxSyncFailedCount', { count: s.failed })}` : ''
+        }`,
+      });
+      await load();
+    } catch {
+      toast({ title: t('home.inboxSyncFailed'), variant: 'destructive' });
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function fileItem(itemId, gatheringId) {
     setFiling(true);
@@ -110,19 +136,33 @@ export default function Inbox() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-deep/60 hover:text-ink-deep transition-colors mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" /> {t('inbox.back')}
-        </button>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
+        <StickyBar>
+          <Button variant="default" size="icon" onClick={onBack} aria-label={t('inbox.back')} className="shrink-0">
+            <ArrowLeft />
+          </Button>
+          <div className="flex items-center gap-2 min-w-0">
+            <InboxIcon className="w-4 h-4 text-terra-coral shrink-0" />
+            <h1 className="font-display text-lg font-bold text-ink-deep truncate">{t('inbox.title')}</h1>
+            {items.length > 0 && (
+              <span className="shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-terra text-cream text-[11px] font-bold">
+                {items.length}
+              </span>
+            )}
+          </div>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <Button variant="secondary" size="sm" onClick={syncNow} disabled={syncing} className="shrink-0">
+              {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+              <span className="hidden sm:inline">{syncing ? t('home.inboxSyncing') : t('inbox.syncNow')}</span>
+            </Button>
+            <Button size="sm" onClick={() => setImportOpen(true)} className="shrink-0">
+              <Plus />
+              <span className="hidden sm:inline">{t('inbox.import')}</span>
+            </Button>
+          </div>
+        </StickyBar>
 
-        <div className="flex items-center gap-2 mb-1">
-          <InboxIcon className="w-6 h-6 text-terra-deep" />
-          <h1 className="font-display text-2xl font-bold text-ink-deep">{t('inbox.title')}</h1>
-        </div>
-        <p className="text-sm text-ink-deep/60 mb-6">{t('inbox.intro')}</p>
+        <p className="text-sm text-ink-deep/60 mt-4 mb-5">{t('inbox.intro')}</p>
 
         {loading ? (
           <div className="tt-card p-10 flex items-center justify-center text-ink-deep/50">
@@ -136,9 +176,14 @@ export default function Inbox() {
             </Button>
           </div>
         ) : items.length === 0 ? (
-          <EmptyState icon={InboxIcon} title={t('inbox.empty')} body={t('inbox.emptyBody')} />
+          <EmptyState
+            icon={InboxIcon}
+            title={t('inbox.empty')}
+            body={t('inbox.emptyBody')}
+            action={<Button onClick={() => setImportOpen(true)}><Plus /> {t('inbox.import')}</Button>}
+          />
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {items.map((item) => (
               <InboxItemCard
                 key={item.id}
@@ -151,6 +196,12 @@ export default function Inbox() {
           </div>
         )}
       </div>
+
+      <InboxImportSheet
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={load}
+      />
 
       <FileInboxItemSheet
         open={!!fileTarget}

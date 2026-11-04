@@ -19,7 +19,7 @@ import PageToolbar from '@/components/tt/PageToolbar';
 import FilterChips from '@/components/tt/FilterChips';
 import ViewerMemberFilter from '@/components/tt/ViewerMemberFilter';
 import { Button } from '@/components/ui/button';
-import { Compass, Plus, Mail } from 'lucide-react';
+import { Compass, Plus, Inbox } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import { useI18n } from '@/lib/i18n';
@@ -258,8 +258,8 @@ export default function GatheringJourney() {
               <Button onClick={() => navigate(`/gathering/${gatheringId}/journey/new`)}>
                 <Plus /> {t('journey.addFirstSegment')}
               </Button>
-              <Button variant="outline" onClick={() => navigate(`/gathering/${gatheringId}/journey/import-email`)}>
-                <Mail /> {t('journey.importEmail')}
+              <Button variant="outline" onClick={() => navigate('/inbox')}>
+                <Inbox /> {t('journey.openInbox')}
               </Button>
             </div>
           ) : undefined}
@@ -294,10 +294,15 @@ export default function GatheringJourney() {
             ))}
           </Timeline>
           {canAdd && (
-            <div className="mt-6 flex justify-center">
-              <Button variant="ghost" size="sm" onClick={() => navigate(`/gathering/${gatheringId}/journey/import-email`)}>
-                <Mail /> {t('journey.importEmail')}
-              </Button>
+            <div className="mt-6 tt-ink-panel p-3.5 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-terra/15 border border-terra/25 flex items-center justify-center shrink-0">
+                <Inbox className="w-4 h-4 text-terra-coral" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-sm font-bold text-ink-deep leading-tight">{t('journey.inboxCtaTitle')}</p>
+                <p className="text-xs text-ink-deep/55 mt-0.5">{t('journey.inboxCtaBody')}</p>
+              </div>
+              <Button size="sm" onClick={() => navigate('/inbox')} className="shrink-0">{t('journey.openInbox')}</Button>
             </div>
           )}
         </>

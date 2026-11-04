@@ -246,6 +246,8 @@ export const en = {
   topbar: {
     openAccountMenu: 'Open account menu',
     yourProfile: 'your profile',
+    inbox: 'Journey inbox',
+    inboxCount: 'Journey inbox, {count} waiting',
   },
 
   account: {
@@ -410,6 +412,9 @@ export const en = {
     dailyPartial: 'partial',
     dailyPartialHint: 'Some legs between segments could not be routed ??? total is partial.',
     importEmail: 'Import booking',
+    openInbox: 'Open inbox',
+    inboxCtaTitle: 'Bookings import into the journey inbox',
+    inboxCtaBody: 'Email, PDF or screenshot — import once and file it into any gathering.',
   },
 
   importEmail: {
@@ -490,7 +495,25 @@ export const en = {
   },
 
   inbox: {
-    title: 'Journey inbox',
+  title: 'Journey inbox',
+  syncNow: 'Sync now',
+  import: 'Import',
+  importTitle: 'Import a booking',
+  importIntro: 'Upload a PDF or a screenshot, or paste the confirmation. Every booking found lands in this inbox for review — nothing is filed into a gathering automatically.',
+  importFileLabel: 'File or screenshot',
+  importPickFile: 'Choose a file',
+  importFileHint: 'PDF, image, .eml, .txt, .ics, .csv, .html — up to 10 MB.',
+  importPasteLabel: 'Or paste the booking text',
+  importPastePlaceholder: 'Paste the confirmation email here…',
+  importAction: 'Import reservation',
+  importing: 'Importing…',
+  imported: 'Import finished',
+  importedCount: { one: '{count} item added to the inbox', other: '{count} items added to the inbox' },
+  importFailed: 'Could not import this booking',
+  importEmpty: 'Add a file or paste the booking first.',
+  importEmptyFile: 'This file is empty.',
+  importUnsupported: 'Unsupported file type. Use a PDF, an image, or a text-based booking file.',
+  importFileTooLarge: 'File too large. Use files up to 10 MB.',
     back: 'Back',
     intro: 'Every booking found in your emails is kept here as its own item, with the full email attached. Add it to a gathering whenever you need it.',
     empty: 'Nothing waiting here',
@@ -734,6 +757,18 @@ export const en = {
   },
 
   journeyDetail: {
+    move: 'Move',
+    moveTitle: 'Move to another gathering',
+    moveDesc: 'The segment keeps its details. Participants who are not part of the destination gathering are removed from it.',
+    moveTargetLabel: 'Destination gathering',
+    moveTargetPlaceholder: 'Pick a gathering',
+    moveTargetMembers: { one: '{count} member', other: '{count} members' },
+    moveDrop: { one: '{count} participant will be removed', other: '{count} participants will be removed' },
+    moveKeep: 'every participant is part of the destination',
+    moveAction: 'Move segment',
+    moveNoTargets: 'You have no other gathering to move this segment into.',
+    moved: 'Segment moved',
+    moveFailed: 'Could not move this segment',
     segmentNotFound: 'Segment not found',
     segmentNotFoundBody: 'This segment may have been removed or you don\'t have access.',
     when: 'When',
@@ -1047,6 +1082,16 @@ export const en = {
     member: 'Member',
     limitedProfile: 'Limited profile',
     limitedProfileBody: "You're seeing a limited profile. Full profiles are visible to participants of this gathering.",
+  },
+
+  family: {
+    addMembers: 'Add members from your trips',
+    searchPlaceholder: 'Search people you traveled with',
+    searchHint: 'Type a name to add someone — no long list to scroll.',
+    noResults: 'No match among the people from your gatherings.',
+    noCandidates: 'Nobody from your gatherings to add yet.',
+    everyoneAdded: 'Everyone you know is already in your family.',
+    inAnotherFamily: 'Already in {name}',
   },
 
   interests: {

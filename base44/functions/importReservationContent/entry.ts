@@ -26,13 +26,33 @@ export default async function (req: Request) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const content = text(body?.text);
-    if (!content) return Response.json({ error: 'Reservation content is required' }, { status: 400 });
+    const subject = text(body?.subject) || text(body?.file_name) || 'Imported reservation';
+
+    // Content arrives either as text the browser could read (paste, .eml, .txt)
+    // or as a PDF / screenshot it cannot (file_url: a short-lived signed URL).
+    // For those the document is transcribed first, then the exact same pipeline
+    // runs — one importer for every entry point, inbox included.
+    let content = text(body?.text);
+    if (!content) {
+      const fileUrl = text(body?.file_url);
+      if (!fileUrl) return Response.json({ error: 'Reservation content is required' }, { status: 400 });
+      const extracted = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt:
+          'Transcribe this travel booking document as plain text. Return every confirmation, booking code, ' +
+          'flight number, date, time, airport, station, hotel and guest detail exactly as printed, in reading ' +
+          'order, with no commentary and no markdown. If the document contains no travel booking, return an ' +
+          'empty string.',
+        file_urls: [fileUrl],
+      });
+      content = text(typeof extracted === 'string' ? extracted : '');
+      if (!content) {
+        return Response.json({ error: 'No travel segment found in this content', segmented: true }, { status: 422 });
+      }
+    }
     if (content.length > MAX_CONTENT) {
       return Response.json({ error: 'Reservation content is too long' }, { status: 400 });
     }
 
-    const subject = text(body?.subject) || text(body?.file_name) || 'Imported reservation';
     const receivedAt = new Date().toISOString();
 
     const drafts = (await extractJourneyDrafts(base44, content, subject)).slice(0, MAX_SEGMENTS);

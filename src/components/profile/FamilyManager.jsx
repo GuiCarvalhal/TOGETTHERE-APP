@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import MemberAvatar from '@/components/tt/MemberAvatar';
+import FamilyMemberSearch from '@/components/profile/FamilyMemberSearch';
+import { useI18n } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +27,7 @@ import { Users, Plus, Trash2, Pencil, Check, UserMinus, LogOut, Loader2, AlertTr
 // surfaced gracefully, never auto-deleted.
 export default function FamilyManager({ families, gatheringId, userId, onChanged }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [candidates, setCandidates] = useState([]);
   const [candidateFamilies, setCandidateFamilies] = useState({}); // uid -> family they're in
   const [creating, setCreating] = useState(false);
@@ -173,27 +176,27 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
       {!hasFamily && creating && (
         <div className="space-y-3 rounded-xl bg-cream-pale p-3 border border-ink-charcoal/15">
           <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Family name (e.g. The Okafor Family)" className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
-          <div className="space-y-1.5">
-            <Label className="text-xs text-ink-deep/60">Add members from your trips</Label>
+          <div className="space-y-2">
+            <Label className="text-xs text-ink-deep/60">{t('family.addMembers')}</Label>
+            {candidateRows.length === 0 ? (
+              <p className="text-xs text-ink-deep/45">{t('family.noCandidates')}</p>
+            ) : (
+              <FamilyMemberSearch
+                rows={candidateRows}
+                selectedIds={newMembers}
+                onPick={(m) => setNewMembers((s) => (s.includes(m.user_id) ? s.filter((x) => x !== m.user_id) : [...s, m.user_id]))}
+              />
+            )}
+            {newMembers.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {candidateRows.map(({ m, inAnother, theirFam }) => {
-                  if (inAnother) {
-                    return (
-                      <span key={m.user_id} title={`Already in ${theirFam.name}`} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-foreground/5 text-foreground/40 border border-foreground/10 text-xs min-h-[36px]">
-                        <MemberAvatar member={m} size="xs" /> {m.full_name} · in another family
-                      </span>
-                    );
-                  }
-                  const sel = newMembers.includes(m.user_id);
-                  return (
-                    <button key={m.user_id} type="button" onClick={() => setNewMembers((s) => s.includes(m.user_id) ? s.filter((x) => x !== m.user_id) : [...s, m.user_id])}
-                      className={`inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border text-xs min-h-[36px] transition-colors ${sel ? 'bg-terra text-cream border-terra' : 'bg-foreground/5 text-foreground/80 border-foreground/12 hover:bg-foreground/10'}`}>
-                      <MemberAvatar member={m} size="xs" /> {m.full_name}
-                    </button>
-                  );
-                })}
-                {candidateRows.length === 0 && <span className="text-xs text-ink-deep/45">No people from your trips yet.</span>}
+                {newMembers.map((uid) => (
+                  <span key={uid} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-terra/10 text-ink-deep border border-terra/25 text-xs min-h-[32px]">
+                    <MemberAvatar member={candById[uid] || { full_name: memberLabel(uid) }} size="xs" />
+                    {memberLabel(uid)}
+                  </span>
+                ))}
               </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button type="button" size="sm" onClick={createFamily} disabled={busy || !newName.trim()}>{busy && <Loader2 className="animate-spin" />} Create family</Button>
@@ -253,27 +256,13 @@ export default function FamilyManager({ families, gatheringId, userId, onChanged
 
           {/* Add members (owner only — candidates from all the user's trips) */}
           {isOwner && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-ink-deep/60">Add members from your trips</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {candidateRows.map(({ m, inAnother, theirFam }) => {
-                  if (inAnother) {
-                    return (
-                      <span key={m.user_id} title={`Already in ${theirFam.name}`} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-foreground/5 text-foreground/40 border border-foreground/10 text-xs min-h-[36px]">
-                        <MemberAvatar member={m} size="xs" /> {m.full_name} · in another family
-                      </span>
-                    );
-                  }
-                  const adding = addingUid === m.user_id;
-                  return (
-                    <button key={m.user_id} type="button" disabled={adding} onClick={() => addMember(m.user_id)}
-                      className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-foreground/5 text-foreground/80 border border-foreground/12 hover:bg-foreground/10 text-xs min-h-[36px] disabled:opacity-60">
-                      <MemberAvatar member={m} size="xs" /> {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} {m.full_name}
-                    </button>
-                  );
-                })}
-                {candidateRows.length === 0 && <span className="text-xs text-ink-deep/45">Everyone you know is already in your family.</span>}
-              </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-ink-deep/60">{t('family.addMembers')}</Label>
+              {candidateRows.length === 0 ? (
+                <p className="text-xs text-ink-deep/45">{t('family.everyoneAdded')}</p>
+              ) : (
+                <FamilyMemberSearch rows={candidateRows} addingUid={addingUid} onPick={(m) => addMember(m.user_id)} />
+              )}
             </div>
           )}
         </div>

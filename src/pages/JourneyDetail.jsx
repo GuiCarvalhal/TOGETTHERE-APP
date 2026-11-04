@@ -12,9 +12,11 @@ import AttachmentChip from '@/components/tt/AttachmentChip';
 import AvatarStack from '@/components/tt/AvatarStack';
 import SegmentMap from '@/components/journey/SegmentMap';
 import Skeleton from '@/components/tt/Skeleton';
+import { Button } from '@/components/ui/button';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useToast } from '@/components/ui/use-toast';
-import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Clock, CalendarDays } from 'lucide-react';
+import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Clock, CalendarDays, ArrowRightLeft, Loader2, Pencil, Trash2 } from 'lucide-react';
+import MoveSegmentSheet from '@/components/journey/MoveSegmentSheet';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
 import FlightDetailView from '@/components/journey/FlightDetailView';
 import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
@@ -52,6 +54,7 @@ export default function JourneyDetail() {
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const { toast } = useToast();
   const startTz = useItemStartTz(item);
   const endTz = useItemEndTz(item);
@@ -157,6 +160,23 @@ export default function JourneyDetail() {
         onEdit={onEdit}
         onDelete={handleDelete}
         deleting={deleting}
+        actions={canEdit ? (
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setMoveOpen(true)} className="shrink-0">
+              <ArrowRightLeft />
+              <span className="hidden sm:inline">{t('journeyDetail.move')}</span>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onEdit} className="shrink-0">
+              <Pencil />
+              <span className="hidden sm:inline">{t('detailActionBar.edit')}</span>
+            </Button>
+            {canDelete && (
+              <Button variant="destructive" size="icon" onClick={handleDelete} disabled={deleting} aria-label={t('detailActionBar.delete')} className="shrink-0">
+                {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              </Button>
+            )}
+          </>
+        ) : undefined}
       />
       {item.type === 'flight' ? (
         <FlightDetailView item={item} members={members} currentMember={currentMember} onReload={() => load(true)} />
@@ -301,6 +321,15 @@ export default function JourneyDetail() {
       )}
       </div>
       )}
+
+      <MoveSegmentSheet
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        item={item}
+        currentGatheringId={gatheringId}
+        currentMember={currentMember}
+        onMoved={(targetId) => navigate(`/gathering/${targetId}/journey`)}
+      />
     </div>
   );
 }

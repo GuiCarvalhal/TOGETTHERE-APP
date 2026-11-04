@@ -242,6 +242,8 @@ export const ptBR = {
   topbar: {
     openAccountMenu: 'Abrir menu da conta',
     yourProfile: 'seu perfil',
+    inbox: 'Caixa do itinerário',
+    inboxCount: 'Caixa do itinerário, {count} esperando',
   },
 
   account: {
@@ -406,6 +408,9 @@ export const ptBR = {
     dailyPartial: 'parcial',
     dailyPartialHint: 'N??o foi poss??vel calcular alguns trechos entre segmentos ??? o total ?? parcial.',
     importEmail: 'Importar reserva',
+    openInbox: 'Abrir caixa',
+    inboxCtaTitle: 'Reservas entram pela caixa do itinerário',
+    inboxCtaBody: 'E-mail, PDF ou print — importe uma vez e envie para qualquer gathering.',
   },
 
   importEmail: {
@@ -487,6 +492,24 @@ export const ptBR = {
 
   inbox: {
     title: 'Caixa de entrada do roteiro',
+    syncNow: 'Sincronizar',
+    import: 'Importar',
+    importTitle: 'Importar uma reserva',
+    importIntro: 'Envie um PDF ou um print, ou cole a confirmação. Cada reserva encontrada cai nesta caixa para revisão — nada é enviado para um gathering automaticamente.',
+    importFileLabel: 'Arquivo ou print',
+    importPickFile: 'Escolher arquivo',
+    importFileHint: 'PDF, imagem, .eml, .txt, .ics, .csv, .html — até 10 MB.',
+    importPasteLabel: 'Ou cole o texto da reserva',
+    importPastePlaceholder: 'Cole o e-mail de confirmação aqui…',
+    importAction: 'Importar reserva',
+    importing: 'Importando…',
+    imported: 'Importação concluída',
+    importedCount: { one: '{count} item adicionado à caixa', other: '{count} itens adicionados à caixa' },
+    importFailed: 'Não foi possível importar esta reserva',
+    importEmpty: 'Adicione um arquivo ou cole a reserva primeiro.',
+    importEmptyFile: 'Este arquivo está vazio.',
+    importUnsupported: 'Tipo de arquivo não suportado. Use PDF, imagem ou um arquivo de texto.',
+    importFileTooLarge: 'Arquivo muito grande. Use arquivos de até 10 MB.',
     back: 'Voltar',
     intro: 'Cada reserva encontrada nos seus e-mails fica aqui como um item próprio, com o e-mail completo anexado. Adicione a um gathering quando quiser.',
     empty: 'Nada esperando aqui',
@@ -730,6 +753,18 @@ export const ptBR = {
   },
 
   journeyDetail: {
+    move: 'Mover',
+    moveTitle: 'Mover para outro gathering',
+    moveDesc: 'O segmento mantém os detalhes. Participantes que não fazem parte do gathering de destino são removidos dele.',
+    moveTargetLabel: 'Gathering de destino',
+    moveTargetPlaceholder: 'Escolha um gathering',
+    moveTargetMembers: { one: '{count} membro', other: '{count} membros' },
+    moveDrop: { one: '{count} participante será removido', other: '{count} participantes serão removidos' },
+    moveKeep: 'todos os participantes fazem parte do destino',
+    moveAction: 'Mover segmento',
+    moveNoTargets: 'Você não tem outro gathering para mover este segmento.',
+    moved: 'Segmento movido',
+    moveFailed: 'Não foi possível mover este segmento',
     segmentNotFound: 'Segmento n??o encontrado',
     segmentNotFoundBody: 'Este segmento pode ter sido removido ou voc?? n??o tem acesso.',
     when: 'Quando',
@@ -1043,6 +1078,16 @@ export const ptBR = {
     member: 'Membro',
     limitedProfile: 'Perfil limitado',
     limitedProfileBody: 'Voc?? est?? vendo um perfil limitado. Perfis completos s??o vis??veis para participantes deste encontro.',
+  },
+
+  family: {
+    addMembers: 'Adicionar membros das suas viagens',
+    searchPlaceholder: 'Buscar pessoas com quem você viajou',
+    searchHint: 'Digite um nome para adicionar — sem lista longa para rolar.',
+    noResults: 'Nenhum resultado entre as pessoas dos seus gatherings.',
+    noCandidates: 'Ninguém dos seus gatherings para adicionar ainda.',
+    everyoneAdded: 'Todo mundo que você conhece já está na sua família.',
+    inAnotherFamily: 'Já está em {name}',
   },
 
   interests: {

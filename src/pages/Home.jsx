@@ -19,6 +19,7 @@ import PendingImportCard from '@/components/home/PendingImportCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import { useI18n } from '@/lib/i18n';
 import { describeImportFailure } from '@/lib/importErrors';
+import { setInboxCount as publishInboxBadge } from '@/lib/inboxBadge';
 import { toast } from '@/components/ui/use-toast';
 
 const FILTER_KEYS = [
@@ -71,6 +72,8 @@ export default function Home() {
       setPendingImports(data.pendingImports || []);
       setInboxConnections(data.inboxConnections || []);
       setInboxCount(data.inboxCount || 0);
+      // Keep the header badge on the same number Home already shows.
+      publishInboxBadge(data.inboxCount || 0);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
       setLoadError(false);
