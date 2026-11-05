@@ -9,8 +9,9 @@ import { useI18n } from '@/lib/i18n';
 // Desktop-only companion to a journey card (right column, map OFF). The card in
 // the left column stays the primary source: this extension carries ONLY what
 // does not fit there — the segment's own mini map, its notes, and the link to
-// the full detail page. Every extension uses the same fixed height so the
-// column reads as one aligned set while the list scrolls.
+// the full detail page. It lives in the SAME grid row as its card, so it fills
+// the shared row height (h-full) and its top/bottom edges line up with the card
+// 1:1, however tall the card's own content gets.
 export default function JourneyExtensionCard({ item, gatheringId }) {
   const { t } = useI18n();
   const { origin, destination, point } = itemMapPoints(item);
@@ -19,7 +20,7 @@ export default function JourneyExtensionCard({ item, gatheringId }) {
   const to = `/gathering/${gatheringId}/journey/${item.id}`;
 
   return (
-    <div className="tt-card p-2.5 h-[10.75rem] flex gap-3 overflow-hidden">
+    <div className="tt-card p-2.5 h-full min-h-[8.25rem] flex gap-3 overflow-hidden">
       <div className="w-[38%] max-w-[240px] shrink-0 rounded-xl overflow-hidden border border-ink-charcoal/10 bg-cream-pale">
         {hasMap ? (
           <SegmentMap

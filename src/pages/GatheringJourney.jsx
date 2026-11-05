@@ -11,7 +11,7 @@ import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import DailyTravelSummary from '@/components/journey/DailyTravelSummary';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
-import JourneyExtensionsPanel from '@/components/journey/JourneyExtensionsPanel';
+import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
 import { useDeviceLayout } from '@/hooks/useDeviceLayout';
 import useJourneyDayTotals from '@/hooks/useJourneyDayTotals';
@@ -217,12 +217,6 @@ export default function GatheringJourney() {
       itemsPending={itemCoordsPending}
     />
   );
-  // Desktop right column (map OFF): one extension per visible segment, in the
-  // same chronological order as the timeline — every segment on screen at once
-  // instead of a single selected one. A stay appears once (its check-in and
-  // check-out legs are the same record).
-  const extensionItems = [...filteredItems].sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0));
-
   if (loading) return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -274,7 +268,12 @@ export default function GatheringJourney() {
     <ViewerMemberFilter members={members} offIds={viewerOff} onToggle={toggleViewerOff} />
   ) : undefined;
 
-  const listContent = (
+  // `pairRight` (desktop, map OFF) renders every item as ONE grid row: the card
+  // in the left 1/3 and its extension in the right 2/3. Both cells sit on the
+  // same grid row, so they share that row's height — top and bottom edges line
+  // up 1:1 no matter how tall the card's own content gets. No independent
+  // left/right lists any more.
+  const renderList = (pairRight) => (
     <>
       {filteredItems.length === 0 ? (
         <EmptyState
@@ -310,24 +309,35 @@ export default function GatheringJourney() {
                   )}
                 </div>
                 <DailyTravelSummary total={dayTotals[day]} loading={dayTotalsLoading} />
-                <div className="space-y-3">
+                <div className={pairRight ? 'grid grid-cols-3 gap-x-6 gap-y-3 items-stretch' : 'space-y-3'}>
                   {byDay[day].map((entry) => (
-                    <div
-                      key={entry.key}
-                      onMouseEnter={isDesktop && effectiveMapOpen ? () => setHoverId(entry.item.id) : undefined}
-                      onMouseLeave={isDesktop && effectiveMapOpen ? () => setHoverId(null) : undefined}
-                    >
-                      <JourneyCard
-                        item={entry.item}
-                        leg={entry.leg}
-                        typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
-                        icon={journeyIcon(entry.item.type)}
-                        participants={itemParticipants(entry.item, memberById)}
-                        showImages={effectiveImages}
-                        routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
-                        to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
-                      />
-                    </div>
+                    <React.Fragment key={entry.key}>
+                      <div
+                        className={pairRight ? 'col-span-1 min-w-0 [&>*]:h-full' : undefined}
+                        onMouseEnter={isDesktop && effectiveMapOpen ? () => setHoverId(entry.item.id) : undefined}
+                        onMouseLeave={isDesktop && effectiveMapOpen ? () => setHoverId(null) : undefined}
+                      >
+                        <JourneyCard
+                          item={entry.item}
+                          leg={entry.leg}
+                          typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
+                          icon={journeyIcon(entry.item.type)}
+                          participants={itemParticipants(entry.item, memberById)}
+                          showImages={effectiveImages}
+                          routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
+                          to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
+                        />
+                      </div>
+                      {pairRight && (
+                        <div className="col-span-2 min-w-0">
+                          {/* A stay renders ONE extension: its check-out row is
+                              the same record as the check-in row above. */}
+                          {entry.leg !== 'check-out' && (
+                            <JourneyExtensionCard item={entry.item} gatheringId={gatheringId} />
+                          )}
+                        </div>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
               </div>
@@ -351,45 +361,40 @@ export default function GatheringJourney() {
   );
 
   // Phone + tablet-portrait: the list is the page (unchanged). Desktop +
-  // tablet-landscape: 1/3 list / 2/3 right pane, following the existing map
-  // toggle (map on -> route map layer with hover highlight, map off ->
-  // extensions of every visible segment).
+  // tablet-landscape follows the existing map toggle: map ON -> card column +
+  // pinned route-map layer with hover highlight; map OFF -> one row per item
+  // (card 1/3 + extension 2/3 sharing the row height, aligned 1:1).
   return (
     <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={isDesktop ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
-      {isDesktop ? (
-        // Desktop / landscape tablet. Toolbar + map form ONE fixed block (the
-        // map pins at the toolbar's measured height and has no scroll of its
-        // own); only the card column scrolls.
-        //  - map ON : the map is a layer replacing the extensions column, and
-        //             hovering a card highlights that segment in place.
-        //  - map OFF: extensions of EVERY visible segment, travelling with the
-        //             list so each stays beside its card.
+      {isDesktop && effectiveMapOpen ? (
+        // Map ON. The card list stays a single column on the left and the map
+        // becomes the right 2/3 layer, pinned under the measured toolbar with
+        // no scroll of its own; only the card column scrolls. Hovering a card
+        // highlights that segment in place (no camera change).
         <div
           className="grid grid-cols-3 gap-6 items-start"
           style={{ '--tt-desk-top': `calc(3rem + env(safe-area-inset-top) + ${barH}px)` }}
         >
-          <div className="col-span-1 min-w-0">{listContent}</div>
-          <div
-            className={`col-span-2 min-w-0 ${effectiveMapOpen ? 'sticky' : ''}`}
-            style={effectiveMapOpen ? { top: 'var(--tt-desk-top)' } : undefined}
-          >
-            {effectiveMapOpen ? (
-              <div className="flex flex-col" style={{ height: 'calc(100vh - var(--tt-desk-top) - 1.25rem)' }}>
-                <JourneyMapPanel
-                  items={filteredMapItems}
-                  gatheringId={gatheringId}
-                  itemsPending={itemCoordsPending}
-                  highlightItemId={hoverId}
-                  className="h-full flex flex-col"
-                  heightClass="flex-1 min-h-[240px]"
-                />
-              </div>
-            ) : (
-              <JourneyExtensionsPanel items={extensionItems} gatheringId={gatheringId} />
-            )}
+          <div className="col-span-1 min-w-0">{renderList(false)}</div>
+          <div className="col-span-2 min-w-0 sticky" style={{ top: 'var(--tt-desk-top)' }}>
+            <div className="flex flex-col" style={{ height: 'calc(100vh - var(--tt-desk-top) - 1.25rem)' }}>
+              <JourneyMapPanel
+                items={filteredMapItems}
+                gatheringId={gatheringId}
+                itemsPending={itemCoordsPending}
+                highlightItemId={hoverId}
+                className="h-full flex flex-col"
+                heightClass="flex-1 min-h-[240px]"
+              />
+            </div>
           </div>
         </div>
-      ) : listContent}
+      ) : isDesktop ? (
+        // Map OFF (desktop / landscape tablet): one row per item across the full
+        // content width — card left 1/3, extension right 2/3, same grid row so
+        // both share the row height and line up 1:1 top and bottom.
+        renderList(true)
+      ) : renderList(false)}
     </PageToolbar>
   );
 }
