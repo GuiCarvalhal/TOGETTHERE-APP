@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { timeAgo } from '@/lib/gatheringHelpers';
@@ -75,6 +76,16 @@ export default function GatheringAgent() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [journeyInitial, setJourneyInitial] = useState(null);
   const [journeyItems, setJourneyItems] = useState([]);
+  const navigate = useNavigate();
+
+  // Day scope handed over by the Journey page's per-day "Agent" button
+  // (?day=YYYY-MM-DD). Same page, same layout — only the brief's scope narrows
+  // to that day: its own items plus places near them.
+  const dayScope = (() => {
+    const raw = new URLSearchParams(window.location.search).get('day') || '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+  })();
+  const dayLabel = dayScope ? fmt.formatDate(dayScope, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
 
   // Slice the underlying 10+10 set to Short (5+5) or Long (10+10). Switching
   // is instant — no re-generation or network calls. todaysPicks are not sliced.
@@ -127,12 +138,15 @@ export default function GatheringAgent() {
 
   const isViewer = role === 'viewer';
 
-  const storeKey = `tt-agent-data-${gatheringId}`;
+  const storeKey = `tt-agent-data-${gatheringId}${dayScope ? `-${dayScope}` : ''}`;
   const generate = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await base44.functions.invoke('generateRecommendations', { gathering_id: gatheringId });
+      const res = await base44.functions.invoke('generateRecommendations', {
+        gathering_id: gatheringId,
+        ...(dayScope ? { day: dayScope } : {}),
+      });
       const d = res.data || res;
       setData(d);
       try { localStorage.setItem(storeKey, JSON.stringify(d)); } catch { /* ignore */ }
@@ -141,7 +155,7 @@ export default function GatheringAgent() {
     } finally {
       setLoading(false);
     }
-  }, [gatheringId, storeKey]);
+  }, [gatheringId, storeKey, dayScope]);
 
   // Load the last cached brief on mount (no API call); the user regenerates
   // manually from the sticky bar.
@@ -273,6 +287,16 @@ export default function GatheringAgent() {
   return (
     <PageToolbar switcher={lengthSwitcher} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
       <div className="space-y-5">
+        {dayScope && (
+          <div className="tt-ink-panel p-3 flex items-center gap-3">
+            <CalendarDays className="w-4 h-4 text-terra-coral shrink-0" />
+            <p className="text-sm font-semibold text-ink-deep flex-1 min-w-0 truncate">{t('agent.scopedDay', { date: dayLabel })}</p>
+            <Button size="sm" variant="outline" className="shrink-0" onClick={() => navigate(`/gathering/${gatheringId}/agent`)}>
+              {t('agent.showFullTrip')}
+            </Button>
+          </div>
+        )}
+
         {showReloadHint && (
           <p className="text-xs text-ink-deep/50 flex items-center gap-1.5 px-1">
             <Sparkles className="w-3 h-3 text-terra-deep shrink-0" />
@@ -320,9 +344,12 @@ export default function GatheringAgent() {
           <div className="space-y-5">
             {showToday && show('today') && (
               <section>
-                <SectionHeader icon={CalendarDays} title={t('agent.todaysPicks')} />
+                <SectionHeader icon={CalendarDays} title={dayScope ? t('agent.dayPicks') : t('agent.todaysPicks')} />
                 <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
-                  Fits the gaps in today's plan{data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : ''}.
+                  {t(dayScope ? 'agent.dayPicksFits' : 'agent.todaysFits', {
+                    date: dayLabel,
+                    items: data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : '',
+                  })}
                 </p>
                 <Timeline>
                   <div className="space-y-3">

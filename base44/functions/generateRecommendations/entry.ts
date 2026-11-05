@@ -48,6 +48,11 @@ export default async function(req) {
     if (!gatheringId) return Response.json({ error: 'gathering_id required' }, { status: 400 });
     // Optional `today` override (YYYY-MM-DD) for testing the phase logic.
     const today = (body.today || new Date().toISOString().slice(0, 10)).slice(0, 10);
+    // Optional DAY scope (YYYY-MM-DD): the Journey page has one Agent button per
+    // date section. When present the brief is generated for THAT single day —
+    // its own journey items, place searches bounded to that day's locations, and
+    // suggestions meant to sit next to what is already planned.
+    const focusDay = body.day && /^\d{4}-\d{2}-\d{2}$/.test(String(body.day)) ? String(body.day) : null;
 
     const me = await getMyMember(base44, gatheringId, user.id);
     if (!me) return Response.json({ error: 'Not a member of this gathering' }, { status: 403 });
@@ -62,10 +67,14 @@ export default async function(req) {
     const end = gathering?.end_date || null;
 
     // ---- Phase ----
+    // A day-scoped brief is always "during" that day, even if that day is in the
+    // past: the user explicitly asked for suggestions around that plan.
     let phase = 'during';
-    if (!start && !end) phase = 'before';
-    else if (start && today < start) phase = 'before';
-    else if (end && today > end) phase = 'after';
+    if (!focusDay) {
+      if (!start && !end) phase = 'before';
+      else if (start && today < start) phase = 'before';
+      else if (end && today > end) phase = 'after';
+    }
 
     if (phase === 'after') {
       return Response.json({ phase: 'ended', today, generatedAt: new Date().toISOString() });
@@ -85,13 +94,19 @@ export default async function(req) {
       (gathering.destinations || []).forEach((d) => allLegs.push({ location: d, date: start || '' }));
     }
     let legs = allLegs;
-    if (phase === 'during') {
+    if (focusDay) {
+      // Day scope: search around exactly the places planned for that day.
+      const dayLegs = allLegs.filter((l) => l.date === focusDay);
+      legs = dayLegs.length ? dayLegs : allLegs;
+    } else if (phase === 'during') {
       legs = allLegs.filter((l) => l.date >= today);
       if (!legs.length) legs = allLegs;
     }
     const searchLegs = legs.slice(0, 4);
 
-    const todayItems = phase === 'during' ? sorted.filter((i) => i.start_datetime.slice(0, 10) === today) : [];
+    const todayItems = focusDay
+      ? sorted.filter((i) => i.start_datetime.slice(0, 10) === focusDay)
+      : (phase === 'during' ? sorted.filter((i) => i.start_datetime.slice(0, 10) === today) : []);
     const todayLocation = todayItems.length
       ? (legLocation(todayItems[todayItems.length - 1]) || legLocation(todayItems[0]) || '')
       : (legs[0]?.location || '');
@@ -118,9 +133,18 @@ export default async function(req) {
       : 'No segments added yet — base suggestions on the destinations and dates.';
     const destList = (gathering?.destinations || []).filter(Boolean).join(', ') || allLegs.map((l) => l.location).join(', ') || 'the destination';
     const dateRange = [start, end].filter(Boolean).join(' to ') || 'the trip dates';
-    const phaseWord = phase === 'before'
-      ? 'BEFORE the trip starts (plan the whole route corridor)'
-      : 'DURING the trip (only from today onward; never suggest anything before today)';
+    const phaseWord = focusDay
+      ? `ONE SPECIFIC DAY of the trip (${focusDay}): everything must fit that day and sit next to the places already planned`
+      : (phase === 'before'
+        ? 'BEFORE the trip starts (plan the whole route corridor)'
+        : 'DURING the trip (only from today onward; never suggest anything before today)');
+    // Day scope block: the exact plan for the requested day, so the model can
+    // fill its gaps instead of describing the whole trip.
+    const focusBlock = focusDay
+      ? `\nFOCUS DAY: ${focusDay}. The group's plan for that day:\n${todayItems.length
+        ? todayItems.map((i) => `- ${i.type}: ${i.title}${i.start_datetime ? ' @ ' + i.start_datetime : ''}${legLocation(i) ? ' (' + legLocation(i) + ')' : ''}`).join('\n')
+        : '- nothing scheduled yet'}\nScope every recommendation to places within a short walk or drive of those items, and keep tasks to what is still doable for that day.\n`
+      : '';
 
     const geminiKey = secrets.get('GEMINI_API_KEY');
     const mapsKey = secrets.get('GOOGLEMAPS_TOGETTHERE');
@@ -141,6 +165,7 @@ ${profiles.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
 JOURNEY (chronological segments):
 ${journeyText}
+${focusBlock}
 
 ORDERED LOCATIONS the group travels through: ${allLegs.map((l) => l.location).join(' → ') || destList}
 
@@ -260,6 +285,7 @@ Return only JSON matching the schema.`;
       vibe, todaysPicks: places.todaysPicks, whereToEat: places.whereToEat, whatToDo: places.whatToDo,
       tasks: aiTasks, goodToKnow, rate,
       legs: searchLegs.map((l) => l.location),
+      focusDay,
       todayItems: todayItems.map((i) => ({ title: i.title, type: i.type, time: i.start_datetime, location: legLocation(i) })),
     });
   } catch (error) {

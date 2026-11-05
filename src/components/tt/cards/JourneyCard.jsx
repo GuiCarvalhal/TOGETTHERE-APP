@@ -32,7 +32,7 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // reserved min-height participant slot pushed to the bottom via mt-auto so
 // the height never depends on whether avatars are present. On narrow screens
 // where the timing row wraps, the card grows instead of clipping.
-export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber }) {
+export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber, onSelect }) {
   const navigate = useNavigate();
   const { t } = useI18n();
   const isFlight = item.type === 'flight';
@@ -87,8 +87,14 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
 
   // Only a card that leads somewhere is presented as clickable; an inbox card
   // with no destination must not advertise a chevron and a pointer cursor.
-  const interactive = !!to;
-  const open = () => { if (interactive) navigate(to); };
+  // `onSelect` (desktop Journey two-column layout) takes over the click: the
+  // card feeds the contextual panel instead of navigating to the detail page,
+  // which the panel itself links to.
+  const interactive = !!to || !!onSelect;
+  const open = () => {
+    if (onSelect) { onSelect(); return; }
+    if (to) navigate(to);
+  };
 
   const mainText = onCover ? 'text-white' : 'text-ink-deep';
   const subText = onCover ? 'text-white/85' : 'text-ink-deep/55';

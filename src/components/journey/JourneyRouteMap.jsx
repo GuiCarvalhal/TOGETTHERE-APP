@@ -33,7 +33,7 @@ function escapeHtml(s) {
 //    enough. Clicking a suggestion pin keeps its info card + detail link.
 // Reuses the shared maps loader + getMapsConfig — no second integration.
 // Fails gracefully (never crashes the page).
-export default function JourneyRouteMap({ items, gatheringId, suggestions }) {
+export default function JourneyRouteMap({ items, gatheringId, suggestions, heightClass = OVERLAY_VIEWPORT_CLASS }) {
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'fallback'
@@ -199,7 +199,7 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions }) {
   }, [mapFingerprint, suggFingerprint, gatheringId, navigate]);
 
   return (
-    <div className={`relative w-full ${OVERLAY_VIEWPORT_CLASS} rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale`}>
+    <div className={`relative w-full ${heightClass} rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale`}>
       <div ref={mapRef} className="absolute inset-0" />
       {status === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-cream-pale">

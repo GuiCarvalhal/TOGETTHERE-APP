@@ -11,6 +11,9 @@ import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import DailyTravelSummary from '@/components/journey/DailyTravelSummary';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import JourneyFocusPanel from '@/components/journey/JourneyFocusPanel';
+import DayAgentButton from '@/components/journey/DayAgentButton';
+import { useDeviceLayout } from '@/hooks/useDeviceLayout';
 import useJourneyDayTotals from '@/hooks/useJourneyDayTotals';
 import { itemRouteNumbers } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
@@ -48,6 +51,11 @@ export default function GatheringJourney() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
+  // Desktop only: which segment feeds the right-hand contextual panel. Phones
+  // and portrait tablets never use it (their cards navigate as before).
+  const [selectedId, setSelectedId] = useState(null);
+  const layout = useDeviceLayout();
+  const isDesktop = layout === 'desktop';
   const isViewer = role === 'viewer';
   // Viewers get forced Group scope, map OFF, images ON — the map/images
   // toggles are hidden but the effective values still drive the content
@@ -194,6 +202,8 @@ export default function GatheringJourney() {
       itemsPending={itemCoordsPending}
     />
   );
+  // Desktop right column: the segment picked in the list (null = nothing yet).
+  const selectedItem = filteredItems.find((it) => it.id === selectedId) || null;
 
   if (loading) return (
     <div className="space-y-5">
@@ -246,8 +256,8 @@ export default function GatheringJourney() {
     <ViewerMemberFilter members={members} offIds={viewerOff} onToggle={toggleViewerOff} />
   ) : undefined;
 
-  return (
-    <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+  const listContent = (
+    <>
       {filteredItems.length === 0 ? (
         <EmptyState
           icon={Compass}
@@ -273,22 +283,34 @@ export default function GatheringJourney() {
                 ref={day === targetDay ? targetDayRef : undefined}
                 className="space-y-3"
               >
-                <TimelineDay day={day} />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <TimelineDay day={day} />
+                  </div>
+                  {!isViewer && (
+                    <DayAgentButton gatheringId={gatheringId} day={day} />
+                  )}
+                </div>
                 <DailyTravelSummary total={dayTotals[day]} loading={dayTotalsLoading} />
                 <div className="space-y-3">
-                  {byDay[day].map((entry) => (
-                    <JourneyCard
-                      key={entry.key}
-                      item={entry.item}
-                      leg={entry.leg}
-                      typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
-                      icon={journeyIcon(entry.item.type)}
-                      participants={itemParticipants(entry.item, memberById)}
-                      showImages={effectiveImages}
-                      routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
-                      to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
-                    />
-                  ))}
+                  {byDay[day].map((entry) => {
+                    const selected = isDesktop && selectedId === entry.item.id;
+                    return (
+                      <div key={entry.key} className={selected ? 'rounded-2xl ring-2 ring-terra/45 ring-offset-2 ring-offset-background' : undefined}>
+                        <JourneyCard
+                          item={entry.item}
+                          leg={entry.leg}
+                          typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
+                          icon={journeyIcon(entry.item.type)}
+                          participants={itemParticipants(entry.item, memberById)}
+                          showImages={effectiveImages}
+                          routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
+                          to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
+                          onSelect={isDesktop ? () => setSelectedId(entry.item.id) : undefined}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -307,7 +329,30 @@ export default function GatheringJourney() {
           )}
         </>
       )}
+    </>
+  );
 
+  // Phone + tablet-portrait: the list is the page (unchanged). Desktop +
+  // tablet-landscape: 1/3 list / 2/3 contextual panel, the panel following the
+  // existing map toggle (map on -> route map, map off -> selected segment).
+  return (
+    <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={isDesktop ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+      {isDesktop ? (
+        <div className="grid grid-cols-3 gap-6 items-start">
+          <div className="col-span-1 min-w-0">{listContent}</div>
+          <div className="col-span-2 min-w-0 sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto tt-no-scrollbar">
+            <JourneyFocusPanel
+              item={selectedItem}
+              items={filteredMapItems}
+              gatheringId={gatheringId}
+              mapOpen={effectiveMapOpen}
+              itemsPending={itemCoordsPending}
+              participants={selectedItem ? itemParticipants(selectedItem, memberById) : []}
+              to={selectedItem ? `/gathering/${gatheringId}/journey/${selectedItem.id}` : undefined}
+            />
+          </div>
+        </div>
+      ) : listContent}
     </PageToolbar>
   );
 }

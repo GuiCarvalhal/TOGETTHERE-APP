@@ -16,6 +16,7 @@ import { itemWaypoints } from '@/lib/journeyMap';
 export default function JourneyMapPanel({
   items, gatheringId,
   suggestions = [], suggestionsWithoutCoords = 0, suggestionsPending = 0, itemsPending = 0,
+  heightClass,
 }) {
   const mappableCount = items.filter((it) => itemWaypoints(it).length > 0).length;
   const unmappedCount = items.length - mappableCount;
@@ -35,6 +36,7 @@ export default function JourneyMapPanel({
             items={items}
             gatheringId={gatheringId}
             suggestions={suggestions}
+            heightClass={heightClass}
           />
           <div className="mt-2 space-y-1">
             {itemsPending > 0 && (
