@@ -14,29 +14,15 @@ function firstNameOf(person) {
 // the address is already on the mini map above this block. Everything here is
 // clamped inside the card's fixed row height, so long notes or many people can
 // never push the row taller than its left card.
-export default function JourneyExtensionInfo({ item, attendees = [], leg = null }) {
+export default function JourneyExtensionInfo({ item, attendees = [] }) {
   const { t } = useI18n();
   const startTz = useItemStartTz(item);
   const endTz = useItemEndTz(item);
   const startCc = useItemStartCountry(item);
   const endCc = useItemEndCountry(item);
 
-  // Check-out leg: lean content only — the check-out moment. The stay's map,
-  // full date range, people and notes already live on the check-in extension
-  // of the very same record, so repeating them here would be pure noise.
-  if (leg === 'check-out') {
-    return (
-      <div className="space-y-1.5">
-        {item.end_datetime && (
-          <p className="text-[11px] text-ink-deep/70 leading-snug">
-            <span className="tt-label text-ink-deep/35 mr-1.5">{t('journeyDetail.checkOut')}</span>
-            {formatFullDateTz(item.end_datetime, endTz)} · {formatTimeWithCountry(item.end_datetime, endTz, endCc)}
-          </p>
-        )}
-      </div>
-    );
-  }
-
+  // Same content for every leg (check-in and check-out): the full date range,
+  // the people and the notes, exactly like the check-in row.
   return (
     <div className="space-y-1.5">
       {(item.start_datetime || item.end_datetime) && (

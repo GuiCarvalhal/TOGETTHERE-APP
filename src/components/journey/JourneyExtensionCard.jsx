@@ -14,13 +14,11 @@ import { useI18n } from '@/lib/i18n';
 // expanded view of the same segment: mini map on the left, then the title with
 // the attachment and edit actions on the right, and below them when / who /
 // notes clamped inside the fixed row height.
-export default function JourneyExtensionCard({ item, gatheringId, attendees = [], canEdit = false, leg = null }) {
+export default function JourneyExtensionCard({ item, gatheringId, attendees = [], canEdit = false }) {
   const { t } = useI18n();
   const navigate = useNavigate();
-  // A stay renders one extension per leg (check-in and check-out). The check-out
-  // one is deliberately lean: no mini map (the same record's map already sits on
-  // the check-in row) and only the check-out moment, so nothing is duplicated.
-  const isCheckOut = leg === 'check-out';
+  // Check-in and check-out legs of the same stay render the identical extension
+  // (mini map + when + people + notes), so both rows read the same.
   const { origin, destination, point } = itemMapPoints(item);
   const query = item.location_name || item.location_to || item.location_from || '';
   const hasMap = !!((origin?.lat != null && destination?.lat != null) || point?.lat != null || query);
@@ -31,27 +29,25 @@ export default function JourneyExtensionCard({ item, gatheringId, attendees = []
   const onEdit = () => navigate(item.type === 'flight' ? `${base}/edit` : `${base}?edit=1`);
 
   return (
-    <div className={`tt-card p-2.5 h-full flex gap-3 overflow-hidden ${isCheckOut ? 'min-h-[5.5rem]' : 'min-h-[10.5rem]'}`}>
-      {!isCheckOut && (
-        <div className="w-[34%] max-w-[220px] shrink-0 rounded-xl overflow-hidden border border-ink-charcoal/10 bg-cream-pale">
-          {hasMap ? (
-            <SegmentMap
-              key={item.id}
-              origin={origin}
-              destination={destination}
-              point={point}
-              query={query}
-              isFlight={item.type === 'flight'}
-              heightClass="h-full"
-            />
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center px-2">
-              <MapPin className="w-4 h-4 text-terra/40 mb-1" />
-              <p className="text-[11px] text-ink-deep/45 leading-tight">{t('journey.extNoMap')}</p>
-            </div>
-          )}
-        </div>
-      )}
+    <div className="tt-card p-2.5 h-full min-h-[10.5rem] flex gap-3 overflow-hidden">
+      <div className="w-[34%] max-w-[220px] shrink-0 rounded-xl overflow-hidden border border-ink-charcoal/10 bg-cream-pale">
+        {hasMap ? (
+          <SegmentMap
+            key={item.id}
+            origin={origin}
+            destination={destination}
+            point={point}
+            query={query}
+            isFlight={item.type === 'flight'}
+            heightClass="h-full"
+          />
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-center px-2">
+            <MapPin className="w-4 h-4 text-terra/40 mb-1" />
+            <p className="text-[11px] text-ink-deep/45 leading-tight">{t('journey.extNoMap')}</p>
+          </div>
+        )}
+      </div>
 
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="shrink-0 flex items-start gap-2">
@@ -75,7 +71,7 @@ export default function JourneyExtensionCard({ item, gatheringId, attendees = []
         </div>
 
         <div className="mt-1 min-h-0 flex-1 overflow-hidden">
-          <JourneyExtensionInfo item={item} attendees={attendees} leg={leg} />
+          <JourneyExtensionInfo item={item} attendees={attendees} />
         </div>
       </div>
     </div>
