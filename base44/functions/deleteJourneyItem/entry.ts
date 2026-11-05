@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
 import { getMyMember, gatheringOwnerUserId, allMemberUserIds } from '../../shared/gatheringAcl.ts';
 import { logActivity } from '../../shared/logActivity.ts';
 import { notifyGatheringMembers, isOneSignalConfigured } from '../../shared/onesignal.ts';
+import { softDeletePatch } from '../../shared/softDelete.ts';
 
 // Delete a journey segment. Runs as the service role (bypassing RLS) so the
 // permission can be enforced explicitly — the JourneyItem RLS delete rule
@@ -39,12 +40,17 @@ export default async function (req) {
       user.role === 'admin';
     if (!canDelete) return Response.json({ error: 'Only the creator or the gathering owner can delete this segment' }, { status: 403 });
 
-    await base44.asServiceRole.entities.JourneyItem.delete(item_id);
+    // Soft delete: the row is flagged, not removed, so the user can undo the
+    // action immediately or restore it later from Recently deleted. Everything
+    // else about the record (dates, gathering, attendees, attachments) is left
+    // exactly as it was, which is what lets a restore land in the right place.
+    const patch = softDeletePatch(user.id);
+    await base44.asServiceRole.entities.JourneyItem.update(item_id, patch);
 
     await logActivity(base44, {
       gatheringId: gathering_id, type: 'journey_added',
       actorUserId: user.id, actorName: me.full_name || user.full_name || 'Someone',
-      summary: `${me.full_name || 'Someone'} removed "${existing.title}" from the journey`,
+      summary: `${me.full_name || 'Someone'} moved "${existing.title}" to Recently deleted`,
       ownerUserId: ownerUid, participantUserIds: memberUserIds,
     });
 
@@ -61,7 +67,7 @@ export default async function (req) {
       });
     }
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, deleted_at: patch.deleted_at });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

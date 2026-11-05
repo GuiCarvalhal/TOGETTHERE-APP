@@ -78,6 +78,20 @@
     "date": {
       "type": "string",
       "format": "date"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Soft-delete flag. true = the expense was moved to Recently deleted: it is excluded from every list, total, balance and family-unit calculation, but its splits are kept so a restore reintegrates it exactly as before. Absent/false on live rows (legacy rows have no value at all)."
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the expense was soft-deleted. Restorable for RECENTLY_DELETED_RETENTION_DAYS (30) days, after which purgeDeletedItems may remove it permanently."
+    },
+    "deleted_by": {
+      "type": "string",
+      "description": "App user id who moved this expense to Recently deleted."
     }
   },
   "required": [

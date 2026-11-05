@@ -88,6 +88,20 @@
       "type": "string",
       "format": "date-time"
     },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Soft-delete flag. true = the segment was moved to Recently deleted: excluded from every journey list, map, summary and AI brief, but fully retained so a restore puts it back in its original date group with its gathering membership, attendees and attachments intact. Absent/false on live rows (legacy rows have no value at all)."
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the segment was soft-deleted. Restorable for RECENTLY_DELETED_RETENTION_DAYS (30) days, after which purgeDeletedItems may remove it permanently."
+    },
+    "deleted_by": {
+      "type": "string",
+      "description": "App user id who moved this segment to Recently deleted."
+    },
     "place": {
       "type": "object",
       "description": "Resolved Google Place for STAY/ACTIVITY/MAIN_EVENT items (single place). Resolved at entry time via autocomplete so the card never re-geocodes at render. { place_id, name, address, lat, lng, country, tz, iata, city }",
