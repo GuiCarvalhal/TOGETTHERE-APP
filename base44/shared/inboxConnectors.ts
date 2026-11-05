@@ -195,10 +195,10 @@ export function buildAuthorizationUrl(provider, { state, redirectUri }) {
   }
 
   if (provider === 'yahoo') {
-    // `mail-r` is Yahoo's read-only Mail scope and is what IMAP XOAUTH2 requires;
-    // `openid` lets us read the mailbox address from the userinfo endpoint so the
-    // account can be keyed by address.
-    params.set('scope', 'openid mail-r');
+    // `mail-r` is Yahoo's read-only Mail scope and is what IMAP XOAUTH2 requires.
+    // `openid` + `email` make the mailbox address available (userinfo and ID
+    // token) so the account can be keyed by address and opened over IMAP.
+    params.set('scope', 'openid email mail-r');
     params.set('nonce', crypto.randomUUID());
     return `https://api.login.yahoo.com/oauth2/request_auth?${params.toString()}`;
   }
@@ -260,6 +260,9 @@ export async function exchangeAuthorizationCode(provider, { code, redirectUri })
     accessToken: json.access_token || '',
     refreshToken: json.refresh_token || '',
     expiresAt: expiresAtFrom(json.expires_in),
+    // OpenID providers (Yahoo) also return an ID token whose claims carry the
+    // mailbox address when the `email` scope was granted.
+    idToken: json.id_token || '',
   };
 }
 
@@ -286,7 +289,7 @@ async function ensureAccessToken(base44, connection) {
   return accessToken;
 }
 
-async function fetchAccountEmail(provider, accessToken) {
+async function fetchAccountEmail(provider, accessToken, idToken = '') {
   try {
     if (provider === 'gmail') {
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
@@ -302,9 +305,14 @@ async function fetchAccountEmail(provider, accessToken) {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });
-      if (!res.ok) return '';
-      const json = await res.json().catch(() => ({}));
-      return json.email || '';
+      const json = res.ok ? await res.json().catch(() => ({})) : {};
+      const direct = (json.email || json.email_address || '').trim();
+      if (direct) return direct;
+      // Fallback: the ID token issued with the access token carries the same
+      // claim. It arrives over TLS directly from the token endpoint, so its
+      // claims can be read without re-verifying the signature here.
+      const claims = decodeIdTokenClaims(idToken);
+      return (claims.email || claims.preferred_username || '').trim();
     }
     const res = await fetch('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -783,6 +791,15 @@ export async function maybeSyncInboxInBackground(base44, user) {
   }
 }
 
-export async function fetchProviderAccountEmail(provider, accessToken) {
-  return fetchAccountEmail(provider, accessToken);
+function decodeIdTokenClaims(idToken) {
+  try {
+    const payload = String(idToken || '').split('.')[1] || '';
+    return payload ? JSON.parse(decodeBase64Url(payload)) : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function fetchProviderAccountEmail(provider, accessToken, idToken = '') {
+  return fetchAccountEmail(provider, accessToken, idToken);
 }
