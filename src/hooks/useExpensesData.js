@@ -55,8 +55,12 @@ export function useExpensesData() {
         base44.entities.Expense.filter({ gathering_id: gatheringId }),
         base44.entities.ExpenseSplit.filter({ gathering_id: gatheringId }),
       ]);
-      es.sort((a, b) => new Date(b.date || b.created_date) - new Date(a.date || a.created_date));
-      setExpenses(es);
+      // Soft-deleted expenses live in Recently deleted: excluded from every
+      // list, total, balance and family-unit calculation. Their splits are kept
+      // untouched so a restore reintegrates them exactly as before.
+      const active = es.filter((e) => e.is_deleted !== true);
+      active.sort((a, b) => new Date(b.date || b.created_date) - new Date(a.date || a.created_date));
+      setExpenses(active);
       setSplits(sp);
     } catch (e) {
       if (!silent) setError(e);

@@ -28,6 +28,11 @@ import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import { useI18n } from '@/lib/i18n';
 import { journeyIcon } from '@/lib/journeyIcons';
+import { activeRecords } from '@/lib/softDelete';
+import useRecentlyDeleted from '@/hooks/useRecentlyDeleted';
+import RecentlyDeletedRow from '@/components/tt/RecentlyDeletedRow';
+import RecentlyDeletedSheet from '@/components/tt/RecentlyDeletedSheet';
+import { useToast } from '@/components/ui/use-toast';
 const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 const TYPE_FILTER_KEYS = [{ key: 'all', tk: 'common.all' }, ...JOURNEY_TYPES.map((t) => ({ key: t.key, tk: `journeyTypes.${t.key}` }))];
 
@@ -90,13 +95,47 @@ export default function GatheringJourney() {
     try {
       const data = await base44.entities.JourneyItem.filter({ gathering_id: gatheringId });
       data.sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0));
-      setItems(data);
+      // Soft-deleted segments moved to Recently deleted never reach the list,
+      // map, day totals or summaries.
+      setItems(activeRecords(data));
     } catch (e) {
       if (!silent) setError(e);
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => { load(); }, [gatheringId]);
   usePolling(() => load(true), 25000);
+
+  // Recoverable deletes: soft-deleted segments stay restorable for 30 days.
+  // The queries above never return them, so a restore simply reappears in its
+  // original date group on the next load.
+  const deleted = useRecentlyDeleted('JourneyItem', gatheringId);
+  const [deletedOpen, setDeletedOpen] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+  const { toast } = useToast();
+
+  // An Undo fired on the detail page (its toast survives the navigation back
+  // here) asks this list to refresh immediately instead of waiting for polling.
+  useEffect(() => {
+    const onRestored = () => { load(true); deleted.reload(); };
+    window.addEventListener('tt-journey-restored', onRestored);
+    return () => window.removeEventListener('tt-journey-restored', onRestored);
+  }, [deleted.reload]);
+
+  async function restoreItem(it) {
+    setRestoringId(it.id);
+    try {
+      const res = await base44.functions.invoke('restoreJourneyItem', { gathering_id: gatheringId, item_id: it.id });
+      const data = res?.data || res;
+      if (data?.error) throw { message: data.error };
+      await Promise.all([deleted.reload(), load(true)]);
+      toast({ title: t('recentlyDeleted.restored'), description: t('recentlyDeleted.restoredDesc', { title: it.title }) });
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.data?.error || e?.message || t('recentlyDeleted.restoreFailed');
+      toast({ variant: 'destructive', title: t('recentlyDeleted.restoreFailed'), description: msg });
+    } finally {
+      setRestoringId(null);
+    }
+  }
 
   // Save the FULL journey items to the offline cache after a successful load
   // (the context's journeyItems are minimal date-range projections, not the
@@ -352,6 +391,11 @@ export default function GatheringJourney() {
               <Button size="sm" onClick={() => navigate('/inbox')} className="shrink-0">{t('journey.openInbox')}</Button>
             </div>
           )}
+          <RecentlyDeletedRow
+            count={deleted.items.length}
+            label={t('recentlyDeleted.openAction')}
+            onClick={() => setDeletedOpen(true)}
+          />
         </>
       )}
     </>
@@ -394,6 +438,22 @@ export default function GatheringJourney() {
         // both share the row height and line up 1:1 top and bottom.
         renderList(true)
       ) : renderList(false)}
+
+      <RecentlyDeletedSheet
+        open={deletedOpen}
+        onClose={() => setDeletedOpen(false)}
+        title={t('recentlyDeleted.journeyTitle')}
+        items={deleted.items.map((it) => ({
+          id: it.id,
+          title: it.title || t('common.untitled'),
+          meta: `${t(`journeyTypes.${it.type || 'other'}`)}${it.start_datetime ? ` · ${new Date(it.start_datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`,
+          deletedAt: it.deleted_at,
+        }))}
+        loading={deleted.loading}
+        onRestore={restoreItem}
+        restoringId={restoringId}
+        emptyLabel={t('recentlyDeleted.journeyEmpty')}
+      />
     </PageToolbar>
   );
 }

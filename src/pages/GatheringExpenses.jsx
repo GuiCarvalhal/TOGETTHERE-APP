@@ -18,6 +18,12 @@ import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, Scale, FileText } 
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import { useI18n } from '@/lib/i18n';
+import { softDeleteFields, restoreFields } from '@/lib/softDelete';
+import useRecentlyDeleted from '@/hooks/useRecentlyDeleted';
+import RecentlyDeletedRow from '@/components/tt/RecentlyDeletedRow';
+import RecentlyDeletedSheet from '@/components/tt/RecentlyDeletedSheet';
+import { useToast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 
 // Journey-style timeline skeleton: dashboard + nav placeholders, then the rail
 // with day markers and rows (medallion + amount block + card) so loading reads
@@ -74,6 +80,12 @@ export default function GatheringExpenses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [catFilter, setCatFilter] = useState('all');
+  // Recoverable deletes: soft-deleted expenses stay restorable for 30 days and
+  // are already excluded from every figure by the data layer.
+  const deleted = useRecentlyDeleted('Expense', gatheringId);
+  const [deletedOpen, setDeletedOpen] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+  const { toast } = useToast();
   // Phone + tablet-portrait keep this single column (unchanged). Desktop
   // (landscape tablet / laptop / monitor) uses the Journey model: the card
   // timeline on the left and a pinned summary panel on the right.
@@ -135,10 +147,35 @@ export default function GatheringExpenses() {
   // are unavailable). displayFor always returns the currency matching the amount.
   const railDisplay = (exp) => displayFor(exp);
 
+  // Soft delete: the expense is flagged, never removed, so it leaves every
+  // list/total/balance at once while Undo (and Recently deleted) can bring it
+  // back with its splits, date and family-unit attribution intact.
   async function deleteExpense(exp) {
-    await base44.entities.ExpenseSplit.deleteMany({ expense_id: exp.id });
-    await base44.entities.Expense.delete(exp.id);
-    d.reload();
+    await base44.entities.Expense.update(exp.id, softDeleteFields(currentMember?.user_id));
+    await Promise.all([d.reload(), deleted.reload()]);
+    toast({
+      title: t('recentlyDeleted.expenseDeleted'),
+      description: t('recentlyDeleted.expenseDeletedDesc', { title: exp.title }),
+      duration: 10000,
+      action: (
+        <ToastAction altText={t('recentlyDeleted.undo')} onClick={() => restoreExpense(exp)}>
+          {t('recentlyDeleted.undo')}
+        </ToastAction>
+      ),
+    });
+  }
+
+  async function restoreExpense(exp) {
+    setRestoringId(exp.id);
+    try {
+      await base44.entities.Expense.update(exp.id, restoreFields());
+      await Promise.all([d.reload(), deleted.reload()]);
+      toast({ title: t('recentlyDeleted.restored'), description: t('recentlyDeleted.restoredDesc', { title: exp.title }) });
+    } catch (e) {
+      toast({ variant: 'destructive', title: t('recentlyDeleted.restoreFailed'), description: e?.message });
+    } finally {
+      setRestoringId(null);
+    }
   }
 
   const graphRow = (
@@ -248,6 +285,11 @@ export default function GatheringExpenses() {
             ))}
           </Timeline>
         )}
+        <RecentlyDeletedRow
+          count={deleted.items.length}
+          label={t('recentlyDeleted.openAction')}
+          onClick={() => setDeletedOpen(true)}
+        />
       </section>
 
       </div>
@@ -264,6 +306,25 @@ export default function GatheringExpenses() {
           onDelete={() => deleteExpense(editing)}
         />
       )}
+
+      <RecentlyDeletedSheet
+        open={deletedOpen}
+        onClose={() => setDeletedOpen(false)}
+        title={t('recentlyDeleted.expenseTitle')}
+        items={deleted.items.map((exp) => ({
+          id: exp.id,
+          title: exp.title || t('common.untitled'),
+          meta: `${fmt.formatCurrency(exp.amount, exp.currency || 'USD')}${exp.date ? ` · ${exp.date}` : ''}`,
+          deletedAt: exp.deleted_at,
+        }))}
+        loading={deleted.loading}
+        onRestore={(it) => {
+          const exp = deleted.items.find((e) => e.id === it.id);
+          if (exp) restoreExpense(exp);
+        }}
+        restoringId={restoringId}
+        emptyLabel={t('recentlyDeleted.expenseEmpty')}
+      />
     </PageToolbar>
   );
 }

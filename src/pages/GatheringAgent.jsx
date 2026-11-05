@@ -124,7 +124,8 @@ export default function GatheringAgent() {
     let active = true;
     (async () => {
       try {
-        const list = await base44.entities.JourneyItem.filter({ gathering_id: gatheringId });
+        const list = (await base44.entities.JourneyItem.filter({ gathering_id: gatheringId }))
+          .filter((i) => i.is_deleted !== true);
         if (active) setJourneyItems(list);
       } catch { /* ignore — base map just won't draw */ }
     })();

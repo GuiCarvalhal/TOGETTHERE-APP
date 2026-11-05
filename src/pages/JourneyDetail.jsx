@@ -15,6 +15,7 @@ import Skeleton from '@/components/tt/Skeleton';
 import { Button } from '@/components/ui/button';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useToast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Clock, ArrowRightLeft, Loader2, Pencil, Trash2 } from 'lucide-react';
 import MoveSegmentSheet from '@/components/journey/MoveSegmentSheet';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
@@ -87,14 +88,42 @@ export default function JourneyDetail() {
     setEditing(true);
   }, [item, role, currentMember]);
 
+  // Undo runs from the toast, which outlives this page (we navigate back to the
+  // journey list right after deleting), so it must not depend on local state.
+  async function undoDelete(title) {
+    try {
+      const res = await base44.functions.invoke('restoreJourneyItem', { gathering_id: gatheringId, item_id: itemId });
+      const data = res?.data || res;
+      if (data?.error) throw { message: data.error };
+      window.dispatchEvent(new Event('tt-journey-restored'));
+      toast({ title: t('recentlyDeleted.restored'), description: t('recentlyDeleted.restoredDesc', { title }) });
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.data?.error || e?.message || t('recentlyDeleted.restoreFailed');
+      toast({ variant: 'destructive', title: t('recentlyDeleted.restoreFailed'), description: msg });
+    }
+  }
+
   async function handleDelete() {
-    if (!confirm(t('journeyDetail.deleteConfirm'))) return;
+    if (!confirm(t('recentlyDeleted.journeyConfirm'))) return;
     setDeleting(true);
     try {
       const res = await base44.functions.invoke('deleteJourneyItem', { gathering_id: gatheringId, item_id: itemId });
       const data = res?.data || res;
       if (data?.error) throw { message: data.error };
-      toast({ title: t('journeyDetail.segmentDeleted'), description: t('journeyDetail.segmentDeletedDesc', { title: item?.title || t('journeyTypes.other') }) });
+      const title = item?.title || t('journeyTypes.other');
+      // Soft delete + immediate Undo (10s window) — separate from the
+      // "Recently deleted" list, which keeps the same item restorable for 30
+      // days if the undo window is missed.
+      toast({
+        title: t('recentlyDeleted.journeyDeleted'),
+        description: t('recentlyDeleted.journeyDeletedDesc', { title }),
+        duration: 10000,
+        action: (
+          <ToastAction altText={t('recentlyDeleted.undo')} onClick={() => undoDelete(title)}>
+            {t('recentlyDeleted.undo')}
+          </ToastAction>
+        ),
+      });
       navigate(`/gathering/${gatheringId}/journey`);
     } catch (e) {
       const msg = e?.response?.data?.error || e?.data?.error || e?.message || t('journeyDetail.couldNotDelete');

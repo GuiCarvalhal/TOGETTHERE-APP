@@ -57,7 +57,7 @@ export default async function(req) {
       previews[gid] = overlaidMs
         .map((m) => ({ full_name: m.full_name, photo: m.photo, role: m.role }))
         .slice(0, 8);
-      itemsByGathering[gid] = (its || []).map((it) => ({
+      itemsByGathering[gid] = (its || []).filter((it) => it.is_deleted !== true).map((it) => ({
         type: it.type || null,
         start_datetime: it.start_datetime || null,
         end_datetime: it.end_datetime || null,

@@ -74,7 +74,8 @@ export default function AgentPlaceDetail() {
     let active = true;
     (async () => {
       try {
-        const items = await base44.entities.JourneyItem.filter({ gathering_id: gatheringId });
+        const items = (await base44.entities.JourneyItem.filter({ gathering_id: gatheringId }))
+          .filter((i) => i.is_deleted !== true);
         if (!active) return;
         const target = place.name.trim().toLowerCase();
         const match = items.find((it) =>

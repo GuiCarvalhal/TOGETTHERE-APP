@@ -230,7 +230,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   }
 
   async function handleDelete() {
-    if (!confirm(t('expenseForm.deleteConfirm'))) return;
+    if (!confirm(t('recentlyDeleted.expenseConfirm'))) return;
     setDeleting(true);
     try {
       await onDelete();
