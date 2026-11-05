@@ -14,6 +14,7 @@ import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
 import { useDeviceLayout } from '@/hooks/useDeviceLayout';
+import { useStickyBarHeight, deskTopOffset, deskPanelHeight } from '@/hooks/useStickyBarHeight';
 import useJourneyDayTotals from '@/hooks/useJourneyDayTotals';
 import { itemRouteNumbers } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
@@ -60,17 +61,7 @@ export default function GatheringJourney() {
   // Measured height of the pinned toolbar, so the desktop map layer pins with
   // the exact same offset — toolbar + map read as one fixed block and the map
   // never scrolls itself.
-  const [barH, setBarH] = useState(92);
-  useEffect(() => {
-    if (!isDesktop) return;
-    const el = document.querySelector('[data-sticky-toolbar]');
-    if (!el) return;
-    const update = () => setBarH(el.offsetHeight);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [isDesktop]);
+  const barH = useStickyBarHeight(isDesktop);
   const isViewer = role === 'viewer';
   // Viewers get forced Group scope, map OFF, images ON — the map/images
   // toggles are hidden but the effective values still drive the content
@@ -330,16 +321,17 @@ export default function GatheringJourney() {
                       </div>
                       {pairRight && (
                         <div className="col-span-2 min-w-0">
-                          {/* A stay renders ONE extension: its check-out row is
-                              the same record as the check-in row above. */}
-                          {entry.leg !== 'check-out' && (
-                            <JourneyExtensionCard
-                              item={entry.item}
-                              gatheringId={gatheringId}
-                              attendees={itemParticipants(entry.item, memberById)}
-                              canEdit={canEditJourneyItem(role, entry.item, currentMember)}
-                            />
-                          )}
+                          {/* Every timeline row gets its extension, check-out
+                              included. The check-out one is rendered lean inside
+                              the card (no duplicated map/date range/people), so
+                              the 1:1 row alignment is untouched. */}
+                          <JourneyExtensionCard
+                            item={entry.item}
+                            gatheringId={gatheringId}
+                            attendees={itemParticipants(entry.item, memberById)}
+                            canEdit={canEditJourneyItem(role, entry.item, currentMember)}
+                            leg={entry.leg}
+                          />
                         </div>
                       )}
                     </React.Fragment>
@@ -378,18 +370,20 @@ export default function GatheringJourney() {
         // highlights that segment in place (no camera change).
         <div
           className="grid grid-cols-3 gap-6 items-start"
-          style={{ '--tt-desk-top': `calc(3rem + env(safe-area-inset-top) + ${barH}px)` }}
+          style={{ '--tt-desk-top': deskTopOffset(barH) }}
         >
           <div className="col-span-1 min-w-0">{renderList(false)}</div>
           <div className="col-span-2 min-w-0 sticky" style={{ top: 'var(--tt-desk-top)' }}>
-            <div className="flex flex-col" style={{ height: 'calc(100vh - var(--tt-desk-top) - 1.25rem)' }}>
+            {/* Fits the band between the pinned toolbar and the bottom dock
+                exactly, so the panel never overflows and has no inner scroll. */}
+            <div className="flex flex-col" style={{ height: deskPanelHeight() }}>
               <JourneyMapPanel
                 items={filteredMapItems}
                 gatheringId={gatheringId}
                 itemsPending={itemCoordsPending}
                 highlightItemId={hoverId}
                 className="h-full flex flex-col"
-                heightClass="flex-1 min-h-[240px]"
+                heightClass="flex-1 min-h-0"
               />
             </div>
           </div>

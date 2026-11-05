@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { canManageMembers, canInviteMembers, ROLES } from '@/lib/gatheringHelpers';
+import { canManageMembers, canInviteMembers } from '@/lib/gatheringHelpers';
 import MemberRow from '@/components/members/MemberRow';
 import MemberDetailsCard from '@/components/members/MemberDetailsCard';
 import MemberDetailSheet from '@/components/members/MemberDetailSheet';
 import PageToolbar from '@/components/tt/PageToolbar';
+import { useDeviceLayout } from '@/hooks/useDeviceLayout';
 import FilterChips from '@/components/tt/FilterChips';
 import DetailSwitcher from '@/components/tt/DetailSwitcher';
 import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UserPlus, Loader2, Users, X, User, Link2, Eye, Copy, Check } from 'lucide-react';
+import { UserPlus, Users, X, User, Link2, Eye, Copy, Check } from 'lucide-react';
 import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 import Skeleton from '@/components/tt/Skeleton';
@@ -37,7 +38,10 @@ function MembersSkeleton() {
   );
 }
 
-function MemberSection({ title, count, icon, children }) {
+// `grid` lays the rows out in two columns — used on desktop (landscape tablet /
+// laptop / monitor) so the directory uses the lateral space; phones and
+// portrait tablets keep the single stacked column.
+function MemberSection({ title, count, icon, children, grid = false }) {
   if (!children || (Array.isArray(children) && children.length === 0)) return null;
   return (
     <section className="space-y-2.5">
@@ -46,7 +50,7 @@ function MemberSection({ title, count, icon, children }) {
         <h3 className="tt-label text-ink-deep/55">{title}</h3>
         <span className="text-xs text-ink-deep/40">· {count}</span>
       </div>
-      <div className="space-y-3">{children}</div>
+      <div className={grid ? 'grid grid-cols-2 gap-3 items-start' : 'space-y-3'}>{children}</div>
     </section>
   );
 }
@@ -67,6 +71,9 @@ export default function GatheringMembers() {
   const [activeMember, setActiveMember] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [copied, setCopied] = useState('');
+  // Same device model as Journey/Expenses/Agent: phone and tablet-portrait keep
+  // the stacked list; desktop (landscape tablet included) uses two columns.
+  const isDesktop = useDeviceLayout() === 'desktop';
 
   const canManage = canManageMembers(role);
   const canInvite = canInviteMembers(role);
@@ -189,7 +196,7 @@ export default function GatheringMembers() {
               )}
             </MemberSection>
           )}
-          <MemberSection title={t('members.everyone')} count={others.length} icon={<Users className="w-3.5 h-3.5 text-terra-deep" />}>
+          <MemberSection title={t('members.everyone')} count={others.length} icon={<Users className="w-3.5 h-3.5 text-terra-deep" />} grid={isDesktop && others.length > 1}>
             {others.map((m) => (
               detailMode === 'details' ? (
                 <MemberDetailsCard key={m.id} member={m} family={familyByUid[m.user_id] || null} isSelf={m.id === currentMember?.id} gatheringId={gatheringId} onOpen={() => { setActiveMember(m); setSheetOpen(true); }} />

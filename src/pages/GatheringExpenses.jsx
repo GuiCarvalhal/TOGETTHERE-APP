@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
+import { useDeviceLayout } from '@/hooks/useDeviceLayout';
+import { useStickyBarHeight, deskTopOffset } from '@/hooks/useStickyBarHeight';
 import { canSeeExpenses, canAddExpense, EXPENSE_CATEGORIES, mineExpenses } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseTimelineCard from '@/components/tt/cards/ExpenseTimelineCard';
@@ -72,6 +74,11 @@ export default function GatheringExpenses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [catFilter, setCatFilter] = useState('all');
+  // Phone + tablet-portrait keep this single column (unchanged). Desktop
+  // (landscape tablet / laptop / monitor) uses the Journey model: the card
+  // timeline on the left and a pinned summary panel on the right.
+  const isDesktop = useDeviceLayout() === 'desktop';
+  const barH = useStickyBarHeight(isDesktop);
 
   // No floating Add button — the sticky PageToolbar Add button is the single
   // entry point, matching the Journey page.
@@ -161,9 +168,9 @@ export default function GatheringExpenses() {
       canAdd={canAddExpense(role)}
       filterRow={<FilterChips options={CAT_FILTER_OPTIONS} value={catFilter} onChange={setCatFilter} />}
     >
-      <div className="space-y-5">
+      <div className={isDesktop ? 'grid grid-cols-3 gap-6 items-start' : 'space-y-5'} style={isDesktop ? { '--tt-desk-top': deskTopOffset(barH) } : undefined}>
       {/* Compact summary: group total, your balance, currency, balance + statement */}
-      <section className="tt-card p-4 space-y-3">
+      <section className={`tt-card p-4 space-y-3${isDesktop ? ' col-span-1 order-2 self-start sticky' : ''}`} style={isDesktop ? { top: 'var(--tt-desk-top)' } : undefined}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="tt-label text-ink-deep/40">{t('expenses.groupTotal')}</p>
@@ -200,7 +207,7 @@ export default function GatheringExpenses() {
       </section>
 
       {/* Expense timeline — same rail, day markers and card rhythm as Journey */}
-      <section>
+      <section className={isDesktop ? 'col-span-2 order-1 min-w-0' : undefined}>
         <h3 className="tt-label text-foreground/50 mb-2.5">{scope === 'mine' ? t('expenses.yourExpenses') : t('expenses.allExpenses')}</h3>
         {filteredExpenses.length === 0 ? (
           <EmptyState

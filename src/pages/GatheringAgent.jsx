@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
+import { useDeviceLayout } from '@/hooks/useDeviceLayout';
+import { useStickyBarHeight, deskTopOffset } from '@/hooks/useStickyBarHeight';
 import PageToolbar from '@/components/tt/PageToolbar';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
@@ -76,6 +78,11 @@ export default function GatheringAgent() {
   const [journeyInitial, setJourneyInitial] = useState(null);
   const [journeyItems, setJourneyItems] = useState([]);
   const navigate = useNavigate();
+  // Same device model as Journey/Expenses/Members: phone and tablet-portrait
+  // keep the stacked brief; desktop (landscape tablet included) splits into the
+  // place recommendations on the left and the pinned brief on the right.
+  const isDesktop = useDeviceLayout() === 'desktop';
+  const barH = useStickyBarHeight(isDesktop);
 
   // Day scope handed over by the Journey page's per-day "Agent" button
   // (?day=YYYY-MM-DD). Same page, same layout — only the brief's scope narrows
@@ -283,6 +290,92 @@ export default function GatheringAgent() {
     ))
   ) : null;
 
+  // Brief groups, kept as individual nodes so the phone order stays exactly as
+  // before (today -> vibe -> eat -> do -> tasks -> good-to-know) while the
+  // desktop split can put the contextual ones in the right column.
+  const hasBrief = !!data && phase !== 'ended' && phase !== 'no_participants';
+
+  const secToday = hasBrief && showToday && show('today') ? (
+    <section>
+      <SectionHeader icon={CalendarDays} title={dayScope ? t('agent.dayPicks') : t('agent.todaysPicks')} />
+      <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
+        {t(dayScope ? 'agent.dayPicksFits' : 'agent.todaysFits', {
+          date: dayLabel,
+          items: data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : '',
+        })}
+      </p>
+      <Timeline>
+        <div className="space-y-3">
+          {todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catToday')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catToday'), place: p })) : undefined} />)}
+        </div>
+      </Timeline>
+    </section>
+  ) : null;
+
+  const secVibe = hasBrief && show('info') && data.vibe ? <VibeCard vibe={data.vibe} /> : null;
+
+  const secEat = hasBrief && show('eat') && eatPlaces.length > 0 ? (
+    <section>
+      <SectionHeader icon={UtensilsCrossed} title={t('agent.whereToEat')} count={eatPlaces.length} />
+      <Timeline>
+        <div className="space-y-3">
+          {eatPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catEat')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catEat'), place: p })) : undefined} />)}
+        </div>
+      </Timeline>
+    </section>
+  ) : null;
+
+  const secDo = hasBrief && show('do') && doPlaces.length > 0 ? (
+    <section>
+      <SectionHeader icon={Compass} title={t('agent.whatToDo')} count={doPlaces.length} />
+      <Timeline>
+        <div className="space-y-3">
+          {doPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catDo')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catDo'), place: p })) : undefined} />)}
+        </div>
+      </Timeline>
+    </section>
+  ) : null;
+
+  const secTasks = hasBrief && show('tasks') ? (
+    <section className="space-y-3">
+      <div>
+        <SectionHeader icon={ClipboardList} title={t('agent.tripTasks')} />
+        <TaskChecklist tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} loading={loadingTasks} />
+      </div>
+      {suggestedTasks.length > 0 && (
+        <div>
+          <p className="tt-label text-ink-deep/45 mb-2">{t('agent.suggestedTasks')}</p>
+          <div className="space-y-2">
+            {suggestedTasks.map((task, i) => {
+              const added = savedTaskTitles.has(task.text);
+              return (
+                <div key={i} className="tt-card p-3 flex items-center gap-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-ink-deep leading-snug">{task.text}</p>
+                    <span className="text-[0.625rem] text-ink-deep/45 capitalize">{task.category}</span>
+                  </div>
+                  {added ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] text-xs font-semibold shrink-0">
+                      <Check className="w-3.5 h-3.5" /> {t('agent.added')}
+                    </span>
+                    ) : (
+                    <Button size="sm" onClick={() => createTask(task.text)} className="shrink-0">
+                      <Plus /> {t('common.add')}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </section>
+  ) : null;
+
+  const secGoodToKnow = hasBrief && show('info') && data.goodToKnow
+    ? <GoodToKnowCard goodToKnow={data.goodToKnow} rate={data.rate} />
+    : null;
+
   return (
     <PageToolbar switcher={lengthSwitcher} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
       <div className="space-y-5">
@@ -339,88 +432,32 @@ export default function GatheringAgent() {
           </div>
         )}
 
-        {data && phase !== 'ended' && phase !== 'no_participants' && (
-          <div className="space-y-5">
-            {showToday && show('today') && (
-              <section>
-                <SectionHeader icon={CalendarDays} title={dayScope ? t('agent.dayPicks') : t('agent.todaysPicks')} />
-                <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
-                  {t(dayScope ? 'agent.dayPicksFits' : 'agent.todaysFits', {
-                    date: dayLabel,
-                    items: data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : '',
-                  })}
-                </p>
-                <Timeline>
-                  <div className="space-y-3">
-                    {todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catToday')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catToday'), place: p })) : undefined} />)}
-                  </div>
-                </Timeline>
-              </section>
-            )}
-
-            {show('info') && data.vibe && <VibeCard vibe={data.vibe} />}
-
-            {show('eat') && eatPlaces.length > 0 && (
-              <section>
-                <SectionHeader icon={UtensilsCrossed} title={t('agent.whereToEat')} count={eatPlaces.length} />
-                <Timeline>
-                  <div className="space-y-3">
-                    {eatPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catEat')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catEat'), place: p })) : undefined} />)}
-                  </div>
-                </Timeline>
-              </section>
-            )}
-
-            {show('do') && doPlaces.length > 0 && (
-              <section>
-                <SectionHeader icon={Compass} title={t('agent.whatToDo')} count={doPlaces.length} />
-                <Timeline>
-                  <div className="space-y-3">
-                    {doPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catDo')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catDo'), place: p })) : undefined} />)}
-                  </div>
-                </Timeline>
-              </section>
-            )}
-
-            {show('tasks') && (
-              <section className="space-y-3">
-                <div>
-                  <SectionHeader icon={ClipboardList} title={t('agent.tripTasks')} />
-                  <TaskChecklist tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} loading={loadingTasks} />
-                </div>
-                {suggestedTasks.length > 0 && (
-                  <div>
-                    <p className="tt-label text-ink-deep/45 mb-2">{t('agent.suggestedTasks')}</p>
-                    <div className="space-y-2">
-                      {suggestedTasks.map((task, i) => {
-                        const added = savedTaskTitles.has(task.text);
-                        return (
-                          <div key={i} className="tt-card p-3 flex items-center gap-2.5">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm text-ink-deep leading-snug">{task.text}</p>
-                              <span className="text-[0.625rem] text-ink-deep/45 capitalize">{task.category}</span>
-                            </div>
-                            {added ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#4a8b6f]/12 text-[#3f7a5e] text-xs font-semibold shrink-0">
-                                <Check className="w-3.5 h-3.5" /> {t('agent.added')}
-                              </span>
-                              ) : (
-                              <Button size="sm" onClick={() => createTask(task.text)} className="shrink-0">
-                                <Plus /> {t('common.add')}
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {show('info') && data.goodToKnow && <GoodToKnowCard goodToKnow={data.goodToKnow} rate={data.rate} />}
+        {hasBrief && (isDesktop ? (
+          // Desktop / landscape tablet: recommendations on the left, the
+          // contextual brief (vibe, tasks, good-to-know) pinned on the right.
+          // Header + filters + panel stay put; only the left column scrolls.
+          <div className="grid grid-cols-3 gap-6 items-start" style={{ '--tt-desk-top': deskTopOffset(barH) }}>
+            <div className="col-span-2 min-w-0 space-y-5">
+              {secToday}
+              {secEat}
+              {secDo}
+            </div>
+            <div className="col-span-1 min-w-0 self-start sticky space-y-5" style={{ top: 'var(--tt-desk-top)' }}>
+              {secVibe}
+              {secTasks}
+              {secGoodToKnow}
+            </div>
           </div>
-        )}
+        ) : (
+          <div className="space-y-5">
+            {secToday}
+            {secVibe}
+            {secEat}
+            {secDo}
+            {secTasks}
+            {secGoodToKnow}
+          </div>
+        ))}
       </div>
 
       {journeyInitial && (

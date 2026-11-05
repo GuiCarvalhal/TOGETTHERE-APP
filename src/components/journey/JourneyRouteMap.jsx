@@ -86,7 +86,10 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
           fullscreenControl: false,
           zoomControl: true,
           clickableIcons: false,
-          gestureHandling: 'greedy',
+          // Cooperative: a wheel/touch drag over the map scrolls the PAGE
+          // instead of panning the map, so the pinned panel never moves on its
+          // own. Ctrl/⌘ + wheel (or two fingers) still pans/zooms on purpose.
+          gestureHandling: 'cooperative',
           center: { lat: 20, lng: 0 },
           zoom: 2,
         });
