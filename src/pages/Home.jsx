@@ -373,6 +373,22 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Legal footer — the privacy policy link is a discoverability
+          requirement for the Google OAuth verification. */}
+      <footer className="max-w-6xl mx-auto px-4 sm:px-6 pb-10">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-foreground/50">
+          <p>© {new Date().getFullYear()} TOGETTHERE</p>
+          <nav className="flex items-center gap-4">
+            <Link to="/how-it-works" className="hover:text-foreground hover:underline">
+              {t('home.howItWorks')}
+            </Link>
+            <Link to="/privacy-policy" className="hover:text-foreground hover:underline">
+              Privacy Policy
+            </Link>
+          </nav>
+        </div>
+      </footer>
+
     </div>
   );
 }

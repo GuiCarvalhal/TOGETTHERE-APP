@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import ThemeToggle from "@/components/tt/ThemeToggle";
 
 export default function AuthLayout({ icon: Icon, title, subtitle, footer, header, children }) {
@@ -23,6 +24,11 @@ export default function AuthLayout({ icon: Icon, title, subtitle, footer, header
         {footer && (
           <p className="text-center text-sm text-muted-foreground mt-6">{footer}</p>
         )}
+        {/* Public legal link — reachable from every signed-out screen, which is
+            where Google's OAuth verification looks for it. */}
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          <Link to="/privacy-policy" className="hover:underline">Privacy Policy</Link>
+        </p>
       </div>
     </div>
   );
