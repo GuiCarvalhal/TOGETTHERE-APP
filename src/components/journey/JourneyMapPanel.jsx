@@ -16,16 +16,16 @@ import { itemWaypoints } from '@/lib/journeyMap';
 export default function JourneyMapPanel({
   items, gatheringId,
   suggestions = [], suggestionsWithoutCoords = 0, suggestionsPending = 0, itemsPending = 0,
-  heightClass,
+  heightClass, highlightItemId = null, className = '', style,
 }) {
   const mappableCount = items.filter((it) => itemWaypoints(it).length > 0).length;
   const unmappedCount = items.length - mappableCount;
   const hasAnything = mappableCount > 0 || suggestions.length > 0 || suggestionsPending > 0 || itemsPending > 0;
 
   return (
-    <div className="tt-card p-3">
+    <div className={`tt-card p-3 ${className}`} style={style}>
       {!hasAnything ? (
-        <div className="flex flex-col items-center justify-center text-center py-5 px-4">
+        <div className="flex flex-col items-center justify-center text-center py-5 px-4 flex-1">
           <MapPin className="w-6 h-6 text-terra/40 mb-1.5" />
           <p className="text-xs text-ink-deep/70">No locations to map yet.</p>
           <p className="text-[11px] text-ink-deep/50 mt-0.5">Add flights or places to your journey to see them here.</p>
@@ -37,6 +37,7 @@ export default function JourneyMapPanel({
             gatheringId={gatheringId}
             suggestions={suggestions}
             heightClass={heightClass}
+            highlightItemId={highlightItemId}
           />
           <div className="mt-2 space-y-1">
             {itemsPending > 0 && (

@@ -11,7 +11,7 @@ import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import DailyTravelSummary from '@/components/journey/DailyTravelSummary';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
-import JourneyFocusPanel from '@/components/journey/JourneyFocusPanel';
+import JourneyExtensionsPanel from '@/components/journey/JourneyExtensionsPanel';
 import DayAgentButton from '@/components/journey/DayAgentButton';
 import { useDeviceLayout } from '@/hooks/useDeviceLayout';
 import useJourneyDayTotals from '@/hooks/useJourneyDayTotals';
@@ -51,11 +51,26 @@ export default function GatheringJourney() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
-  // Desktop only: which segment feeds the right-hand contextual panel. Phones
-  // and portrait tablets never use it (their cards navigate as before).
-  const [selectedId, setSelectedId] = useState(null);
+  // Desktop only: the segment hovered in the list, highlighted in place on the
+  // route map (never a zoom/fit change — the overview stays put). Phones and
+  // portrait tablets have no hover, so it stays null there.
+  const [hoverId, setHoverId] = useState(null);
   const layout = useDeviceLayout();
   const isDesktop = layout === 'desktop';
+  // Measured height of the pinned toolbar, so the desktop map layer pins with
+  // the exact same offset — toolbar + map read as one fixed block and the map
+  // never scrolls itself.
+  const [barH, setBarH] = useState(92);
+  useEffect(() => {
+    if (!isDesktop) return;
+    const el = document.querySelector('[data-sticky-toolbar]');
+    if (!el) return;
+    const update = () => setBarH(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isDesktop]);
   const isViewer = role === 'viewer';
   // Viewers get forced Group scope, map OFF, images ON — the map/images
   // toggles are hidden but the effective values still drive the content
@@ -202,8 +217,11 @@ export default function GatheringJourney() {
       itemsPending={itemCoordsPending}
     />
   );
-  // Desktop right column: the segment picked in the list (null = nothing yet).
-  const selectedItem = filteredItems.find((it) => it.id === selectedId) || null;
+  // Desktop right column (map OFF): one extension per visible segment, in the
+  // same chronological order as the timeline — every segment on screen at once
+  // instead of a single selected one. A stay appears once (its check-in and
+  // check-out legs are the same record).
+  const extensionItems = [...filteredItems].sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0));
 
   if (loading) return (
     <div className="space-y-5">
@@ -293,24 +311,24 @@ export default function GatheringJourney() {
                 </div>
                 <DailyTravelSummary total={dayTotals[day]} loading={dayTotalsLoading} />
                 <div className="space-y-3">
-                  {byDay[day].map((entry) => {
-                    const selected = isDesktop && selectedId === entry.item.id;
-                    return (
-                      <div key={entry.key} className={selected ? 'rounded-2xl ring-2 ring-terra/45 ring-offset-2 ring-offset-background' : undefined}>
-                        <JourneyCard
-                          item={entry.item}
-                          leg={entry.leg}
-                          typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
-                          icon={journeyIcon(entry.item.type)}
-                          participants={itemParticipants(entry.item, memberById)}
-                          showImages={effectiveImages}
-                          routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
-                          to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
-                          onSelect={isDesktop ? () => setSelectedId(entry.item.id) : undefined}
-                        />
-                      </div>
-                    );
-                  })}
+                  {byDay[day].map((entry) => (
+                    <div
+                      key={entry.key}
+                      onMouseEnter={isDesktop && effectiveMapOpen ? () => setHoverId(entry.item.id) : undefined}
+                      onMouseLeave={isDesktop && effectiveMapOpen ? () => setHoverId(null) : undefined}
+                    >
+                      <JourneyCard
+                        item={entry.item}
+                        leg={entry.leg}
+                        typeColor={TYPE_COLOR[entry.item.type] || TYPE_COLOR.other}
+                        icon={journeyIcon(entry.item.type)}
+                        participants={itemParticipants(entry.item, memberById)}
+                        showImages={effectiveImages}
+                        routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
+                        to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -333,23 +351,42 @@ export default function GatheringJourney() {
   );
 
   // Phone + tablet-portrait: the list is the page (unchanged). Desktop +
-  // tablet-landscape: 1/3 list / 2/3 contextual panel, the panel following the
-  // existing map toggle (map on -> route map, map off -> selected segment).
+  // tablet-landscape: 1/3 list / 2/3 right pane, following the existing map
+  // toggle (map on -> route map layer with hover highlight, map off ->
+  // extensions of every visible segment).
   return (
     <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={isDesktop ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
       {isDesktop ? (
-        <div className="grid grid-cols-3 gap-6 items-start">
+        // Desktop / landscape tablet. Toolbar + map form ONE fixed block (the
+        // map pins at the toolbar's measured height and has no scroll of its
+        // own); only the card column scrolls.
+        //  - map ON : the map is a layer replacing the extensions column, and
+        //             hovering a card highlights that segment in place.
+        //  - map OFF: extensions of EVERY visible segment, travelling with the
+        //             list so each stays beside its card.
+        <div
+          className="grid grid-cols-3 gap-6 items-start"
+          style={{ '--tt-desk-top': `calc(3rem + env(safe-area-inset-top) + ${barH}px)` }}
+        >
           <div className="col-span-1 min-w-0">{listContent}</div>
-          <div className="col-span-2 min-w-0 sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto tt-no-scrollbar">
-            <JourneyFocusPanel
-              item={selectedItem}
-              items={filteredMapItems}
-              gatheringId={gatheringId}
-              mapOpen={effectiveMapOpen}
-              itemsPending={itemCoordsPending}
-              participants={selectedItem ? itemParticipants(selectedItem, memberById) : []}
-              to={selectedItem ? `/gathering/${gatheringId}/journey/${selectedItem.id}` : undefined}
-            />
+          <div
+            className={`col-span-2 min-w-0 ${effectiveMapOpen ? 'sticky' : ''}`}
+            style={effectiveMapOpen ? { top: 'var(--tt-desk-top)' } : undefined}
+          >
+            {effectiveMapOpen ? (
+              <div className="flex flex-col" style={{ height: 'calc(100vh - var(--tt-desk-top) - 1.25rem)' }}>
+                <JourneyMapPanel
+                  items={filteredMapItems}
+                  gatheringId={gatheringId}
+                  itemsPending={itemCoordsPending}
+                  highlightItemId={hoverId}
+                  className="h-full flex flex-col"
+                  heightClass="flex-1 min-h-[240px]"
+                />
+              </div>
+            ) : (
+              <JourneyExtensionsPanel items={extensionItems} gatheringId={gatheringId} />
+            )}
           </div>
         </div>
       ) : listContent}

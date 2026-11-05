@@ -33,10 +33,12 @@ function escapeHtml(s) {
 //    enough. Clicking a suggestion pin keeps its info card + detail link.
 // Reuses the shared maps loader + getMapsConfig — no second integration.
 // Fails gracefully (never crashes the page).
-export default function JourneyRouteMap({ items, gatheringId, suggestions, heightClass = OVERLAY_VIEWPORT_CLASS }) {
+export default function JourneyRouteMap({ items, gatheringId, suggestions, heightClass = OVERLAY_VIEWPORT_CLASS, highlightItemId = null }) {
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'fallback'
+  // Hover highlight handle, set once the map exists (see applyHighlight below).
+  const highlightRef = useRef(null);
 
   const suggList = suggestions || [];
   const agentMode = suggList.length > 0;
@@ -104,17 +106,33 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
           strokeColor: '#fff', strokeWeight: 2,
         });
 
+        // Hover highlighting (desktop Journey map layer): pins are kept per item
+        // so hovering a card can enlarge/dim them in place. The camera (center,
+        // zoom, bounds) is never touched — the overview stays exactly as it was.
+        const entries = [];
+        const positionsByItem = new Map();
+        const hotIcon = () => ({
+          path: maps.SymbolPath.CIRCLE, scale: 19, fillColor: TERRA, fillOpacity: 1,
+          strokeColor: '#fff', strokeWeight: 3,
+        });
+        let hotPolyline = null;
+
         // Numbered confirmed pins — one per waypoint. Click → item detail.
         // In agent mode these render subdued and unnumbered (background route).
-        waypoints.forEach((w) => {
+        waypoints.forEach((w, wi) => {
           const pos = { lat: w.lat, lng: w.lng };
+          const baseIcon = agentMode ? subduedIcon() : confirmedIcon();
           const marker = new maps.Marker({
             position: pos, map,
             ...(agentMode
-              ? { icon: subduedIcon() }
-              : { icon: confirmedIcon(), label: { text: String(w.number), color: '#fff', fontSize: '11px', fontWeight: '700' } }),
+              ? { icon: baseIcon }
+              : { icon: baseIcon, label: { text: String(w.number), color: '#fff', fontSize: '11px', fontWeight: '700' } }),
           });
           bounds.extend(pos);
+          entries.push({ itemId: w.item.id, marker, base: baseIcon, hot: hotIcon(), z: wi + 1 });
+          const posList = positionsByItem.get(w.item.id) || [];
+          posList.push(pos);
+          positionsByItem.set(w.item.id, posList);
           marker.addListener('click', () => {
             const it = w.item;
             const tz = itemStartTz(it);
@@ -185,6 +203,29 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
         });
 
         if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+
+        // Highlight one item's pins + its own leg(s). No bounds/zoom change.
+        const applyHighlight = (id) => {
+          entries.forEach((e) => {
+            const active = !!id && e.itemId === id;
+            try {
+              e.marker.setIcon(active ? e.hot : e.base);
+              e.marker.setOpacity(id && !active ? 0.38 : 1);
+              e.marker.setZIndex(active ? 900 : e.z);
+            } catch { /* ignore */ }
+          });
+          if (hotPolyline) { try { hotPolyline.setMap(null); } catch { /* ignore */ } hotPolyline = null; }
+          const pts = id ? (positionsByItem.get(id) || []) : [];
+          if (pts.length >= 2) {
+            hotPolyline = new maps.Polyline({
+              path: pts, map, geodesic: true, strokeColor: TERRA, strokeOpacity: 1, strokeWeight: 6, zIndex: 800,
+            });
+            overlays.push(hotPolyline);
+          }
+        };
+        highlightRef.current = applyHighlight;
+        applyHighlight(highlightItemId);
+
         if (!cancelled) setStatus('ready');
       } catch {
         if (!cancelled) setStatus('fallback');
@@ -192,11 +233,17 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
     })();
     return () => {
       cancelled = true;
+      highlightRef.current = null;
       overlays.forEach((o) => { try { o.setMap(null); } catch { /* ignore */ } });
       if (infoWindow) { try { infoWindow.close(); } catch { /* ignore */ } }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapFingerprint, suggFingerprint, gatheringId, navigate]);
+
+  // Hover highlight only — never re-fits, re-centers or zooms the map.
+  useEffect(() => {
+    if (highlightRef.current) highlightRef.current(highlightItemId || null);
+  }, [highlightItemId]);
 
   return (
     <div className={`relative w-full ${heightClass} rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale`}>

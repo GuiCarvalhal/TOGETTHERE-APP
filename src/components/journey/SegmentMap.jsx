@@ -23,7 +23,7 @@ const TERRA = '#E05A47';
 // origin/destination/point are { lat, lng } (from the item's stored
 // from_place / to_place / place). `query` is the free-text fallback for the
 // embed. Mount one instance per item (parent keys it by item id).
-export default function SegmentMap({ origin, destination, point, query, isFlight }) {
+export default function SegmentMap({ origin, destination, point, query, isFlight, heightClass = 'h-48' }) {
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'fallback'
 
@@ -98,7 +98,7 @@ export default function SegmentMap({ origin, destination, point, query, isFlight
     const embedSrc = query ? `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed` : '';
     if (!embedSrc) return null;
     return (
-      <div className="relative w-full h-48 rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale">
+      <div className={`relative w-full ${heightClass} rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale`}>
         <iframe title={`Map of ${query}`} src={embedSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="absolute inset-0 w-full h-full" />
         {openMapsUrl && (
           <div role="link" aria-label="Open in Google Maps" onClick={() => window.open(openMapsUrl, '_blank', 'noopener,noreferrer')} className="absolute inset-0 z-10 cursor-pointer" />
@@ -113,7 +113,7 @@ export default function SegmentMap({ origin, destination, point, query, isFlight
   }
 
   return (
-    <div className="relative w-full h-48 rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale">
+    <div className={`relative w-full ${heightClass} rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale`}>
       <div ref={mapRef} className="absolute inset-0" />
       {status === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-cream-pale">
