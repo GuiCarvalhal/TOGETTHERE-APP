@@ -1,25 +1,33 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/tt/Skeleton';
 import { useI18n } from '@/lib/i18n';
-import { Landmark, Plus, RefreshCw, Ban, Loader2 } from 'lucide-react';
+import { Landmark, Plus, RefreshCw, Ban, Loader2, Upload, ClipboardCheck, RefreshCcw } from 'lucide-react';
 import FinancialConnectSheet from '@/components/account/FinancialConnectSheet';
+import FinancialImportSheet from '@/components/account/FinancialImportSheet';
 import FinancialTransactionList from '@/components/account/FinancialTransactionList';
 import TransactionExpenseSheet from '@/components/account/TransactionExpenseSheet';
 
-// Bank/card foundation: connect an account, import transactions, review the
-// suggestions and turn one into an expense through the standard form.
-// Nothing is ever written to a gathering or to Expenses by the import itself.
+// Bank/card foundation: connect an account, import transactions (statement file
+// or provider sync), review the suggestions and turn one into an expense through
+// the standard form. Nothing is ever written to a gathering or to Expenses by an
+// import.
 export default function FinancialAccounts() {
   const { t, fmt } = useI18n();
   const [data, setData] = useState({ connections: [], transactions: [], counts: {} });
   const [gatherings, setGatherings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('all');
   const [connectOpen, setConnectOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [busyId, setBusyId] = useState('');
   const [notice, setNotice] = useState('');
   const [expenseTx, setExpenseTx] = useState(null);
 
   const load = useCallback(async () => {
+    setError('');
     try {
       const res = await base44.functions.invoke('getFinancialData', {});
       const d = res.data || res;
@@ -29,7 +37,9 @@ export default function FinancialAccounts() {
         counts: d.counts || {},
       });
     } catch (err) {
-      setNotice(err.response?.data?.error || err.message || t('finance.loadFailed'));
+      setError(err.response?.data?.error || err.message || t('finance.loadFailed'));
+    } finally {
+      setLoading(false);
     }
   }, [t]);
 
@@ -41,6 +51,9 @@ export default function FinancialAccounts() {
   }, [load]);
 
   const gatheringNames = Object.fromEntries(gatherings.map((g) => [g.id, g.name]));
+  const connections = (data.connections || []).filter((c) => c.status !== 'disconnected');
+  const syncable = connections.filter((c) => c.provider !== 'import');
+  const pendingCount = (data.counts?.new || 0) + (data.counts?.suggested || 0);
 
   async function sync(connectionId) {
     setBusyId(connectionId || 'all');
@@ -71,27 +84,35 @@ export default function FinancialAccounts() {
     }
   }
 
-  const connections = (data.connections || []).filter((c) => c.status !== 'disconnected');
-
   return (
     <section className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h2 className="font-display text-lg font-bold text-ink-deep">{t('finance.title')}</h2>
           <p className="text-xs text-ink-deep/55 leading-relaxed">{t('finance.desc')}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={() => setConnectOpen(true)} className="shrink-0">
-          <Plus /> {t('finance.connect')}
-        </Button>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <Button size="sm" onClick={() => setImportOpen(true)} disabled={loading}>
+            <Upload /> {t('finance.importStatement')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setConnectOpen(true)}>
+            <Plus /> {t('finance.connect')}
+          </Button>
+        </div>
       </div>
 
       {notice && <p className="text-xs text-terra-deep">{notice}</p>}
 
-      {!connections.length ? (
+      {loading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-20 rounded-2xl" />
+        </div>
+      ) : !connections.length ? (
         <div className="tt-card p-6 text-center">
           <Landmark className="w-6 h-6 text-ink-deep/40 mx-auto mb-2" />
           <p className="text-sm font-semibold text-ink-deep mb-1">{t('finance.noAccounts')}</p>
-          <p className="text-xs text-ink-deep/55">{t('finance.noAccountsBody')}</p>
+          <p className="text-xs text-ink-deep/55 leading-relaxed">{t('finance.noAccountsBody')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -114,9 +135,15 @@ export default function FinancialAccounts() {
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => sync(c.id)} disabled={!!busyId}>
-                  {busyId === c.id ? <Loader2 className="animate-spin" /> : <RefreshCw />} {t('finance.sync')}
-                </Button>
+                {c.provider === 'import' ? (
+                  <Button size="sm" variant="secondary" onClick={() => setImportOpen(true)} disabled={!!busyId}>
+                    <Upload /> {t('finance.importStatement')}
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="secondary" onClick={() => sync(c.id)} disabled={!!busyId}>
+                    {busyId === c.id ? <Loader2 className="animate-spin" /> : <RefreshCw />} {t('finance.sync')}
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" onClick={() => disconnect(c.id)} disabled={!!busyId}>
                   <Ban /> {t('finance.disconnect')}
                 </Button>
@@ -126,17 +153,52 @@ export default function FinancialAccounts() {
         </div>
       )}
 
+      {!loading && pendingCount > 0 && (
+        <div className="tt-card p-4 space-y-2">
+          <div className="flex items-start gap-2">
+            <ClipboardCheck className="w-4 h-4 text-terra-deep mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink-deep">{t('finance.reviewPendingTitle', { count: pendingCount })}</p>
+              <p className="text-[11px] text-ink-deep/55 leading-relaxed">{t('finance.reviewPendingBody')}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setFilter('pending')}>
+              <ClipboardCheck /> {t('finance.reviewPendingAction')}
+            </Button>
+            {syncable.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={() => sync()} disabled={!!busyId}>
+                {busyId === 'all' ? <Loader2 className="animate-spin" /> : <RefreshCcw />} {t('finance.sync')}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <FinancialTransactionList
         transactions={data.transactions}
         gatheringNames={gatheringNames}
         onChanged={load}
         onCreateExpense={setExpenseTx}
+        loading={loading}
+        error={error}
+        onRetry={load}
+        filter={filter}
+        onFilterChange={setFilter}
       />
 
       <FinancialConnectSheet
         open={connectOpen}
         onOpenChange={setConnectOpen}
-        onConnected={async () => { setNotice(t('finance.connectedToast')); await sync(); }}
+        onConnected={async () => { setNotice(t('finance.connectedToast')); await load(); }}
+      />
+
+      <FinancialImportSheet
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        connections={connections}
+        onImported={load}
+        onConnect={() => setConnectOpen(true)}
       />
 
       {expenseTx && (

@@ -1,33 +1,50 @@
 import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/tt/Skeleton';
 import { useI18n } from '@/lib/i18n';
-import { Receipt, Ban, RotateCcw, Loader2 } from 'lucide-react';
+import { Receipt, Ban, RotateCcw, Loader2, RefreshCw } from 'lucide-react';
 
-const FILTERS = ['all', 'suggested', 'new', 'linked', 'ignored'];
+const FILTERS = ['all', 'pending', 'suggested', 'new', 'linked', 'ignored'];
 
 // Review list for imported transactions. Every row is a suggestion: creating an
 // expense always opens the standard expense form, and the transaction is only
 // marked `linked` after that expense is actually saved.
-export default function FinancialTransactionList({ transactions, gatheringNames, onChanged, onCreateExpense }) {
+// `filter` is controlled by the parent when provided (the pending banner on the
+// accounts section switches it); fallback to local state otherwise.
+export default function FinancialTransactionList({
+  transactions,
+  gatheringNames,
+  onChanged,
+  onCreateExpense,
+  loading,
+  error,
+  onRetry,
+  filter,
+  onFilterChange,
+}) {
   const { t, fmt } = useI18n();
-  const [filter, setFilter] = useState('all');
+  const [localFilter, setLocalFilter] = useState('all');
   const [busyId, setBusyId] = useState('');
-  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
-  const visible = useMemo(
-    () => (transactions || []).filter((tx) => filter === 'all' || tx.review_status === filter),
-    [transactions, filter],
-  );
+  const activeFilter = onFilterChange ? (filter || 'all') : localFilter;
+  const setFilter = onFilterChange || setLocalFilter;
+
+  const visible = useMemo(() => (transactions || []).filter((tx) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'pending') return tx.review_status === 'new' || tx.review_status === 'suggested';
+    return tx.review_status === activeFilter;
+  }), [transactions, activeFilter]);
 
   async function act(id, action) {
     setBusyId(id);
-    setError('');
+    setActionError('');
     try {
       await base44.functions.invoke('updateFinancialTransaction', { id, action });
       onChanged();
     } catch (err) {
-      setError(err.response?.data?.error || err.message || t('finance.updateFailed'));
+      setActionError(err.response?.data?.error || err.message || t('finance.updateFailed'));
     } finally {
       setBusyId('');
     }
@@ -45,16 +62,29 @@ export default function FinancialTransactionList({ transactions, gatheringNames,
             key={f}
             type="button"
             onClick={() => setFilter(f)}
-            className={`shrink-0 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold border transition-colors ${filter === f ? 'bg-terra text-cream border-terra' : 'bg-cream-pale text-ink-deep/70 border-ink-charcoal/20'}`}
+            className={`shrink-0 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold border transition-colors ${activeFilter === f ? 'bg-terra text-cream border-terra' : 'bg-cream-pale text-ink-deep/70 border-ink-charcoal/20'}`}
           >
             {t(`finance.filter_${f}`)}
           </button>
         ))}
       </div>
 
-      {error && <p className="text-xs text-terra-deep">{error}</p>}
+      {(error || actionError) && (
+        <div className="tt-card-flat p-3 space-y-2">
+          <p className="text-xs text-terra-deep">{error || actionError}</p>
+          {error && onRetry && (
+            <Button size="sm" variant="secondary" onClick={onRetry}>
+              <RefreshCw /> {t('finance.loadRetry')}
+            </Button>
+          )}
+        </div>
+      )}
 
-      {!visible.length ? (
+      {loading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+        </div>
+      ) : !visible.length ? (
         <div className="tt-card p-6 text-center">
           <p className="text-sm font-semibold text-ink-deep mb-1">{t('finance.noTransactions')}</p>
           <p className="text-xs text-ink-deep/55">{t('finance.noTransactionsBody')}</p>
@@ -85,6 +115,11 @@ export default function FinancialTransactionList({ transactions, gatheringNames,
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {isCredit && (
+                    <span className="tt-stamp border-emerald-600/35 text-emerald-700 bg-emerald-500/10" title={t('finance.refundHint')}>
+                      {t('finance.refundChip')}
+                    </span>
+                  )}
                   <span className="tt-stamp border-ink-charcoal/25 text-ink-deep/70">
                     {t(`expenseCategories.${tx.category_suggestion || 'other'}`)}
                   </span>

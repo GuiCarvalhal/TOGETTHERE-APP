@@ -173,9 +173,19 @@ type Draft = {
   signedNegative: boolean;
 };
 
+// Totals, balances and section headers sit in the same columns as real rows: a
+// row only counts when its date cell actually holds a date.
+function looksLikeDate(value: string) {
+  const raw = text(value);
+  if (!raw) return false;
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return true;
+  if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(raw)) return true;
+  return Number.isFinite(Date.parse(raw));
+}
+
 function readDraft(cells: string[], columns: Partial<Record<ColumnKey, number>>): Draft | null {
   const dateRaw = cellAt(cells, columns.date);
-  if (!dateRaw) return null;
+  if (!dateRaw || !looksLikeDate(dateRaw)) return null;
 
   const debit = normalizeAmount(cellAt(cells, columns.debit));
   const credit = normalizeAmount(cellAt(cells, columns.credit));

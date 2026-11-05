@@ -11,13 +11,18 @@ import { Landmark, Loader2 } from 'lucide-react';
 
 // Connect an institution/account. Only the last 4 digits are collected — the
 // full number is never requested or stored, and no credential is written by this
-// flow: `demo` is the stub provider that exercises the whole pipeline until a
-// real provider (Plaid/Tink/Belvo) is configured.
+// flow.
+//  - `import`  statement-import account: rows arrive from a CSV/text export
+//              (importFinancialStatement). This is the working MVP source.
+//  - `demo`    stub feed that exercises the pipeline without a real bank.
+const EMPTY = { provider: 'import', institution_name: '', account_mask: '', account_type: 'checking', currency: 'USD' };
+
 export default function FinancialConnectSheet({ open, onOpenChange, onConnected }) {
   const { t } = useI18n();
-  const [form, setForm] = useState({ institution_name: '', account_mask: '', account_type: 'checking', currency: 'USD' });
+  const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const isImport = form.provider === 'import';
 
   async function submit(e) {
     e.preventDefault();
@@ -25,13 +30,13 @@ export default function FinancialConnectSheet({ open, onOpenChange, onConnected 
     setError('');
     try {
       await base44.functions.invoke('connectFinancialAccount', {
-        provider: 'demo',
+        provider: form.provider,
         institution_name: form.institution_name.trim(),
         account_mask: form.account_mask.replace(/\D/g, '').slice(-4),
         account_type: form.account_type,
         currency: form.currency,
       });
-      setForm({ institution_name: '', account_mask: '', account_type: 'checking', currency: 'USD' });
+      setForm({ ...EMPTY, provider: form.provider });
       onOpenChange(false);
       onConnected();
     } catch (err) {
@@ -44,11 +49,24 @@ export default function FinancialConnectSheet({ open, onOpenChange, onConnected 
   return (
     <FormSheet open={open} onOpenChange={onOpenChange} title={t('finance.connectTitle')}>
       <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-ink-deep">{t('finance.provider')}</Label>
+          <Select value={form.provider} onValueChange={(v) => setForm({ ...form, provider: v })}>
+            <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="import">{t('finance.providerImport')}</SelectItem>
+              <SelectItem value="demo">{t('finance.providerDemo')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="rounded-xl bg-cream-pale border border-ink-charcoal/15 p-3 flex items-start gap-2">
           <Landmark className="w-4 h-4 text-ink-deep/60 mt-0.5 shrink-0" />
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-ink-deep">{t('finance.providerDemo')}</p>
-            <p className="text-[11px] text-ink-deep/60 leading-relaxed mt-0.5">{t('finance.providerDemoHint')}</p>
+            <p className="text-xs font-semibold text-ink-deep">{isImport ? t('finance.providerImport') : t('finance.providerDemo')}</p>
+            <p className="text-[11px] text-ink-deep/60 leading-relaxed mt-0.5">
+              {isImport ? t('finance.providerImportHint') : t('finance.providerDemoHint')}
+            </p>
           </div>
         </div>
 
