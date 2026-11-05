@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
-import { canSeeExpenses, canAddExpense, formatCurrency, EXPENSE_CATEGORIES, mineExpenses } from '@/lib/gatheringHelpers';
+import { canSeeExpenses, canAddExpense, EXPENSE_CATEGORIES, mineExpenses } from '@/lib/gatheringHelpers';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseTimelineCard from '@/components/tt/cards/ExpenseTimelineCard';
 import PageToolbar from '@/components/tt/PageToolbar';
@@ -96,7 +96,7 @@ export default function GatheringExpenses() {
     </div>
   );
 
-  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, balances, splitsByExpense, memberById, expenseInBase, displayFor, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
+  const { expenses, splits, members, baseCurrency, changeBaseCurrency, currencyOptions, splitsByExpense, memberById, expenseInBase, displayFor, ratesAvailable, ratesLoading, ratesAsOf, ratesError } = d;
 
   // Mine = expenses where the current member is the PAYER (not merely in the
   // split). Group = all gathering expenses. Uses the shared helper so the
@@ -111,7 +111,7 @@ export default function GatheringExpenses() {
 
   const me = currentMember;
   const groupTotal = expenses.reduce((s, e) => s + expenseInBase(e), 0);
-  const myBalance = balances[me?.id] || 0;
+  const myBalance = d.balanceFor(me?.id) || 0;
 
   // Chronological ascending + day grouping, mirroring the Journey timeline.
   // Expense dates are date-only (YYYY-MM-DD), so lexical sort == chronological.

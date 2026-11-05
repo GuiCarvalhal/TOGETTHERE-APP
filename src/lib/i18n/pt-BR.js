@@ -1022,6 +1022,7 @@ export const ptBR = {
     noShared: 'Nenhuma despesa compartilhada',
     noSharedBody: '{name} n??o est?? em nenhuma divis??o.',
     yourShare: 'sua cota {amount}',
+    familyNote: 'Unidade familiar: {name} — os custos contam integralmente para cada membro.',
   },
 
   expenseCard: {

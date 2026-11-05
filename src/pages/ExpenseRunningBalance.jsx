@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useI18n } from '@/lib/i18n';
 import MemberAvatar from '@/components/tt/MemberAvatar';
+import AvatarStack from '@/components/tt/AvatarStack';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import Skeleton from '@/components/tt/Skeleton';
-import { ChevronLeft, ArrowRight, Scale, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ArrowRight, AlertTriangle } from 'lucide-react';
 
 export default function ExpenseRunningBalance() {
   const navigate = useNavigate();
@@ -31,7 +32,14 @@ export default function ExpenseRunningBalance() {
     </div>
   );
 
-  const { participantMembers, memberById, balances, settle, baseCurrency, changeBaseCurrency, currencyOptions, ratesAvailable, ratesLoading, ratesAsOf } = d;
+  const { participantMembers, settle, baseCurrency, changeBaseCurrency, currencyOptions, ratesAvailable, ratesLoading, ratesAsOf, balanceFor, unitOf } = d;
+
+  // A settle-up party is an expense UNIT: an individual, or a whole family
+  // (shown with its household name), so a household settles in one transfer.
+  const unitLabel = (u) => (u?.type === 'family' ? u.name : (u?.members?.[0]?.full_name || '—'));
+  const UnitFace = ({ unit }) => (unit?.type === 'family'
+    ? <AvatarStack people={unit.members} max={3} size="xs" />
+    : <MemberAvatar member={unit?.members?.[0]} size="sm" />);
 
   return (
     <div className="space-y-5">
@@ -50,7 +58,9 @@ export default function ExpenseRunningBalance() {
         <h3 className="tt-label text-foreground/50 mb-2.5">{t('expenseBalance.memberBalances')}</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {participantMembers.map((m) => {
-            const bal = balances[m.id] || 0;
+            // Each member of a family sees the household's whole balance.
+            const bal = balanceFor(m.id) || 0;
+            const family = unitOf(m.id)?.type === 'family' ? unitOf(m.id) : null;
             const positive = bal > 0.01;
             const negative = bal < -0.01;
             return (
@@ -62,6 +72,7 @@ export default function ExpenseRunningBalance() {
                 <MemberAvatar member={m} size="md" />
                 <div className="min-w-0">
                   <p className="font-semibold text-ink-deep text-sm truncate">{m.full_name}</p>
+                  {family && <p className="text-[0.625rem] text-ink-deep/45 truncate">{family.name}</p>}
                   <p className={`text-sm font-semibold ${positive ? 'text-terra-deep' : negative ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
                     {positive ? t('expenseBalance.isOwed', { amount: fmt.formatCurrency(Math.abs(bal), baseCurrency) }) : negative ? t('expenseBalance.owes', { amount: fmt.formatCurrency(Math.abs(bal), baseCurrency) }) : t('expenseBalance.settled', { amount: fmt.formatCurrency(Math.abs(bal), baseCurrency) })}
                   </p>
@@ -76,14 +87,14 @@ export default function ExpenseRunningBalance() {
         <section>
           <h3 className="tt-label text-foreground/50 mb-2.5">{t('expenseBalance.settleUp')}</h3>
           <div className="tt-card p-4 space-y-2">
-            {settle.map((t, i) => (
+            {settle.map((tx, i) => (
               <div key={i} className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <MemberAvatar member={memberById[t.from]} size="sm" />
-                <span className="text-sm text-ink-deep font-medium min-w-0 truncate">{memberById[t.from]?.full_name}</span>
+                <UnitFace unit={tx.from} />
+                <span className="text-sm text-ink-deep font-medium min-w-0 truncate">{unitLabel(tx.from)}</span>
                 <ArrowRight className="w-4 h-4 text-terra-deep mx-1 shrink-0" />
-                <MemberAvatar member={memberById[t.to]} size="sm" />
-                <span className="text-sm text-ink-deep font-medium min-w-0 truncate">{memberById[t.to]?.full_name}</span>
-                <span className="ml-auto font-display text-base font-bold text-terra-deep shrink-0">{fmt.formatCurrency(t.amount, baseCurrency)}</span>
+                <UnitFace unit={tx.to} />
+                <span className="text-sm text-ink-deep font-medium min-w-0 truncate">{unitLabel(tx.to)}</span>
+                <span className="ml-auto font-display text-base font-bold text-terra-deep shrink-0">{fmt.formatCurrency(tx.amount, baseCurrency)}</span>
               </div>
             ))}
           </div>

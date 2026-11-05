@@ -1026,6 +1026,7 @@ export const en = {
     noShared: 'No shared expenses',
     noSharedBody: "{name} isn't on any splits.",
     yourShare: 'your share {amount}',
+    familyNote: 'Family unit: {name} — its costs count in full for each member.',
   },
 
   expenseCard: {

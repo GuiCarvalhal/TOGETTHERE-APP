@@ -32,21 +32,25 @@ export default function ExpenseStatement() {
     </div>
   );
 
-  const { participantMembers, memberById, expenses, splits, balances, baseCurrency, expenseInBase, splitInBase } = d;
+  const { participantMembers, memberById, expenses, splits, baseCurrency, expenseInBase, splitInBase, unitIdsOf, familyNameFor, balanceFor } = d;
   const member = memberById[selectedMember];
   const firstName = member?.full_name?.split(' ')[0] || t('profileView.member');
 
-  const paid = expenses.filter((e) => e.payer_member_id === selectedMember);
-  const shareExpIds = new Set(splits.filter((s) => s.member_id === selectedMember).map((s) => s.expense_id));
+  // Family unit: a household's paid/share/net are reported whole for each of
+  // its members, so a share assigned to the family is never halved on screen.
+  const unitIds = new Set(unitIdsOf(selectedMember));
+  const familyName = familyNameFor(selectedMember);
+  const paid = expenses.filter((e) => unitIds.has(e.payer_member_id));
+  const unitSplits = splits.filter((s) => unitIds.has(s.member_id));
+  const shareExpIds = new Set(unitSplits.map((s) => s.expense_id));
   const sharedWith = expenses.filter((e) => shareExpIds.has(e.id));
-  const net = balances[selectedMember] || 0;
+  const net = balanceFor(selectedMember);
   const totalPaid = paid.reduce((s, e) => s + expenseInBase(e), 0);
-  const totalShare = splits.filter((s) => s.member_id === selectedMember).reduce((s, sp) => s + splitInBase(sp), 0);
+  const totalShare = unitSplits.reduce((s, sp) => s + splitInBase(sp), 0);
 
-  const myShareOf = (exp) => {
-    const sp = splits.find((s) => s.expense_id === exp.id && s.member_id === selectedMember);
-    return sp ? splitInBase(sp) : 0;
-  };
+  const myShareOf = (exp) => unitSplits
+    .filter((s) => s.expense_id === exp.id)
+    .reduce((sum, s) => sum + splitInBase(s), 0);
 
   const Row = ({ exp, showShare }) => {
     // Viewers never appear in an expense list: a legacy viewer payer is kept in
@@ -107,6 +111,9 @@ export default function ExpenseStatement() {
         <p className="text-xs text-ink-deep/55">
           {net > 0.01 ? t('expenseStatement.isOwed', { name: firstName, amount: fmt.formatCurrency(net, baseCurrency) }) : net < -0.01 ? t('expenseStatement.owes', { name: firstName, amount: fmt.formatCurrency(Math.abs(net), baseCurrency) }) : t('expenseStatement.settledUp', { name: firstName })}
         </p>
+        {familyName && (
+          <p className="text-[0.6875rem] text-ink-deep/45">{t('expenseStatement.familyNote', { name: familyName })}</p>
+        )}
       </section>
 
       <section>

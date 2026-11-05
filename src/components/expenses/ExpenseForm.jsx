@@ -12,6 +12,7 @@ import {
   buildSplitUnits, legacyViewerAllocationIds, participantMembers, EXPENSE_CATEGORIES, COMMON_CURRENCIES,
 } from '@/lib/gatheringHelpers';
 import { useI18n } from '@/lib/i18n';
+import useGatheringFamilies from '@/hooks/useGatheringFamilies';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import SplitMethodTabs from '@/components/expenses/SplitMethodTabs';
 import FamilySplitTable from '@/components/expenses/FamilySplitTable';
@@ -83,26 +84,10 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [families, setFamilies] = useState([]);
-  const [familiesLoaded, setFamiliesLoaded] = useState(false);
-
-  const participantUids = participants.map((m) => m.user_id).filter(Boolean).join('|');
-  useEffect(() => {
-    const uids = participantUids.split('|').filter(Boolean);
-    if (!uids.length) { setFamiliesLoaded(true); return; }
-    let active = true;
-    base44.functions.invoke('getFamiliesForUsers', { user_ids: uids })
-      .then((res) => {
-        if (!active) return;
-        const data = res.data || res;
-        setFamilies((data.families || []).map((f) => ({
-          id: f.id, name: f.name, owner_user_id: f.owner_user_id, memberUserIds: [...(f.member_user_ids || [])],
-        })));
-      })
-      .catch(() => {})
-      .finally(() => { if (active) setFamiliesLoaded(true); });
-    return () => { active = false; };
-  }, [participantUids]);
+  // Families come from the same hook the expenses data layer uses, so a
+  // household is resolved identically when saving a split and when reporting.
+  const participantUids = participants.map((m) => m.user_id).filter(Boolean);
+  const { families, loaded: familiesLoaded } = useGatheringFamilies(participantUids);
 
   const groupedUnits = useMemo(() => buildSplitUnits(participants, families), [participants, families]);
   const editRecon = useMemo(

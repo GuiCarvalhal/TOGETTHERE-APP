@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { computeBalances, settleUp, COMMON_CURRENCIES } from '@/lib/gatheringHelpers';
+import { buildMemberUnits, unitMemberIdsOf } from '@/lib/familyUnits';
+import useGatheringFamilies from '@/hooks/useGatheringFamilies';
 import { useOfflineExpensesCache } from '@/lib/useOfflineSync';
 import usePolling from '@/hooks/usePolling';
 
@@ -110,6 +112,14 @@ export function useExpensesData() {
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
   const expenseById = Object.fromEntries(expenses.map((e) => [e.id, e]));
 
+  // Family units: a household with 2+ participants is ONE expense unit, so its
+  // share is never divided between its members on screen. Stored splits stay
+  // per person (the balance engine needs them to sum to the expense), and every
+  // person-facing number below is aggregated over the unit instead — which is
+  // also what keeps the global close from counting a household's cost twice.
+  const { families } = useGatheringFamilies(participantMembers.map((m) => m.user_id).filter(Boolean));
+  const unitIndex = buildMemberUnits(participantMembers, families);
+
   const rateOf = (c) => (c === 'USD' ? 1 : rates?.[String(c).toUpperCase()]);
 
   // {amount, currency} to display for an expense. The currency always matches
@@ -154,15 +164,34 @@ export function useExpensesData() {
   const baseSplitsForBalances = splits.map((s) => ({ expense_id: s.expense_id, member_id: s.member_id, amount: splitInBase(s) }));
   const balances = computeBalances(baseExpensesForBalances, baseSplitsForBalances, participantMembers.map((m) => m.id));
 
-  // Settle-up suggestions are among PARTICIPANTS only — a former member now
-  // demoted to Viewer still contributes to each participant's balance (their
-  // saved splits are NOT discarded, so totals/debt are unchanged), but a
-  // viewer is never shown as a settle-up party. Only participant balances feed
-  // the greedy matcher; the full `balances` (which may carry a viewer entry) is
-  // never displayed and never used for settle suggestions.
-  const participantBalances = {};
-  participantMembers.forEach((m) => { participantBalances[m.id] = balances[m.id] || 0; });
-  const settle = settleUp(participantBalances);
+  // Member ids the person shares an expense unit with (itself alone when it
+  // belongs to no family).
+  const unitIdsOf = (memberId) => unitMemberIdsOf(unitIndex.byMember, memberId);
+  const unitOf = (memberId) => unitIndex.byMember[memberId] || null;
+  const familyNameFor = (memberId) => (unitOf(memberId)?.type === 'family' ? unitOf(memberId).name : null);
+
+  // Balance reported for one person = their household's WHOLE balance, so a
+  // family expense shows in full for every member of that family.
+  const balanceFor = (memberId) => {
+    if (!memberId) return 0;
+    const total = unitIdsOf(memberId).reduce((sum, id) => sum + (balances[id] || 0), 0);
+    return Math.round(total * 100) / 100;
+  };
+
+  // Settle-up runs across UNITS (a household settles as one party) — so a
+  // family never yields two transfers for the same debt. Only participant
+  // balances feed the greedy matcher: a former member demoted to Viewer still
+  // contributes to its unit's total (their saved splits are not discarded), but
+  // a viewer is never shown as a settle-up party.
+  const unitBalances = {};
+  unitIndex.units.forEach((u) => {
+    unitBalances[u.key] = Math.round(u.members.reduce((sum, m) => sum + (balances[m.id] || 0), 0) * 100) / 100;
+  });
+  const settle = settleUp(unitBalances).map((tx) => ({
+    from: unitIndex.byKey[tx.from],
+    to: unitIndex.byKey[tx.to],
+    amount: tx.amount,
+  }));
 
   const splitsByExpense = {};
   splits.forEach((s) => { (splitsByExpense[s.expense_id] = splitsByExpense[s.expense_id] || []).push(s); });
@@ -178,5 +207,6 @@ export function useExpensesData() {
     participantMembers, memberById, expenseById,
     expenseInBase, splitInBase, displayFor,
     balances, settle, splitsByExpense,
+    unitIdsOf, unitOf, familyNameFor, balanceFor,
   };
 }
