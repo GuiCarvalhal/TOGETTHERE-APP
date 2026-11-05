@@ -4,11 +4,12 @@ import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useDeviceLayout } from '@/hooks/useDeviceLayout';
-import { useStickyBarHeight, deskTopOffset } from '@/hooks/useStickyBarHeight';
+import { useStickyBarHeight, deskTopOffset, deskPanelHeight } from '@/hooks/useStickyBarHeight';
 import PageToolbar from '@/components/tt/PageToolbar';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import AgentPlaceCard from '@/components/agent/AgentPlaceCard';
+import AgentExtensionCard from '@/components/agent/AgentExtensionCard';
 import VibeCard from '@/components/agent/VibeCard';
 import GoodToKnowCard from '@/components/agent/GoodToKnowCard';
 import TaskChecklist from '@/components/agent/TaskChecklist';
@@ -291,50 +292,79 @@ export default function GatheringAgent() {
   ) : null;
 
   // Brief groups, kept as individual nodes so the phone order stays exactly as
-  // before (today -> vibe -> eat -> do -> tasks -> good-to-know) while the
-  // desktop split can put the contextual ones in the right column.
+  // before (today -> vibe -> eat -> do -> tasks -> good-to-know).
   const hasBrief = !!data && phase !== 'ended' && phase !== 'no_participants';
 
-  const secToday = hasBrief && showToday && show('today') ? (
-    <section>
-      <SectionHeader icon={CalendarDays} title={dayScope ? t('agent.dayPicks') : t('agent.todaysPicks')} />
-      <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
-        {t(dayScope ? 'agent.dayPicksFits' : 'agent.todaysFits', {
-          date: dayLabel,
-          items: data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : '',
-        })}
-      </p>
-      <Timeline>
-        <div className="space-y-3">
-          {todaysPicks.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catToday')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catToday'), place: p })) : undefined} />)}
-        </div>
-      </Timeline>
-    </section>
-  ) : null;
+  // One recommendation section. `pairRight` (desktop, map OFF) renders every
+  // place as ONE grid row: the card in the left 1/3 and its expansion in the
+  // right 2/3, sharing that row's height so both cells line up 1:1 — the same
+  // coupled-row model as the Journey page. No independent left/right lists.
+  const recSection = ({ pairRight, icon, title, subtitle, places, categoryLabel, count }) => {
+    if (!places.length) return null;
+    const card = (p) => (
+      <AgentPlaceCard
+        place={p}
+        categoryLabel={categoryLabel}
+        gatheringId={gatheringId}
+        onAdd={() => addPlace(p)}
+        to={placePath}
+        showImages={images}
+        routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel, place: p })) : undefined}
+      />
+    );
+    return (
+      <section>
+        <SectionHeader icon={icon} title={title} count={count} />
+        {subtitle}
+        {pairRight ? (
+          <div className="grid grid-cols-3 gap-x-6 gap-y-3 items-stretch">
+            {places.map((p, i) => (
+              <React.Fragment key={i}>
+                <div className="col-span-1 min-w-0 [&>*]:h-full">{card(p)}</div>
+                <div className="col-span-2 min-w-0">
+                  <AgentExtensionCard place={p} categoryLabel={categoryLabel} onAdd={() => addPlace(p)} />
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        ) : (
+          <Timeline>
+            <div className="space-y-3">
+              {places.map((p, i) => <React.Fragment key={i}>{card(p)}</React.Fragment>)}
+            </div>
+          </Timeline>
+        )}
+      </section>
+    );
+  };
+
+  const todaySection = (pairRight) => ((hasBrief && showToday && show('today'))
+    ? recSection({
+      pairRight,
+      icon: CalendarDays,
+      title: dayScope ? t('agent.dayPicks') : t('agent.todaysPicks'),
+      subtitle: (
+        <p className="text-xs text-ink-deep/55 mb-2.5 -mt-1">
+          {t(dayScope ? 'agent.dayPicksFits' : 'agent.todaysFits', {
+            date: dayLabel,
+            items: data.todayItems?.length ? ` — ${data.todayItems.map((i) => i.title).join(', ')}` : '',
+          })}
+        </p>
+      ),
+      places: todaysPicks,
+      categoryLabel: t('agent.catToday'),
+    })
+    : null);
 
   const secVibe = hasBrief && show('info') && data.vibe ? <VibeCard vibe={data.vibe} /> : null;
 
-  const secEat = hasBrief && show('eat') && eatPlaces.length > 0 ? (
-    <section>
-      <SectionHeader icon={UtensilsCrossed} title={t('agent.whereToEat')} count={eatPlaces.length} />
-      <Timeline>
-        <div className="space-y-3">
-          {eatPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catEat')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catEat'), place: p })) : undefined} />)}
-        </div>
-      </Timeline>
-    </section>
-  ) : null;
+  const eatSection = (pairRight) => ((hasBrief && show('eat'))
+    ? recSection({ pairRight, icon: UtensilsCrossed, title: t('agent.whereToEat'), count: eatPlaces.length, places: eatPlaces, categoryLabel: t('agent.catEat') })
+    : null);
 
-  const secDo = hasBrief && show('do') && doPlaces.length > 0 ? (
-    <section>
-      <SectionHeader icon={Compass} title={t('agent.whatToDo')} count={doPlaces.length} />
-      <Timeline>
-        <div className="space-y-3">
-          {doPlaces.map((p, i) => <AgentPlaceCard key={i} place={p} categoryLabel={t('agent.catDo')} gatheringId={gatheringId} onAdd={() => addPlace(p)} to={placePath} showImages={images} routeNumber={mapOpen ? suggNumbers.get(suggestionKey({ categoryLabel: t('agent.catDo'), place: p })) : undefined} />)}
-        </div>
-      </Timeline>
-    </section>
-  ) : null;
+  const doSection = (pairRight) => ((hasBrief && show('do'))
+    ? recSection({ pairRight, icon: Compass, title: t('agent.whatToDo'), count: doPlaces.length, places: doPlaces, categoryLabel: t('agent.catDo') })
+    : null);
 
   const secTasks = hasBrief && show('tasks') ? (
     <section className="space-y-3">
@@ -377,7 +407,7 @@ export default function GatheringAgent() {
     : null;
 
   return (
-    <PageToolbar switcher={lengthSwitcher} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={mapRow} action={regenerateAction} filterRow={filterRow}>
+    <PageToolbar switcher={lengthSwitcher} images={images} setImages={setImages} mapOpen={mapOpen} setMapOpen={setMapOpen} showMapToggle mapRow={isDesktop ? null : mapRow} action={regenerateAction} filterRow={filterRow}>
       <div className="space-y-5">
         {dayScope && (
           <div className="tt-ink-panel p-3 flex items-center gap-3">
@@ -433,16 +463,45 @@ export default function GatheringAgent() {
         )}
 
         {hasBrief && (isDesktop ? (
-          // Desktop / landscape tablet: recommendations on the left, the
-          // contextual brief (vibe, tasks, good-to-know) pinned on the right.
-          // Header + filters + panel stay put; only the left column scrolls.
-          <div className="grid grid-cols-3 gap-6 items-start" style={{ '--tt-desk-top': deskTopOffset(barH) }}>
-            <div className="col-span-2 min-w-0 space-y-5">
-              {secToday}
-              {secEat}
-              {secDo}
-            </div>
-            <div className="col-span-1 min-w-0 self-start sticky space-y-5" style={{ top: 'var(--tt-desk-top)' }}>
+          <div className="space-y-5">
+            {mapOpen ? (
+              // Map ON (desktop / landscape tablet): the cards stay a single
+              // column in the left 1/3 and the map becomes the pinned right 2/3
+              // layer — same model as Journey. The panel fits the band between
+              // the pinned toolbar and the bottom dock exactly (no inner
+              // scroll), so header + filters + map stay put and only the card
+              // column scrolls.
+              <div className="grid grid-cols-3 gap-6 items-start" style={{ '--tt-desk-top': deskTopOffset(barH) }}>
+                <div className="col-span-1 min-w-0 space-y-5">
+                  {todaySection(false)}
+                  {eatSection(false)}
+                  {doSection(false)}
+                </div>
+                <div className="col-span-2 min-w-0 sticky" style={{ top: 'var(--tt-desk-top)' }}>
+                  <div className="flex flex-col" style={{ height: deskPanelHeight() }}>
+                    <JourneyMapPanel
+                      items={mapItems}
+                      gatheringId={gatheringId}
+                      suggestions={suggPending > 0 ? [] : suggMarkers}
+                      suggestionsWithoutCoords={suggWithoutCoords}
+                      suggestionsPending={suggPending}
+                      itemsPending={itemCoordsPending}
+                      className="h-full flex flex-col"
+                      heightClass="flex-1 min-h-0"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Map OFF: one coupled row per place — card left 1/3, expanded
+              // card right 2/3 on the same row, aligned 1:1.
+              <div className="space-y-5">
+                {todaySection(true)}
+                {eatSection(true)}
+                {doSection(true)}
+              </div>
+            )}
+            <div className="space-y-5">
               {secVibe}
               {secTasks}
               {secGoodToKnow}
@@ -450,10 +509,10 @@ export default function GatheringAgent() {
           </div>
         ) : (
           <div className="space-y-5">
-            {secToday}
+            {todaySection(false)}
             {secVibe}
-            {secEat}
-            {secDo}
+            {eatSection(false)}
+            {doSection(false)}
             {secTasks}
             {secGoodToKnow}
           </div>
