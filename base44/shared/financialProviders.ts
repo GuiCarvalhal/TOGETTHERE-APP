@@ -56,6 +56,11 @@ export async function fetchProviderTransactions(connection: any): Promise<RawTra
   switch (String(connection?.provider || '').toLowerCase()) {
     case 'demo':
       return demoFeed(connection);
+    case 'import':
+      // Statement accounts have no live provider: their rows arrive from an
+      // exported statement through importFinancialStatement, so a sync (manual
+      // or automatic) legitimately finds nothing new.
+      return [];
     default:
       // A real provider plugs in here once its credentials are configured.
       throw new ProviderError('provider_not_configured', 'This provider is not configured yet');

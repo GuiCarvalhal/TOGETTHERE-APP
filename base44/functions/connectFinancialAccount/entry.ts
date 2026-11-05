@@ -19,7 +19,9 @@ export default async function (req) {
 
     const body = await req.json().catch(() => ({}));
     const provider = String(body.provider || 'demo').toLowerCase();
-    const supported = ['demo', 'plaid', 'tink', 'belvo'];
+    // 'import' = statement-import account: the user uploads a CSV/text export and
+    // rows arrive through importFinancialStatement. No credential is involved.
+    const supported = ['demo', 'import', 'plaid', 'tink', 'belvo'];
     if (!supported.includes(provider)) {
       return Response.json({ error: 'Unsupported provider', reason: 'unsupported_provider' }, { status: 400 });
     }

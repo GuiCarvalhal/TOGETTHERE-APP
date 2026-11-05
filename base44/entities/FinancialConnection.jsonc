@@ -6,12 +6,13 @@
       "type": "string",
       "enum": [
         "demo",
+        "import",
         "plaid",
         "tink",
         "belvo"
       ],
       "default": "demo",
-      "description": "Aggregator that owns this connection. 'demo' is the built-in stub used until a real provider (Plaid/Tink/Belvo) is plugged in; the sync adapter is chosen from this value."
+      "description": "Source that owns this connection. 'demo' is the built-in stub feed, 'import' is a statement-import account (rows arrive from an exported CSV/text statement), and Plaid/Tink/Belvo plug into the same pipeline once configured."
     },
     "institution_name": {
       "type": "string",

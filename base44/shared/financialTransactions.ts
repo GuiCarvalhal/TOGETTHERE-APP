@@ -108,9 +108,20 @@ function fingerprintPart(value: string) {
 }
 
 // Symmetric dedupe key: same provider shape (even across different provider ids),
-// same date, same magnitude, same currency and same merchant collides.
+// same direction, same date, same magnitude, same currency and same merchant
+// collides.
+//
+// Direction is part of the key so a refund/reversal can NEVER be swallowed as a
+// duplicate of the charge it reverses (same merchant, same amount, same day).
+// Credits are prefixed instead of rewriting the debit formula, which keeps every
+// already-stored debit fingerprint valid across a re-sync.
+//
+// `occurrence` (1-based) is only set by the statement importer, where two real
+// identical charges on the same day must both land: it is derived from the row's
+// position in the file, so re-importing the same file stays idempotent.
 export function buildTransactionFingerprint(input: {
   provider: string; date: string; amount: number; currency: string; merchant: string;
+  direction?: 'debit' | 'credit'; occurrence?: number;
 }) {
   const parts = [
     text(input.provider) || 'unknown',
@@ -119,6 +130,8 @@ export function buildTransactionFingerprint(input: {
     normalizeCurrency(input.currency),
     fingerprintPart(input.merchant || ''),
   ];
+  if (input.direction === 'credit') parts.unshift('refund');
+  if (input.occurrence && input.occurrence > 1) parts.push(`o${Math.floor(input.occurrence)}`);
   return parts.join('|');
 }
 
@@ -232,11 +245,20 @@ export function normalizeTransaction(raw: any, ctx: { provider: string; currency
   const currency = normalizeCurrency(raw?.currency || ctx.currency, ctx.currency || 'USD');
   const merchant = normalizeMerchant(raw?.merchant, raw?.description);
   const suggestion = categorizeTransaction({ merchant, description: raw?.description, raw_category: raw?.raw_category });
+  const occurrence = Number(raw?.occurrence) || 0;
 
   return {
     transaction: {
       external_id: text(raw?.external_id || raw?.id),
-      fingerprint: buildTransactionFingerprint({ provider: ctx.provider, date: when.date, amount: money.amount, currency, merchant }),
+      fingerprint: buildTransactionFingerprint({
+        provider: ctx.provider,
+        date: when.date,
+        amount: money.amount,
+        currency,
+        merchant,
+        direction: money.direction,
+        occurrence,
+      }),
       occurred_at: when.occurred_at,
       date: when.date,
       description: text(raw?.description),
