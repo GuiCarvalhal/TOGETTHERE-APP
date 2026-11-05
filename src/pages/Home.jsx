@@ -380,7 +380,7 @@ export default function Home() {
           <p>© {new Date().getFullYear()} TOGETTHERE</p>
           <nav className="flex items-center gap-4">
             <Link to="/how-it-works" className="hover:text-foreground hover:underline">
-              {t('home.howItWorks')}
+              {t('howItWorks.label')}
             </Link>
             <Link to="/privacy-policy" className="hover:text-foreground hover:underline">
               Privacy Policy
