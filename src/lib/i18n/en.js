@@ -413,6 +413,12 @@ export const en = {
     dailyPartialHint: 'Some legs between segments could not be routed ??? total is partial.',
     importEmail: 'Import booking',
     openInbox: 'Open inbox',
+    agentDay: 'Agent',
+    agentDayAria: 'Open the concierge for this day',
+    focusEmptyTitle: 'Pick a segment',
+    focusEmptyBody: 'Select a segment in the list to see its details, map and participants here.',
+    focusMapHint: 'Map is on — turn it off to see the selected segment.',
+    focusOpenDetails: 'Full details',
     inboxCtaTitle: 'Bookings import into the journey inbox',
     inboxCtaBody: 'Email, PDF or screenshot — import once and file it into any gathering.',
   },
@@ -661,6 +667,10 @@ export const en = {
     lengthLabel: 'Recommendation length',
     reload: 'Reload',
     reloadHint: 'Reload to fetch more places',
+    scopedDay: 'Scoped to {date}',
+    showFullTrip: 'Full trip',
+    dayPicks: 'Picks for this day',
+    dayPicksFits: 'Fits the gaps in the plan for {date}{items}',
   },
 
   settings: {

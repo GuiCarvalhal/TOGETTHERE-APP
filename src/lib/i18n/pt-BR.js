@@ -409,6 +409,12 @@ export const ptBR = {
     dailyPartialHint: 'N??o foi poss??vel calcular alguns trechos entre segmentos ??? o total ?? parcial.',
     importEmail: 'Importar reserva',
     openInbox: 'Abrir caixa',
+    agentDay: 'Agent',
+    agentDayAria: 'Abrir o concierge para este dia',
+    focusEmptyTitle: 'Escolha um segmento',
+    focusEmptyBody: 'Selecione um segmento na lista para ver detalhes, mapa e participantes aqui.',
+    focusMapHint: 'O mapa est\u00e1 ativo — desligue para ver o segmento selecionado.',
+    focusOpenDetails: 'Detalhes completos',
     inboxCtaTitle: 'Reservas entram pela caixa do itinerário',
     inboxCtaBody: 'E-mail, PDF ou print — importe uma vez e envie para qualquer gathering.',
   },
@@ -657,6 +663,10 @@ export const ptBR = {
     lengthLabel: 'Tamanho das recomenda????es',
     reload: 'Recarregar',
     reloadHint: 'Recarregar para buscar mais lugares',
+    scopedDay: 'Escopo: {date}',
+    showFullTrip: 'Viagem toda',
+    dayPicks: 'Escolhas deste dia',
+    dayPicksFits: 'Se encaixa nas lacunas do plano de {date}{items}',
   },
 
   settings: {

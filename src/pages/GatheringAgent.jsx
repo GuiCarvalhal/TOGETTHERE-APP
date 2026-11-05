@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { timeAgo } from '@/lib/gatheringHelpers';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import PageToolbar from '@/components/tt/PageToolbar';
 import Skeleton from '@/components/tt/Skeleton';
