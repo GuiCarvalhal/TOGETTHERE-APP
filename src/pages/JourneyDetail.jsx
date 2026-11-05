@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
@@ -75,6 +75,17 @@ export default function JourneyDetail() {
   useEffect(() => { load(); }, [itemId]);
 
   useEffect(() => { setFab(null); return () => setFab(null); }, [setFab]);
+
+  // The desktop extra card's "Editing" action lands here with ?edit=1, so the
+  // edit form opens straight away (flights use their own full-page surface).
+  const editRequestedRef = useRef(false);
+  useEffect(() => {
+    if (editRequestedRef.current || !item || item.type === 'flight') return;
+    if (new URLSearchParams(window.location.search).get('edit') !== '1') return;
+    if (!canEditJourneyItem(role, item, currentMember)) return;
+    editRequestedRef.current = true;
+    setEditing(true);
+  }, [item, role, currentMember]);
 
   async function handleDelete() {
     if (!confirm(t('journeyDetail.deleteConfirm'))) return;

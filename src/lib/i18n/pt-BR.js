@@ -412,7 +412,7 @@ export const ptBR = {
     agentDay: 'Agent',
     agentDayAria: 'Abrir o concierge para este dia',
     extPanelHint: 'Detalhes de cada trecho da lista, ao lado dos cards.',
-    extFullDetails: 'Detalhes completos',
+    extEdit: 'Editar',
     extNoNotes: 'Sem notas neste trecho',
     extNoMap: 'Sem localização no mapa',
     extEmptyTitle: 'Nada para estender',

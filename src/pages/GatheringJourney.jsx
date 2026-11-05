@@ -4,7 +4,7 @@ import usePolling from '@/hooks/usePolling';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
-import { JOURNEY_TYPES, canAddJourney, journeyViewerForcedPrefs, itemParticipantUserIds, filterJourneyByMembers, eligibleRosterMembers } from '@/lib/gatheringHelpers';
+import { JOURNEY_TYPES, canAddJourney, canEditJourneyItem, journeyViewerForcedPrefs, itemParticipantUserIds, filterJourneyByMembers, eligibleRosterMembers } from '@/lib/gatheringHelpers';
 import { tzDateKey } from '@/lib/formatPlaceTime';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
@@ -333,7 +333,12 @@ export default function GatheringJourney() {
                           {/* A stay renders ONE extension: its check-out row is
                               the same record as the check-in row above. */}
                           {entry.leg !== 'check-out' && (
-                            <JourneyExtensionCard item={entry.item} gatheringId={gatheringId} />
+                            <JourneyExtensionCard
+                              item={entry.item}
+                              gatheringId={gatheringId}
+                              attendees={itemParticipants(entry.item, memberById)}
+                              canEdit={canEditJourneyItem(role, entry.item, currentMember)}
+                            />
                           )}
                         </div>
                       )}

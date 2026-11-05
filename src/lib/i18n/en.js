@@ -416,7 +416,7 @@ export const en = {
     agentDay: 'Agent',
     agentDayAria: 'Open the concierge for this day',
     extPanelHint: 'Details for every segment in the list, side by side with their cards.',
-    extFullDetails: 'Full details',
+    extEdit: 'Editing',
     extNoNotes: 'No notes for this segment',
     extNoMap: 'No map location',
     extEmptyTitle: 'Nothing to extend',
