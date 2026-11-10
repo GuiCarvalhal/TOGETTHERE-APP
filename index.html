@@ -22,6 +22,378 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Crawlable / no-JavaScript policy document. The app is a single-page app, so every
+      route is served from this file; the complete privacy policy therefore lives here,
+      inside <noscript>, so that /privacy-policy returns the full policy text in the raw
+      HTML response (Google OAuth verification) and so visitors without JavaScript can
+      still read it. Browsers with JavaScript never render this block — they get the
+      React policy page instead. Content must stay identical to
+      public/privacy-policy/index.html and src/pages/PrivacyPolicy.jsx.
+    -->
+    <noscript>
+      <style>
+        #tt-static-policy { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; color: #121a21; background: #f8f6f1; font-family: "Plus Jakarta Sans", Arial, sans-serif; line-height: 1.65; }
+        #tt-static-policy a { color: #c2410c; }
+        #tt-static-policy h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 .5rem; }
+        #tt-static-policy h2 { font-size: 1.125rem; margin: 2rem 0 .5rem; }
+        #tt-static-policy p, #tt-static-policy li { font-size: .95rem; }
+        #tt-static-policy ul, #tt-static-policy ol { padding-left: 1.15rem; }
+        #tt-static-policy .tt-dates { color: #555f6d; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
+        #tt-static-policy .tt-brand { display: inline-block; font-weight: 700; letter-spacing: .12em; text-decoration: none; margin-bottom: 1.5rem; }
+        #tt-static-policy footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid #d9d4c9; color: #555f6d; font-size: .8rem; }
+      </style>
+      <div id="tt-static-policy">
+        <a class="tt-brand" href="https://togetthere.app/">TOGETTHERE</a>
+        <h1>Privacy Policy</h1>
+        <p class="tt-dates">Effective date: November 5, 2026 &middot; Last updated: November 5, 2026</p>
+        <p>
+          TOGETTHERE is a group travel planning service. This policy explains what information we access, why we access
+          it, how long we keep it, who we share it with, how we protect it, and how you can control or delete it,
+          including the Google account data you choose to connect.
+        </p>
+
+        <h2>Contents</h2>
+        <ol>
+          <li><a href="#scope">1. Scope of this policy</a></li>
+          <li><a href="#who-we-are">2. Who we are</a></li>
+          <li><a href="#data-we-collect">3. Information we collect and access</a></li>
+          <li><a href="#how-we-use">4. How we use information</a></li>
+          <li><a href="#google-user-data">5. Google API Services User Data &mdash; our commitments</a></li>
+          <li><a href="#sharing">6. How we share information</a></li>
+          <li><a href="#security">7. How we protect information</a></li>
+          <li><a href="#retention">8. Retention and deletion</a></li>
+          <li><a href="#your-rights">9. Your rights, controls and choices</a></li>
+          <li><a href="#transfers">10. International data transfers</a></li>
+          <li><a href="#children">11. Children</a></li>
+          <li><a href="#changes">12. Changes to this policy</a></li>
+          <li><a href="#contact">13. Contact us</a></li>
+        </ol>
+
+        <section id="scope">
+          <h2>1. Scope of this policy</h2>
+          <p>
+            This Privacy Policy explains how TOGETTHERE ("TOGETTHERE", "we", "us") collects, accesses, uses, stores,
+            shares, protects and deletes information when you use the TOGETTHERE application and website at
+            https://togetthere.app (the "Service"), including when you choose to connect an email mailbox such as Gmail,
+            Microsoft Outlook, Yahoo Mail or iCloud Mail.
+          </p>
+          <p>
+            It applies to every part of the Service and forms part of our agreement with you. By creating an account or
+            continuing to use the Service you confirm you have read this policy.
+          </p>
+        </section>
+
+        <section id="who-we-are">
+          <h2>2. Who we are</h2>
+          <p>
+            TOGETTHERE is a group travel and gatherings service that keeps a shared itinerary, expense splitting, trip
+            members and an AI travel concierge in one place. For the purposes of applicable data protection law,
+            TOGETTHERE is the controller of the personal information described here, and the Service is operated on
+            infrastructure and platform services provided by our hosting and processing partners (see section 6).
+          </p>
+        </section>
+
+        <section id="data-we-collect">
+          <h2>3. Information we collect and access</h2>
+          <p>
+            <strong>Account information.</strong> When you sign up or sign in with email and password or with a
+            third-party identity provider (including Google), we receive identifiers and profile data made available by
+            that provider, such as your name, email address and profile photo. We never receive or store your Google or
+            other provider password.
+          </p>
+          <p>
+            <strong>Content you create.</strong> Gatherings, itinerary segments (flights, stays, rides, activities),
+            notes, expenses and splits, member invitations and the travel preferences you add, including photos and files
+            you upload.
+          </p>
+          <p>
+            <strong>Connected email mailboxes.</strong> If you connect a mailbox, we access the messages needed to find
+            travel reservations. For a Google account this uses the restricted Gmail read-only scope
+            (https://www.googleapis.com/auth/gmail.readonly). We read message headers (sender, subject, date) and the
+            message body only for messages that appear to be bookings; other messages are not downloaded or stored. We
+            store the booking details we extract, a copy of the source email for that booking, and the mailbox address.
+            Access tokens and refresh tokens are stored server-side only and are never returned to your browser.
+          </p>
+          <p>
+            <strong>Connected financial accounts.</strong> If you connect a bank or card account or import a statement,
+            we receive transaction descriptions, amounts, currencies and dates, plus the account name and the last four
+            digits of the account number. We never collect or store a full account or card number, and we never receive
+            your banking credentials.
+          </p>
+          <p>
+            <strong>Places, maps and photos.</strong> Place names, addresses and coordinates you select or that we
+            resolve for your itinerary, and the photos we display for those places.
+          </p>
+          <p>
+            <strong>Device, notification and technical data.</strong> A push-notification subscription identifier if you
+            enable notifications, your language and theme preferences, and limited diagnostic and usage events needed to
+            operate and secure the Service (for example errors and sign-in events).
+          </p>
+        </section>
+
+        <section id="how-we-use">
+          <h2>4. How we use information</h2>
+          <p>We use information only to deliver the features you ask for, and to keep the Service secure and working:</p>
+          <ul>
+            <li>Create and secure your account and sign you in.</li>
+            <li>Build, display and share the itinerary and member information inside the gatherings you belong to.</li>
+            <li>Calculate expenses, splits and balances between members and families.</li>
+            <li>
+              Find reservations in a connected mailbox and turn them into itinerary items, and alert you about upcoming
+              bookings when you enable reminders.
+            </li>
+            <li>
+              Provide the AI concierge: suggestions for a gathering, and extraction of booking details from a specific
+              reservation email.
+            </li>
+            <li>Resolve places, maps, flight status and currency conversion used on the screens you open.</li>
+            <li>
+              Send notifications and service emails you have requested, such as reminders or an access confirmation.
+            </li>
+            <li>Detect abuse, prevent fraud and maintain availability.</li>
+          </ul>
+          <p>
+            We do not use information for advertising, we do not build advertising or profiling audiences, and we do not
+            send promotional email unless you ask for it. We do not use Google user data for any purpose other than
+            providing the user-facing features described above.
+          </p>
+        </section>
+
+        <section id="google-user-data">
+          <h2>5. Google API Services User Data &mdash; our commitments</h2>
+          <p>
+            TOGETTHERE's use of information received from Google APIs adheres to the Google API Services User Data
+            Policy, including the Limited Use requirements
+            (https://developers.google.com/terms/api-services-user-data-policy).
+          </p>
+          <p>
+            <strong>How Google user data is accessed.</strong> Only after you explicitly connect a Google account, and
+            only with the read-only scopes needed for the feature you requested (sign-in identity, and Gmail read-only
+            for reservation import).
+          </p>
+          <p>
+            <strong>How Google user data is used.</strong> Solely to provide and improve the user-facing features you
+            requested &mdash; importing your travel reservations into your itinerary and showing them to the members of
+            the gathering you filed them into. A reservation email is processed by an AI model provider acting as our
+            processor, only to extract the booking fields for that one segment; it is not used by us or by that processor
+            to train generalized models.
+          </p>
+          <p>
+            <strong>How Google user data is stored and protected.</strong> Server-side only, in access-controlled storage.
+            OAuth tokens never reach the browser and are not exposed to other users of the Service.
+          </p>
+          <p>
+            <strong>How Google user data is shared.</strong> It is not shared with third parties except the processors
+            needed to run the feature (hosting, AI extraction for the email being processed, and push notifications for a
+            reminder you enabled), or where legally required.
+          </p>
+          <p>
+            <strong>How Google user data is retained and deleted.</strong> Reservation items and their source emails are
+            kept while the item exists and, if deleted, for the 30-day recovery window described in section 8;
+            disconnecting the mailbox deletes the stored tokens immediately and stops all further access. You can request
+            deletion of all Google-derived data at any time (section 9).
+          </p>
+          <p>Specifically, with respect to Google user data we commit that we will NOT:</p>
+          <ul>
+            <li>Use Google user data for targeted, personalised or retargeted advertising, or for advertising measurement.</li>
+            <li>Sell Google user data, or rent, license or otherwise make it available for value.</li>
+            <li>Transfer Google user data to data brokers, resellers, information aggregators or similar third parties.</li>
+            <li>
+              Use Google Workspace or Google API data to develop, train, fine-tune or improve generalized or
+              non-personalized artificial intelligence or machine learning models.
+            </li>
+            <li>
+              Allow humans to read Google user data, except where you gave your affirmative consent for a specific
+              message, where it is necessary for security or abuse investigations, or where required by law.
+            </li>
+          </ul>
+        </section>
+
+        <section id="sharing">
+          <h2>6. How we share information</h2>
+          <p>
+            We do not sell personal information and we do not share it for cross-context behavioural advertising.
+            Information is disclosed only in these situations:
+          </p>
+          <ul>
+            <li>
+              Other members of a gathering, who see the itinerary segments, expenses and member details that belong to
+              that gathering. Private notes you mark as private are not shown to them.
+            </li>
+            <li>
+              Service providers acting as our processors under contract and only on our instructions: cloud hosting and
+              database services, file storage, transactional email delivery, push notification delivery, AI model
+              inference for the extraction and suggestion features, mapping and place data, flight data and currency
+              exchange rates.
+            </li>
+            <li>
+              Legal obligations: where we believe in good faith that disclosure is required by law, regulation, subpoena
+              or other valid legal process, or is necessary to protect the rights, safety or property of our users or of
+              TOGETTHERE.
+            </li>
+            <li>
+              Business transfers: if the Service is merged, acquired or its assets transferred, information may be
+              transferred as part of that transaction, subject to this policy and to notice to you.
+            </li>
+          </ul>
+          <p>
+            We require every processor to protect information to standards at least equivalent to this policy, to use it
+            only for the purposes we specify, and to delete it when our relationship ends.
+          </p>
+        </section>
+
+        <section id="security">
+          <h2>7. How we protect information</h2>
+          <p>We apply technical and organisational measures designed to protect information against loss, misuse and unauthorised access:</p>
+          <ul>
+            <li>
+              Encryption in transit: all traffic between your device and the Service, and between the Service and
+              provider APIs, uses HTTPS/TLS.
+            </li>
+            <li>
+              Access control and least privilege: records are scoped per gathering and per account by server-side access
+              rules, and privileged operations run only through server-side checks. One user cannot read another user's
+              gatherings, mailbox content or financial data.
+            </li>
+            <li>
+              Credential isolation: mailbox and bank OAuth tokens are stored server-side only, never exposed to the
+              browser or to other users. App-specific passwords for password-based mailbox providers are encrypted at
+              rest with AES-GCM using a dedicated key that is rotated.
+            </li>
+            <li>
+              Minimisation: we read only the messages that look like bookings, keep only the booking details and the
+              source email, and never request write, send or delete access to a mailbox.
+            </li>
+            <li>
+              Monitoring and review: errors, failed syncs and sign-in events are logged and reviewed, and secrets are
+              stored in a managed secret store rather than in code.
+            </li>
+          </ul>
+          <p>
+            No method of transmission or storage is completely secure. If we become aware of a breach affecting your
+            information, we will notify you and any relevant authority as required by applicable law.
+          </p>
+        </section>
+
+        <section id="retention">
+          <h2>8. Retention and deletion</h2>
+          <p>We keep personal information only as long as needed for the purposes in this policy:</p>
+          <ul>
+            <li>Account and profile data: until you delete your account or ask us to delete it.</li>
+            <li>
+              Gathering content (itinerary, expenses, splits, notes, attachments): while the gathering exists. You can
+              delete individual items at any time.
+            </li>
+            <li>
+              Deleted items: itinerary segments and expenses are soft-deleted and remain recoverable in "Recently
+              deleted" for 30 days, after which they are permanently purged. The same 30-day window applies to a
+              reservation email kept as the source attachment of an imported segment.
+            </li>
+            <li>
+              Connected mailbox tokens and sync cursors: kept while the mailbox is connected. Disconnecting deletes the
+              tokens immediately and stops all access and syncing; already-imported itinerary items stay until you delete
+              them.
+            </li>
+            <li>
+              Connected financial data: transaction records are kept while the connection or statement import exists;
+              disconnecting stops syncing and lets you remove the connection and its data.
+            </li>
+            <li>Diagnostic logs: kept for a limited period for security and operations, then deleted or aggregated.</li>
+          </ul>
+          <p>
+            When you ask us to delete your account, we delete the associated personal information within 30 days, except
+            where we must keep specific records to comply with a legal obligation, resolve a dispute or prevent fraud,
+            and except for copies still held in routine encrypted backups until they age out.
+          </p>
+        </section>
+
+        <section id="your-rights">
+          <h2>9. Your rights, controls and choices</h2>
+          <p>You stay in control of your information and can exercise the following at any time:</p>
+          <ul>
+            <li>
+              Disconnect a mailbox: Account &rarr; connected inboxes &rarr; Disconnect. Stored tokens are deleted
+              immediately and no further messages are read.
+            </li>
+            <li>Disconnect a financial account: Account &rarr; financial connections &rarr; Disconnect.</li>
+            <li>
+              Edit or delete content: change or remove itinerary items, expenses, notes, attachments and member details
+              directly in the app, and restore an accidental deletion from "Recently deleted" within 30 days.
+            </li>
+            <li>
+              Withdraw notification consent: turn off push notifications or individual notification categories in your
+              notification settings, or in your device settings.
+            </li>
+            <li>
+              Access and portability: request a copy of the personal information we hold about you, and export of your
+              itinerary and expense data.
+            </li>
+            <li>Correction: request correction of inaccurate information.</li>
+            <li>Deletion: request deletion of your account and the information associated with it.</li>
+            <li>
+              Objection and restriction: object to or ask us to restrict a specific use, and withdraw any consent you
+              previously gave.
+            </li>
+            <li>
+              Complaint: lodge a complaint with your local data protection authority. We ask that you contact us first so
+              we can try to resolve it.
+            </li>
+          </ul>
+          <p>
+            <strong>Contact route for rights requests.</strong> Email privacy@togethere.app from the address associated
+            with your account, stating what you want us to do. We may ask you to verify that you control the account
+            before acting. We respond within the timeframe required by applicable law, normally within 30 days.
+          </p>
+        </section>
+
+        <section id="transfers">
+          <h2>10. International data transfers</h2>
+          <p>
+            The Service is operated on infrastructure located in the United States and the European Union, and our
+            processors may store or process information in other countries. Where information protected by the GDPR or
+            comparable law is transferred outside its region of origin, we rely on appropriate safeguards &mdash; in
+            particular the European Commission Standard Contractual Clauses and, where applicable, the UK International
+            Data Transfer Addendum &mdash; together with supplementary technical measures such as encryption in transit
+            and at rest. You can request more information about these safeguards using the contact route in section 13.
+          </p>
+        </section>
+
+        <section id="children">
+          <h2>11. Children</h2>
+          <p>
+            The Service is not intended for children under 16, and we do not knowingly collect personal information from
+            them. If you believe a child has provided us information, contact us and we will delete it.
+          </p>
+        </section>
+
+        <section id="changes">
+          <h2>12. Changes to this policy</h2>
+          <p>
+            We may update this policy to reflect changes in the Service or in legal requirements. The effective date at
+            the top of this page always shows the current version, and we will notify you in the app before a material
+            change takes effect where the law requires it. Continuing to use the Service after an update means you accept
+            the revised policy.
+          </p>
+        </section>
+
+        <section id="contact">
+          <h2>13. Contact us</h2>
+          <p>
+            For any question about this policy, about how your information is handled, or to exercise a right described
+            in section 9, contact us at privacy@togethere.app. We aim to answer every privacy enquiry within 30 days.
+          </p>
+        </section>
+
+        <footer>
+          <p>TOGETTHERE &mdash; Group travel and gatherings. Privacy enquiries: privacy@togethere.app</p>
+          <p>
+            Google API Services User Data Policy:
+            <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer">developers.google.com/terms/api-services-user-data-policy</a>
+          </p>
+        </footer>
+      </div>
+    </noscript>
     <script>
       (function(){
         try {
