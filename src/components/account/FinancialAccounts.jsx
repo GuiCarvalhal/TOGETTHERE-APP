@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/tt/Skeleton';
 import { useI18n } from '@/lib/i18n';
-import { Landmark, Plus, RefreshCw, Ban, Loader2, Upload, ClipboardCheck, RefreshCcw } from 'lucide-react';
+import { Landmark, Plus, RefreshCw, Ban, Loader2, Upload, ClipboardCheck, RefreshCcw, Mail } from 'lucide-react';
 import FinancialConnectSheet from '@/components/account/FinancialConnectSheet';
 import FinancialImportSheet from '@/components/account/FinancialImportSheet';
 import FinancialTransactionList from '@/components/account/FinancialTransactionList';
@@ -15,6 +16,7 @@ import TransactionExpenseSheet from '@/components/account/TransactionExpenseShee
 // import.
 export default function FinancialAccounts() {
   const { t, fmt } = useI18n();
+  const navigate = useNavigate();
   const [data, setData] = useState({ connections: [], transactions: [], counts: {} });
   const [gatherings, setGatherings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -124,11 +126,18 @@ export default function FinancialAccounts() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-ink-deep truncate">
-                    {c.institution_name} ···· {c.account_mask}
+                    {c.institution_name}{c.account_mask ? ` ···· ${c.account_mask}` : ''}
                   </p>
                   <p className="text-[11px] text-ink-deep/55 truncate">
-                    {c.last_sync_at ? t('finance.lastSync', { time: fmt.timeAgo(c.last_sync_at) }) : t('finance.neverSynced')}
+                    {c.provider === 'import'
+                      ? ((c.last_attempt_at || c.last_sync_at)
+                        ? t('finance.lastImport', { time: fmt.timeAgo(c.last_attempt_at || c.last_sync_at) })
+                        : t('finance.neverImported'))
+                      : (c.last_sync_at ? t('finance.lastSync', { time: fmt.timeAgo(c.last_sync_at) }) : t('finance.neverSynced'))}
                   </p>
+                  {c.last_error && (
+                    <p className="text-[11px] text-terra-deep leading-relaxed">{t('finance.importErrorHelp')}</p>
+                  )}
                 </div>
                 <span className={`tt-stamp shrink-0 ${c.status === 'attention' ? 'border-terra/40 text-terra-deep bg-terra/10' : 'border-emerald-600/30 text-emerald-700 bg-emerald-500/10'}`}>
                   {c.status === 'attention' ? t('finance.statusAttention') : t('finance.statusConnected')}
@@ -150,6 +159,21 @@ export default function FinancialAccounts() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="tt-card p-4 space-y-2">
+          <div className="flex items-start gap-2">
+            <Mail className="w-4 h-4 text-ink-deep/50 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink-deep">{t('finance.emailImportsTitle')}</p>
+              <p className="text-[11px] text-ink-deep/55 leading-relaxed">{t('finance.emailImportsBody')}</p>
+            </div>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => navigate('/account')}>
+            <Mail /> {t('finance.emailImportsAction')}
+          </Button>
         </div>
       )}
 

@@ -70,7 +70,8 @@ export default function FinancialImportSheet({ open, onOpenChange, connections, 
       if (summary.imported > 0) await onImported?.();
     } catch (err) {
       const reason = err.response?.data?.reason;
-      setError(reason === 'no_rows' || reason === 'no_header' || reason === 'unsupported_columns' || reason === 'empty'
+      setError(reason === 'no_rows' || reason === 'no_header' || reason === 'unsupported_columns'
+        || reason === 'empty' || reason === 'ofx_unreadable' || reason === 'text_unreadable'
         ? t('finance.importNoRows')
         : (err.response?.data?.error || err.message || t('finance.importFailed')));
     } finally {
@@ -104,7 +105,7 @@ export default function FinancialImportSheet({ open, onOpenChange, connections, 
               <SelectContent>
                 {accounts.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.institution_name} ···· {c.account_mask}
+                    {c.institution_name}{c.account_mask ? ` ···· ${c.account_mask}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -115,7 +116,7 @@ export default function FinancialImportSheet({ open, onOpenChange, connections, 
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,.tsv,.txt,text/csv,text/plain"
+              accept=".csv,.tsv,.txt,.ofx,.qfx,text/csv,text/plain,application/x-ofx"
               onChange={pickFile}
               className="hidden"
             />
@@ -151,6 +152,15 @@ export default function FinancialImportSheet({ open, onOpenChange, connections, 
                 </p>
                 {(result.warnings || []).includes('assumed_debit') && (
                   <p className="text-[11px] text-emerald-900/70 leading-relaxed">{t('finance.importAssumedDebit')}</p>
+                )}
+                {result.upgraded > 0 && (
+                  <p className="text-[11px] text-emerald-900/70">{t('finance.importUpgraded', { count: result.upgraded })}</p>
+                )}
+                {result.format === 'ofx' && (
+                  <p className="text-[11px] text-emerald-900/70">{t('finance.importFormatOfx')}</p>
+                )}
+                {result.format === 'text' && (
+                  <p className="text-[11px] text-emerald-900/70">{t('finance.importFormatText')}</p>
                 )}
                 {result.skipped > 0 && (
                   <p className="text-[11px] text-emerald-900/70">{t('finance.importSkipped', { count: result.skipped })}</p>
