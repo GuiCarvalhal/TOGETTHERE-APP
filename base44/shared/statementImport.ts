@@ -28,6 +28,7 @@ export type StatementRow = {
   description: string;
   merchant?: string;
   amount: number;
+  direction: 'debit' | 'credit';
   currency?: string;
   status?: 'pending' | 'posted';
   occurrence?: number;
@@ -98,6 +99,9 @@ const MONTHS: Record<string, number> = {
 
 // Lines that look like money but are not transactions.
 const NON_TRANSACTION_LINE = /(total|subtotal|saldo|balance|fatura atual|previous balance|carried forward|saldo anterior|limite|credit limit|available credit|limite disponivel|pagamento minimo|minimum payment|vencimento|due date|due on|juros|interest charge summary)/;
+
+// Wording that means money came BACK, so a plain positive amount is a credit.
+const CREDIT_WORDING = /\b(refund|refunded|estorno|estornado|reversal|reversed|reverted|devolucao|devolu\u00e7\u00e3o|credited|credit received|entrada|deposito|dep\u00f3sito)\b/i;
 
 // Merchant noise that never belongs in a normalized merchant name.
 const MERCHANT_PREFIXES: RegExp[] = [
@@ -328,7 +332,8 @@ function buildRows(
       date,
       description: draft.description,
       merchant: draft.merchant || undefined,
-      amount: draft.direction === 'debit' ? -draft.amount : draft.amount,
+      amount: draft.amount,
+      direction: draft.direction,
       currency: draft.currency || fallbackCurrency || undefined,
       status: draft.status,
       occurrence: seen,
@@ -433,8 +438,11 @@ function readDraft(cells: string[], columns: Partial<Record<ColumnKey, number>>)
 
   const debit = parseAmountCell(cellAt(cells, columns.debit));
   const credit = parseAmountCell(cellAt(cells, columns.credit));
-  const plain = parseAmountCell(cellAt(cells, columns.amount));
+  const plainRaw = cellAt(cells, columns.amount);
+  const plain = parseAmountCell(plainRaw);
   const typeLabel = normalizeLabel(cellAt(cells, columns.type));
+  const plainNegative = /^[(]|[-\u2212]/.test(plainRaw.trim());
+  const plainCreditMarker = /\b(?:CR|CREDIT|CREDITO|CR\u00c9DITO|C)\s*$/i.test(plainRaw);
 
   let amount = 0;
   let direction: 'debit' | 'credit' = 'debit';
@@ -448,8 +456,13 @@ function readDraft(cells: string[], columns: Partial<Record<ColumnKey, number>>)
     explicit = true;
   } else if (plain) {
     amount = plain.amount;
-    direction = plain.direction;
-    explicit = plain.direction === 'credit';
+    // A single amount column: a bare positive number is a charge. Only an
+    // explicit credit marker, refund wording or a minus sign says otherwise,
+    // otherwise a plain export would import every purchase as a refund.
+    direction = plainCreditMarker || CREDIT_WORDING.test(`${typeLabel} ${cleanDescription(cellAt(cells, columns.description))}`)
+      ? 'credit'
+      : 'debit';
+    explicit = plainCreditMarker || plainNegative || direction === 'credit';
   } else {
     return null;
   }
@@ -470,7 +483,7 @@ function readDraft(cells: string[], columns: Partial<Record<ColumnKey, number>>)
     amount,
     direction,
     explicit,
-    signedNegative: plain?.direction === 'debit' || Boolean(debit),
+    signedNegative: plainNegative || Boolean(debit),
   };
 }
 
@@ -561,7 +574,8 @@ function parseOfx(
       date,
       description,
       merchant: cleanMerchantName(description) || undefined,
-      amount: direction === 'debit' ? -parsed.amount : parsed.amount,
+      amount: parsed.amount,
+      direction,
       currency: currency || undefined,
       status: 'posted',
       occurrence: seen,

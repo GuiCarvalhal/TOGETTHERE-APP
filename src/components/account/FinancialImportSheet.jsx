@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FormSheet from '@/components/tt/FormSheet';
 import { useI18n } from '@/lib/i18n';
-import { Upload, FileText, Loader2, CheckCircle2, Landmark } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle2, Landmark, Mail } from 'lucide-react';
 
 const MAX_FILE_BYTES = 1024 * 1024;
 
@@ -13,7 +13,7 @@ const MAX_FILE_BYTES = 1024 * 1024;
 // The file is read in the browser and sent as text, so nothing is stored; the
 // backend parses it and lands every row as a transaction to review (dedupe is
 // server-side, so re-importing the same statement adds nothing).
-export default function FinancialImportSheet({ open, onOpenChange, connections, onImported, onConnect }) {
+export default function FinancialImportSheet({ open, onOpenChange, connections, onImported, onConnect, onEmailImports }) {
   const { t } = useI18n();
   const fileRef = useRef(null);
   const accounts = useMemo(
@@ -173,6 +173,15 @@ export default function FinancialImportSheet({ open, onOpenChange, connections, 
             {busy ? <Loader2 className="animate-spin" /> : <FileText />}
             {busy ? t('finance.importing') : t('finance.importAction')}
           </Button>
+
+          {onEmailImports && (
+            <div className="pt-1 border-t border-ink-charcoal/15 space-y-2">
+              <p className="text-[11px] text-ink-deep/60 leading-relaxed pt-3">{t('finance.emailImportsBody')}</p>
+              <Button type="button" size="sm" variant="ghost" onClick={onEmailImports}>
+                <Mail /> {t('finance.emailImportsAction')}
+              </Button>
+            </div>
+          )}
         </form>
       )}
     </FormSheet>

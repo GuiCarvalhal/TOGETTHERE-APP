@@ -15,5 +15,10 @@ export default defineConfig({
       visualEditAgent: true
     }),
     react(),
-  ]
+  ],
+  // Backend/shared modules ship Deno tests (`deno test base44/shared`); they are
+  // not Vitest files, so the frontend runner ignores them.
+  test: {
+    exclude: ['**/node_modules/**', '**/dist/**', 'base44/**'],
+  }
 });

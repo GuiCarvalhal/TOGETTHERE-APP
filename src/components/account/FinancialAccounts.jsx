@@ -223,6 +223,7 @@ export default function FinancialAccounts() {
         connections={connections}
         onImported={load}
         onConnect={() => setConnectOpen(true)}
+        onEmailImports={() => { setImportOpen(false); navigate('/account'); }}
       />
 
       {expenseTx && (

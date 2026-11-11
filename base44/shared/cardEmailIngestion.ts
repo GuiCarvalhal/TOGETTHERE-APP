@@ -158,7 +158,9 @@ export function extractCardEmail(input: {
     return { ...base, kind: 'none', signals: [], reason: 'not_a_transaction' };
   }
 
-  const kind: 'purchase' | 'refund' = refundish && !purchaseish ? 'refund' : 'purchase';
+  // Refund wording wins: an alert that says money came back is never a charge,
+  // even when it also says "card ending 4412" (a generic purchase-alert phrase).
+  const kind: 'purchase' | 'refund' = refundish ? 'refund' : 'purchase';
   const amount = extractAmount(haystack);
   const merchant = extractMerchant(haystack);
   const mask = extractMask(haystack);
@@ -186,9 +188,13 @@ export function extractCardEmail(input: {
   const direction: 'debit' | 'credit' = kind === 'refund' ? 'credit' : 'debit';
   // Alerts are usually authorizations, so they start PENDING; the statement
   // import upgrades them to POSTED in place once the charge settles.
-  const settlement: 'pending' | 'posted' = /pending|pendente|authoriz|autori[sz]|processing|processando/i.test(lower)
-    ? 'pending'
-    : 'posted';
+  // Alert mail is normally an authorization: it starts PENDING and the statement
+  // import upgrades it to POSTED in place once the charge settles. Only wording
+  // that says it already settled skips the queue.
+  const settlement: 'pending' | 'posted' = kind === 'refund'
+    || /posted|settled|cleared|compensad|conclu[ií]d|processed/i.test(lower)
+    ? 'posted'
+    : 'pending';
 
   const messageId = String(input?.messageId || '');
   const externalBase = [messageId || subject, date, amount.toFixed(2), direction, merchant.toLowerCase()].join('|');
@@ -205,7 +211,8 @@ export function extractCardEmail(input: {
       date,
       description,
       merchant: merchant || undefined,
-      amount: direction === 'debit' ? -amount : amount,
+      amount,
+      direction,
       currency: currency || undefined,
       status: settlement,
       occurrence: 1,

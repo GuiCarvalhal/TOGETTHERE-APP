@@ -239,6 +239,9 @@ export function suggestGatheringForDate(date: string, ranges: GatheringRange[]) 
 export function normalizeTransaction(raw: any, ctx: { provider: string; currency: string }) {
   const money = normalizeAmount(raw?.amount);
   if (!money) return { error: 'invalid_amount' as const };
+  // An adapter that already says which way the money moved wins over the sign:
+  // statement and card-email rows carry a positive magnitude plus a direction.
+  const direction = raw?.direction === 'credit' || raw?.direction === 'debit' ? raw.direction : money.direction;
   const when = normalizeOccurredAt(raw?.occurred_at || raw?.date);
   if (!when) return { error: 'invalid_date' as const };
 
@@ -256,7 +259,7 @@ export function normalizeTransaction(raw: any, ctx: { provider: string; currency
         amount: money.amount,
         currency,
         merchant,
-        direction: money.direction,
+        direction,
         occurrence,
       }),
       occurred_at: when.occurred_at,
@@ -266,7 +269,7 @@ export function normalizeTransaction(raw: any, ctx: { provider: string; currency
       raw_category: text(raw?.raw_category),
       currency,
       amount: money.amount,
-      direction: money.direction,
+      direction,
       status: normalizeStatus(raw?.status),
       category_suggestion: suggestion.category,
       category_confidence: suggestion.confidence,
