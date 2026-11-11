@@ -99,19 +99,30 @@ export default function PastMembersCard({ gatheringId, onAdded }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
             {candidates.map((c) => {
               const picked = selected.includes(c.user_id);
+              const firstName = c.first_name || c.full_name;
+              const fullName = c.full_name && c.full_name !== firstName ? c.full_name : '';
+              const sharedNames = (c.shared_gathering_names || []).join(', ');
               return (
                 <button
                   key={c.user_id}
                   type="button"
                   onClick={() => toggle(c.user_id)}
                   aria-pressed={picked}
+                  aria-label={c.full_name || c.first_name}
                   title={c.full_name || c.first_name}
-                  className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${picked ? 'border-terra bg-terra/10' : 'border-ink-charcoal/15 bg-card hover:bg-cream-pale'}`}
+                  className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all min-w-0 ${picked ? 'border-terra bg-terra/10' : 'border-ink-charcoal/15 bg-card hover:bg-cream-pale'}`}
                 >
                   <MemberAvatar member={{ full_name: c.full_name || c.first_name, photo: c.photo }} size="sm" ring={picked} />
+                  {/* Two fixed lines (name, then shared-gathering context) so the
+                      row height never jumps between candidates. */}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-ink-deep truncate">{c.first_name || c.full_name}</span>
-                    <span className="hidden sm:block text-xs text-ink-deep/50 truncate">{c.full_name}</span>
+                    <span className="block text-sm leading-5 text-ink-deep truncate">
+                      <span className="font-semibold">{firstName}</span>
+                      {fullName && <span className="text-ink-deep/55"> {fullName}</span>}
+                    </span>
+                    <span className="block text-[11px] leading-4 text-ink-deep/50 truncate">
+                      {sharedNames ? t('members.pastSharedGatherings', { names: sharedNames }) : ''}
+                    </span>
                   </span>
                   <span className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${picked ? 'bg-terra border-terra text-cream' : 'border-ink-charcoal/30 text-transparent'}`}>
                     <Check className="w-3 h-3" />

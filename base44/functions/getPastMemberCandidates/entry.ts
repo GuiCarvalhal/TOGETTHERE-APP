@@ -22,7 +22,7 @@ export default async function(req) {
     }
 
     const [contacts, currentMembers] = await Promise.all([
-      resolvePastContacts(base44, user.id),
+      resolvePastContacts(base44, user.id, { includeSharedGatherings: true }),
       base44.asServiceRole.entities.Member.filter({ gathering_id }).catch(() => []),
     ]);
 

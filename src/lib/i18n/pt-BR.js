@@ -662,6 +662,7 @@ export const ptBR = {
     couldNotRemove: 'N??o foi poss??vel remover o membro',
     pastTitle: 'Pessoas de viagens anteriores',
     pastDesc: 'Adicione quem já viajou com você, sem precisar de link de convite.',
+    pastSharedGatherings: 'Viagens em comum: {names}',
     pastEmpty: 'Ninguém para adicionar ainda',
     pastEmptyBody: 'Quem compartilha outra viagem com você aparece aqui.',
     pastAddSelected: 'Adicionar selecionados',

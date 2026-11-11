@@ -25,8 +25,12 @@ function isStableUserId(uid) {
 }
 
 // Deduplicated candidates: one row per user account, newest membership wins for
-// any per-gathering fallback fields.
-export async function resolvePastContacts(base44, userId) {
+// any per-gathering fallback fields. With `includeSharedGatherings`, each row also
+// carries up to `MAX_SHARED_GATHERING_NAMES` names of the gatherings the two of you
+// have in common (for the "Shared gatherings: X, Y" context line).
+export const MAX_SHARED_GATHERING_NAMES = 3;
+
+export async function resolvePastContacts(base44, userId, { includeSharedGatherings = false } = {}) {
   if (!userId) return [];
   const myRows = await base44.asServiceRole.entities.Member.filter({ user_id: userId }).catch(() => []);
   const gatheringIds = [...new Set((myRows || []).map((m) => m.gathering_id).filter(Boolean))];
@@ -39,7 +43,9 @@ export async function resolvePastContacts(base44, userId) {
   );
 
   const byUid = new Map();
-  for (const rows of rowsByGathering) {
+  const sharedGidsByUid = new Map();
+  rowsByGathering.forEach((rows, i) => {
+    const gid = gatheringIds[i];
     for (const m of rows || []) {
       const uid = (m.user_id || '').trim();
       if (!isStableUserId(uid) || uid === userId) continue;
@@ -55,8 +61,10 @@ export async function resolvePastContacts(base44, userId) {
           email: (m.email || '').trim(),
         });
       }
+      if (!sharedGidsByUid.has(uid)) sharedGidsByUid.set(uid, new Set());
+      sharedGidsByUid.get(uid).add(gid);
     }
-  }
+  });
 
   const uids = [...byUid.keys()].slice(0, MAX_CONTACTS);
   if (!uids.length) return [];
@@ -71,6 +79,23 @@ export async function resolvePastContacts(base44, userId) {
   const userById = new Map();
   for (const u of users) if (u && u.id) userById.set(u.id, u);
 
+  // Optional: resolve the shared gatherings' display names for the context line.
+  const nameByGid = new Map();
+  if (includeSharedGatherings) {
+    const allGids = [...new Set([...sharedGidsByUid.values()].flatMap((s) => [...s]))];
+    if (allGids.length) {
+      try {
+        const gRes = await base44.asServiceRole.entities.Gathering.filter({ id: { $in: allGids } });
+        const gatherings = Array.isArray(gRes) ? gRes : (gRes && gRes.items) || [];
+        for (const g of gatherings || []) {
+          if (g && g.id && g.name) nameByGid.set(g.id, g.name);
+        }
+      } catch {
+        /* names are decorative — the row still renders without the context line */
+      }
+    }
+  }
+
   // Accounts that no longer resolve to a User record are inactive/deleted users:
   // they are excluded rather than rendered as nameless rows.
   return uids
@@ -79,13 +104,21 @@ export async function resolvePastContacts(base44, userId) {
       const u = userById.get(uid);
       const row = byUid.get(uid);
       const name = (u.display_name || u.full_name || row.full_name || '').trim();
-      return {
+      const contact: Record<string, any> = {
         user_id: uid,
         full_name: name,
         first_name: firstNameOf(name, (u.email || row.email || '').split('@')[0]),
         photo: u.photo || row.photo || '',
         email: (u.email || row.email || '').trim().toLowerCase(),
       };
+      if (includeSharedGatherings) {
+        const names = [...(sharedGidsByUid.get(uid) || [])]
+          .map((gid) => nameByGid.get(gid))
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        contact.shared_gathering_names = names.slice(0, MAX_SHARED_GATHERING_NAMES);
+      }
+      return contact;
     });
 }
 
