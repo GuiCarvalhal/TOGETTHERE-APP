@@ -12,10 +12,10 @@ export default function FormSheet({ open, onOpenChange, title, children, maxWidt
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="tt-card bg-card text-card-foreground rounded-t-[1.5rem] max-h-[92vh]">
-          <DrawerHeader className="px-6 pt-4 pb-2 text-left">
+          <DrawerHeader className="px-5 sm:px-6 pt-4 pb-2 text-left">
             <DrawerTitle className="font-display text-2xl font-bold text-ink-deep">{title}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-6 tt-drawer-pb overflow-y-auto">{children}</div>
+          <div className="px-5 sm:px-6 tt-drawer-pb overflow-y-auto overflow-x-hidden min-w-0">{children}</div>
         </DrawerContent>
       </Drawer>
     );

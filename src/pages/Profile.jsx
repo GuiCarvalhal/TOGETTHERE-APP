@@ -64,7 +64,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader gatheringId={gatheringId} />
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 pb-24">
+      <div className="tt-page py-5 pb-24">
         <ProfileActionBar
           onBack={onBack}
           isOwner={isOwner}

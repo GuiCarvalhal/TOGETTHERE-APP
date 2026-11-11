@@ -130,6 +130,24 @@
     background-color: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
   }
+
+  /* Native date/time controls carry an intrinsic minimum width that pushes
+     narrow two-column form rows past the phone viewport. Let every control
+     shrink and never exceed its container — the single guard against
+     horizontal scrolling inside forms. */
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"],
+  input[type="week"] {
+    min-width: 0;
+  }
 }
 
 @layer components {
@@ -171,6 +189,12 @@
   .tt-ink-panel {
     background: hsl(var(--ink-soft));
     @apply rounded-[1rem] border border-foreground/8;
+  }
+
+  /* Shared page container — one max width + padding for focused reading and
+     settings pages, so moving between them never shifts the content edges. */
+  .tt-page {
+    @apply w-full max-w-2xl mx-auto px-4 sm:px-6;
   }
 }
 

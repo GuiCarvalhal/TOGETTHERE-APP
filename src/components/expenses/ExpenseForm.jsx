@@ -264,21 +264,21 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           <Label className="text-ink-deep">{t('expenseForm.title')}</Label>
           <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t('expenseForm.titlePlaceholder')} required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
           <div className="space-y-2">
             <Label className="text-ink-deep">{t('expenseForm.amount')}</Label>
             <Input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder={t('expenseForm.amountPlaceholder')} required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
           </div>
           <div className="space-y-2">
             <Label className="text-ink-deep">{t('expenseForm.currency')}</Label>
-            <CurrencySelect value={(form.currency || 'USD').toUpperCase()} onChange={(v) => setForm({ ...form, currency: v })} options={currencyOptions} triggerClass="w-full h-10" />
+            <CurrencySelect value={(form.currency || 'USD').toUpperCase()} onChange={(v) => setForm({ ...form, currency: v })} options={currencyOptions} triggerClass="w-full h-11" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
           <div className="space-y-2">
             <Label className="text-ink-deep">{t('expenseForm.paidBy')}</Label>
             <Select value={form.payer_member_id} onValueChange={(v) => setForm({ ...form, payer_member_id: v })}>
-              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-11"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {participants.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name || t('account.member')}</SelectItem>)}
               </SelectContent>
@@ -287,7 +287,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           <div className="space-y-2">
             <Label className="text-ink-deep">{t('expenseForm.category')}</Label>
             <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-11"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {EXPENSE_CATEGORIES.map((c) => <SelectItem key={c.key} value={c.key}>{t('expenseCategories.' + c.key)}</SelectItem>)}
               </SelectContent>
@@ -315,8 +315,8 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           <Label className="text-ink-deep">{t('expenseForm.splitBetween')}</Label>
           {selected === null ? (
             <div className="space-y-2">
-              <div className="tt-skeleton h-10 w-full rounded-lg" />
-              <div className="tt-skeleton h-10 w-full rounded-lg" />
+              <div className="tt-skeleton h-11 w-full rounded-lg" />
+              <div className="tt-skeleton h-11 w-full rounded-lg" />
             </div>
           ) : (
             <>
@@ -354,7 +354,7 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
           </div>
           <Switch checked={form.settled} onCheckedChange={(v) => setForm({ ...form, settled: v })} />
         </div>
-        <DialogFooter className="pt-2 gap-2">
+        <DialogFooter className="pt-2 gap-2 flex-wrap">
           {expense && onDelete && (
             <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting} className="mr-auto">
               {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}

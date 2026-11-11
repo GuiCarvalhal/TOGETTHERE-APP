@@ -213,7 +213,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
             <Label htmlFor="j-title" className="text-ink-deep">{t('journeyForm.title')}</Label>
             <Input id="j-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t('journeyForm.titlePlaceholder')} required className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="j-start" className="text-ink-deep">{t('journeyForm.start')}</Label>
               <Input id="j-start" type="datetime-local" value={form.start_datetime} onChange={(e) => { setStartTouched(true); setForm({ ...form, start_datetime: e.target.value }); }} className="bg-cream-pale border-ink-charcoal/20 text-ink-deep" />
@@ -224,7 +224,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
             </div>
           </div>
           {meta.fromTo && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-ink-deep">{t('journeyForm.from')}</Label>
                 <PlaceAutocomplete
@@ -304,7 +304,7 @@ export default function JourneyItemForm({ gatheringId, gatheringStartDate, curre
     <FormSheet open onOpenChange={(o) => { if (!o) onClose(); }} title={item ? t('journeyForm.editSegment') : t('journeyForm.addSegment')}>
       <form onSubmit={handleSave} className="space-y-4">
         {formFields}
-        <DialogFooter className="pt-2 gap-2">
+        <DialogFooter className="pt-2 gap-2 flex-wrap">
           <Button type="button" variant="outline" onClick={onClose}><X /> {t('common.cancel')}</Button>
           <Button type="submit" disabled={saving || flightNeedsSelection}>
             {saving ? <Loader2 className="animate-spin" /> : item ? <Check /> : <Plus />}

@@ -99,7 +99,7 @@ export default function FinancialImportSheet({ open, onOpenChange, connections, 
           <div className="space-y-2">
             <Label className="text-ink-deep">{t('finance.importAccount')}</Label>
             <Select value={account} onValueChange={setConnectionId}>
-              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep h-10">
+              <SelectTrigger className="bg-cream-pale border-ink-charcoal/20 text-ink-deep">
                 <SelectValue placeholder={t('finance.importSelectAccount')} />
               </SelectTrigger>
               <SelectContent>
@@ -135,7 +135,7 @@ export default function FinancialImportSheet({ open, onOpenChange, connections, 
               onChange={(e) => { setText(e.target.value); setResult(null); }}
               placeholder={t('finance.importPastePlaceholder')}
               rows={5}
-              className="w-full rounded-xl bg-cream-pale border border-ink-charcoal/20 text-ink-deep text-xs p-3 font-mono resize-y focus:outline-none focus:ring-2 focus:ring-ring/40"
+              className="w-full min-w-0 rounded-xl bg-cream-pale border border-ink-charcoal/20 text-ink-deep text-xs p-3 font-mono resize-y focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
           </div>
 

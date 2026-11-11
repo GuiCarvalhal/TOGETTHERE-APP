@@ -136,7 +136,7 @@ export default function Inbox() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
+      <div className="tt-page pb-16">
         <StickyBar>
           <Button variant="default" size="icon" onClick={onBack} aria-label={t('inbox.back')} className="shrink-0">
             <ArrowLeft />

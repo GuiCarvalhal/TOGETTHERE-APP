@@ -82,7 +82,7 @@ export default function FinancialConnectSheet({ open, onOpenChange, onConnected 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
           <div className="space-y-2">
             <Label className="text-ink-deep">{t('finance.lastFour')}</Label>
             <Input

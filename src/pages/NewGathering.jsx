@@ -94,7 +94,7 @@ export default function NewGathering() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 pb-24">
+      <div className="tt-page py-5 pb-24">
         <DetailActionBar
           onBack={handleCancel}
           actions={

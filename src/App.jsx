@@ -11,6 +11,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import Mfa from '@/pages/Mfa';
 import OAuthConsent from '@/pages/OAuthConsent';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import Home from '@/pages/Home';
@@ -61,6 +62,10 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            {/* Two-factor: finishes a Google/Microsoft/SSO sign-in that needs a
+                second step, and doubles as the manage-2FA settings page. Stays
+                outside ProtectedRoute like the other auth surfaces. */}
+            <Route path="/mfa" element={<Mfa />} />
             {/* MCP OAuth consent — must stay OUTSIDE ProtectedRoute: the page
                 handles the signed-out case itself and preserves the ctx handle. */}
             <Route path="/oauth/consent" element={<OAuthConsent />} />

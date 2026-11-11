@@ -136,7 +136,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSave
       {/* Universal profile fields */}
       <div className="tt-card p-5 space-y-4">
         <p className="tt-label text-ink-deep/40">{t('profileEdit.aboutMe')}</p>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4 [&>*]:min-w-0">
           <div className="space-y-1.5">
             <Label className="text-xs text-ink-deep/60 flex items-center gap-1"><MapPin className="w-3 h-3" /> {t('profileEdit.homeCity')}</Label>
             <HomePlaceField

@@ -247,7 +247,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
               </div>
             )}
             {mode === 'route' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-ink-deep text-xs">{t('flightEditor.from')}</Label>
                   <PlaceAutocomplete
@@ -354,7 +354,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
               className="bg-cream-pale border-ink-charcoal/20 text-ink-deep"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-ink-deep">{t('flightEditor.departure')}</Label>
               <Input
@@ -374,7 +374,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-ink-deep">{t('flightEditor.from')}</Label>
               <PlaceAutocomplete
@@ -398,7 +398,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-ink-deep">{t('flightEditor.flightNum')}</Label>
               <Input

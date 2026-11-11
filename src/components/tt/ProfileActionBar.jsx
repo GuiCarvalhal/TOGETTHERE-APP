@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/lib/i18n';
 import { ArrowLeft, Pencil, Check, X, Loader2 } from 'lucide-react';
 import StickyBar from '@/components/tt/StickyBar';
 import { Button } from '@/components/ui/button';
@@ -10,11 +11,13 @@ import { Button } from '@/components/ui/button';
 //  - Owner view mode: Edit (Pencil + "Edit", secondary).
 //  - Owner edit mode: Cancel (X + "Cancel", outline) + Save (Check + "Save",
 //    primary; no-op when nothing changed / while saving).
-// Other viewers see Back only — no permission is loosened.
+// Other viewers see Back only — no permission is loosened. Labels come from the
+// shared dictionaries so the bar follows the app language.
 export default function ProfileActionBar({ onBack, isOwner, editing, onEdit, onSave, onCancel, canSave, saving }) {
+  const { t } = useI18n();
   return (
     <StickyBar>
-      <Button variant="default" size="icon" onClick={onBack} aria-label="Back" className="shrink-0">
+      <Button variant="default" size="icon" onClick={onBack} aria-label={t('common.back')} className="shrink-0">
         <ArrowLeft />
       </Button>
 
@@ -23,15 +26,15 @@ export default function ProfileActionBar({ onBack, isOwner, editing, onEdit, onS
           {editing ? (
             <>
               <Button variant="outline" size="sm" onClick={onCancel} disabled={saving} className="shrink-0">
-                <X /> Cancel
+                <X /> {t('common.cancel')}
               </Button>
               <Button variant="default" size="sm" onClick={onSave} disabled={!canSave || saving} className="shrink-0">
-                {saving ? <Loader2 className="animate-spin" /> : <Check />} Save
+                {saving ? <Loader2 className="animate-spin" /> : <Check />} {t('common.save')}
               </Button>
             </>
           ) : (
             <Button variant="secondary" size="sm" onClick={onEdit} className="shrink-0">
-              <Pencil /> Edit
+              <Pencil /> {t('common.edit')}
             </Button>
           )}
         </div>

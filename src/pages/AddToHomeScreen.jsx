@@ -40,7 +40,7 @@ export default function AddToHomeScreen() {
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-16">
+      <div className="tt-page pt-6 pb-16">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-deep/60 hover:text-ink-deep transition-colors mb-5"
