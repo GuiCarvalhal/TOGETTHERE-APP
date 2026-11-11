@@ -18,6 +18,7 @@ import usePolling from '@/hooks/usePolling';
 import EmptyState from '@/components/tt/EmptyState';
 import Skeleton from '@/components/tt/Skeleton';
 import { useI18n } from '@/lib/i18n';
+import PastMembersCard from '@/components/members/PastMembersCard';
 
 // Compact row skeleton — same surface/rhythm as the rendered rows so the
 // loading state reads identically to Journey/Expenses.
@@ -205,6 +206,12 @@ export default function GatheringMembers() {
               )
             ))}
           </MemberSection>
+        </div>
+      )}
+
+      {canManage && !loading && (
+        <div className="mt-6">
+          <PastMembersCard gatheringId={gatheringId} onAdded={refresh} />
         </div>
       )}
 

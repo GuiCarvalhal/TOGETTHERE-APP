@@ -650,6 +650,14 @@ export const ptBR = {
     removeConfirm: 'Remover {name} deste encontro?',
     couldNotChangeRole: 'N??o foi poss??vel mudar o papel',
     couldNotRemove: 'N??o foi poss??vel remover o membro',
+    pastTitle: 'Pessoas de viagens anteriores',
+    pastDesc: 'Adicione quem já viajou com você, sem precisar de link de convite.',
+    pastEmpty: 'Ninguém para adicionar ainda',
+    pastEmptyBody: 'Quem compartilha outra viagem com você aparece aqui.',
+    pastAddSelected: 'Adicionar selecionados',
+    pastSelectedCount: '{count} selecionados',
+    pastAdded: '{count} adicionados a este encontro',
+    pastCouldNotAdd: 'Não foi possível adicionar as pessoas selecionadas',
   },
 
   roles: {

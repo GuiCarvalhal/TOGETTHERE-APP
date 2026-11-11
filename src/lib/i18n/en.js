@@ -654,6 +654,14 @@ export const en = {
     removeConfirm: 'Remove {name} from this gathering?',
     couldNotChangeRole: 'Could not change role',
     couldNotRemove: 'Could not remove member',
+    pastTitle: 'People from previous gatherings',
+    pastDesc: 'Add people you have already traveled with, no invite link needed.',
+    pastEmpty: 'No one to add yet',
+    pastEmptyBody: 'People you share another gathering with will appear here.',
+    pastAddSelected: 'Add selected',
+    pastSelectedCount: '{count} selected',
+    pastAdded: '{count} added to this gathering',
+    pastCouldNotAdd: 'Could not add the selected people',
   },
 
   roles: {
