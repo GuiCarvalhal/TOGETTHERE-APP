@@ -2,8 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { parseStatement, STATEMENT_MAX_CHARS } from '../../shared/statementImport.ts';
 import { ingestTransactions, loadGatheringRanges } from '../../shared/financialIngest.ts';
 
-// Imports a bank/card statement export (CSV / TSV / plain text) into one of the
-// user's statement-import accounts.
+// Imports a bank/card statement export (CSV / TSV / OFX / QFX / plain text) into
+// one of the user's statement-import accounts.
 //
 // The file is parsed on the server from text the page already read, so no file is
 // stored anywhere. Every parsed row goes through the SAME shared ingestion as a
@@ -76,9 +76,11 @@ export default async function (req) {
       parsed: parsed.rows.length,
       imported: ingested.imported,
       duplicates: ingested.duplicates,
+      upgraded: ingested.upgraded,
       rejected: ingested.rejected,
       skipped: parsed.skipped,
       warnings: parsed.warnings,
+      format: parsed.format,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

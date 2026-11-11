@@ -27,6 +27,7 @@ import {
 import { adaptReservationDraft } from './journeyFormAdapter.ts';
 import { createJourneyItemCanonical, JourneyItemError } from './journeyItemPersist.ts';
 import { uploadSourceEmail } from './reservationAttachment.ts';
+import { ingestCardEmailMessage } from './cardEmailIngestion.ts';
 import { createInboxItem, INBOX_STATUS } from './journeyInbox.ts';
 import {
   chooseGatheringMatch,
@@ -325,6 +326,29 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
 
   if (!hasDraft) {
     const target = await resolveTargetUser(base44, input?.targetHints || {});
+
+    // Not a reservation — but card issuers email every purchase, refund and
+    // statement notice to the same mailbox. Hand those to the financial pipeline
+    // so they reach the transaction review queue instead of being dropped. A
+    // financial failure must never block reservation ingestion, hence the guard.
+    let card: any = null;
+    if (target.targetUserId) {
+      try {
+        card = await ingestCardEmailMessage(base44, {
+          user: { id: target.targetUserId, email: target.targetUserEmail || '' },
+          message: {
+            messageId: messageId || '',
+            subject: sourceSubject,
+            sender: sourceSender,
+            receivedAt: sourceReceivedAt,
+            text: content,
+          },
+        });
+      } catch {
+        card = null;
+      }
+    }
+
     const record = await base44.asServiceRole.entities.ReservationImport.create({
       status: 'ignored',
       segment_index: 0,
@@ -346,7 +370,7 @@ export async function ingestReservationMessage(base44: any, input: IngestInput) 
       ignored_reason: ignoredReason || '',
       resolved_at: new Date().toISOString(),
     });
-    return { record, records: [record], reused: false };
+    return { record, records: [record], reused: false, card };
   }
 
   // 3) Split the message into every booking it describes. The model returns the

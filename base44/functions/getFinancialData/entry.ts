@@ -39,6 +39,7 @@ export default async function (req) {
         currency: c.currency || 'USD',
         status: c.status || 'connected',
         last_sync_at: c.last_sync_at || null,
+        last_attempt_at: c.last_attempt_at || null,
         last_error: c.last_error || '',
       })),
       transactions: rows.map((tx) => ({
