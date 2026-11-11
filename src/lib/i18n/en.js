@@ -653,6 +653,7 @@ export const en = {
     everyone: 'Everyone',
     invite: 'Invite',
     inviteTitle: 'Invite to this gathering',
+    inviteLinksSection: 'Invite links',
     inviteDesc: 'Sharing a link is the only way to add people. Anyone who opens a link signs in and joins immediately with the role the link grants ??? no approval, no form to fill out.',
     memberLink: 'Member link',
     copyMemberLink: 'Copy member link',

@@ -209,12 +209,6 @@ export default function GatheringMembers() {
         </div>
       )}
 
-      {canManage && !loading && (
-        <div className="mt-6">
-          <PastMembersCard gatheringId={gatheringId} onAdded={refresh} />
-        </div>
-      )}
-
       <MemberDetailSheet
         member={active}
         gatheringId={gatheringId}
@@ -228,9 +222,13 @@ export default function GatheringMembers() {
         onRemove={() => active && handleRemove(active)}
       />
 
-      <FormSheet open={shareOpen} onOpenChange={setShareOpen} title={t('members.inviteTitle')} maxWidth="max-w-md">
+      <FormSheet open={shareOpen} onOpenChange={setShareOpen} title={t('members.inviteTitle')} maxWidth="max-w-2xl">
         <div className="space-y-5">
           <p className="text-sm text-ink-deep/70">{t('members.inviteDesc')}</p>
+          <div className="flex items-center gap-2">
+            <Link2 className="w-3.5 h-3.5 text-terra-deep" />
+            <h3 className="tt-label text-ink-deep/55">{t('members.inviteLinksSection')}</h3>
+          </div>
           <div className="space-y-2">
             <Label className="text-ink-deep flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" /> {t('members.memberLink')}</Label>
             <div className="flex gap-2">
@@ -251,6 +249,13 @@ export default function GatheringMembers() {
             </div>
             <p className="text-xs text-ink-deep/50">{t('members.viewerLinkDesc')}</p>
           </div>
+
+          {canManage && (
+            <div className="pt-5 border-t border-ink-charcoal/15">
+              <PastMembersCard gatheringId={gatheringId} onAdded={refresh} />
+            </div>
+          )}
+
           <div className="flex justify-end pt-1">
             <Button type="button" variant="outline" onClick={() => setShareOpen(false)}><X /> {t('common.done')}</Button>
           </div>

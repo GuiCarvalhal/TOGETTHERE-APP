@@ -649,6 +649,7 @@ export const ptBR = {
     everyone: 'Todos',
     invite: 'Convidar',
     inviteTitle: 'Convidar para este encontro',
+    inviteLinksSection: 'Links de convite',
     inviteDesc: 'Compartilhar um link ?? a ??nica forma de adicionar pessoas. Quem abre um link entra e se cadastra imediatamente com o papel que o link concede ??? sem aprova????o, sem formul??rio.',
     memberLink: 'Link de membro',
     copyMemberLink: 'Copiar link de membro',

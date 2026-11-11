@@ -8,9 +8,9 @@ import Skeleton from '@/components/tt/Skeleton';
 import { Check, History } from 'lucide-react';
 
 // "People from previous gatherings" — accounts the host has already traveled
-// with, addable in one tap without an invite link. Sits below the member
-// directory; the invite-link sheet above is untouched. Selection is local until
-// "Add selected" runs, and the list drops whoever the backend just added.
+// with, addable in one tap without an invite link. Rendered INSIDE the add-members
+// flyover (below the invite links), which is its only entry point. Selection is
+// local until "Add selected" runs, and the list drops whoever the backend just added.
 export default function PastMembersCard({ gatheringId, onAdded }) {
   const { t } = useI18n();
   const { toast } = useToast();
