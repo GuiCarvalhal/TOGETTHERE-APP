@@ -682,7 +682,7 @@ export const en = {
     couldNotRemove: 'Could not remove member',
     pastTitle: 'People from previous gatherings',
     pastDesc: 'Add people you have already traveled with, no invite link needed.',
-    pastSharedGatherings: 'Shared gatherings: {names}',
+    pastSharedGatherings: 'togethere at: {names}',
     pastEmpty: 'No one to add yet',
     pastEmptyBody: 'People you share another gathering with will appear here.',
     pastAddSelected: 'Add selected',

@@ -99,8 +99,7 @@ export default function PastMembersCard({ gatheringId, onAdded }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
             {candidates.map((c) => {
               const picked = selected.includes(c.user_id);
-              const firstName = c.first_name || c.full_name;
-              const fullName = c.full_name && c.full_name !== firstName ? c.full_name : '';
+              const displayName = c.full_name || c.first_name;
               const sharedNames = (c.shared_gathering_names || []).join(', ');
               return (
                 <button
@@ -116,9 +115,8 @@ export default function PastMembersCard({ gatheringId, onAdded }) {
                   {/* Two fixed lines (name, then shared-gathering context) so the
                       row height never jumps between candidates. */}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm leading-5 text-ink-deep truncate">
-                      <span className="font-semibold">{firstName}</span>
-                      {fullName && <span className="text-ink-deep/55"> {fullName}</span>}
+                    <span className="block text-sm leading-5 font-semibold text-ink-deep truncate">
+                      {displayName}
                     </span>
                     <span className="block text-[11px] leading-4 text-ink-deep/50 truncate">
                       {sharedNames ? t('members.pastSharedGatherings', { names: sharedNames }) : ''}
