@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
 import ActivityBell from '@/components/tt/ActivityBell';
 import MemberAvatar from '@/components/tt/MemberAvatar';
@@ -17,6 +17,9 @@ import { refreshInboxCount, subscribeInboxCount } from '@/lib/inboxBadge';
 // drawer — from both Home and every in-gathering page. Sticky at h-12 (3rem)
 // so the shared StickyBar action bars pin directly below it at
 // calc(3rem + env(safe-area-inset-top)) with no overlap or jump.
+// The bar is fully opaque on purpose: a translucent + backdrop-blurred surface
+// let the scrolled page show through and blurred the brand mark, wordmark and
+// avatar. The whole brand lockup (logo + wordmark) links to Home.
 export default function TopBar({ gatheringId }) {
   const { user } = useAuth();
   const { t } = useI18n();
@@ -33,12 +36,16 @@ export default function TopBar({ gatheringId }) {
   }, [user]);
 
   return (
-    <div className="sticky top-0 z-40 bg-background/85 backdrop-blur-md border-b border-foreground/8 tt-safe-top">
+    <div className="sticky top-0 z-40 bg-background border-b border-foreground/8 tt-safe-top">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
-        <div className="inline-flex items-center gap-2 min-h-[36px] select-none">
+        <Link
+          to="/"
+          aria-label="TOGETTHERE — home"
+          className="inline-flex items-center gap-2 min-h-[36px] select-none rounded-full transition hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <BrandLogo className="w-7 h-7" />
-          <span className="font-display font-bold tracking-tight text-foreground text-lg leading-none">TOGETTHERE</span>
-        </div>
+          <span className="font-display font-bold tracking-tight text-foreground text-lg leading-none whitespace-nowrap">TOGETTHERE</span>
+        </Link>
         <div className="flex items-center gap-1">
           <ConnectivityIndicator />
           <button
