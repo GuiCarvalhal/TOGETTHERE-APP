@@ -31,8 +31,12 @@ const MAX_INGESTS_PER_SYNC = 6;
 const MAX_BODY_CHARS = 20000;
 const SCAN_WINDOW_DAYS = 30;
 // Allowed background cadences, in minutes. Manual "Sync now" ignores them.
-export const SYNC_INTERVALS = [5, 15, 30, 60];
-export const DEFAULT_SYNC_INTERVAL_MINUTES = 30;
+// Background sync cadences offered to users: 1h, 6h, 24h, Weekly (in minutes).
+// Keep in step with DEFAULT_INBOX_INTERVALS in src/components/account/inboxProviders.js
+// and the enum on InboxConnection.sync_interval_minutes. Legacy rows still hold
+// 5/15/30 and normalize to the default below.
+export const SYNC_INTERVALS = [60, 360, 1440, 10080];
+export const DEFAULT_SYNC_INTERVAL_MINUTES = 60;
 // A sync that started this recently still owns the mailbox; overlapping jobs
 // (two Home loads, Home + Sync now) skip it instead of paying for it twice.
 const SYNC_LEASE_MS = 2 * 60 * 1000;

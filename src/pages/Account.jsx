@@ -1,8 +1,10 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import AppHeader from '@/components/tt/AppHeader';
 import AccountHubCard from '@/components/account/AccountHubCard';
 import { ACCOUNT_AREAS, ACCOUNT_AREA_KEYS } from '@/components/account/accountAreas';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n';
 
@@ -14,7 +16,7 @@ import { useI18n } from '@/lib/i18n';
 // Legacy /account#<area> links (old bookmarks, older in-app links) are folded
 // into the area routes so every direct link keeps working.
 export default function Account() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useI18n();
   const { hash } = useLocation();
 
@@ -38,6 +40,11 @@ export default function Account() {
             <AccountHubCard key={area.key} area={area} />
           ))}
         </div>
+
+        {/* Sign out — one clear action below the area menu, outside every area. */}
+        <Button size="lg" className="w-full mt-6" onClick={() => logout()}>
+          <LogOut /> {t('account.signOut')}
+        </Button>
       </div>
     </div>
   );

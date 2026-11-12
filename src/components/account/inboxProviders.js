@@ -8,6 +8,24 @@ export const INBOX_PROVIDERS = [
   { provider: 'yahoo', labelKey: 'account.inboxYahoo', auth: 'oauth', hintKey: 'account.inboxYahooOAuthHint' },
 ];
 
-// Fallback cadences; the server's getInboxConnections.sync_intervals is
-// authoritative and replaces these once loaded.
-export const DEFAULT_INBOX_INTERVALS = [5, 15, 30, 60];
+// Sync cadences offered in the UI: 1h, 6h, 24h and Weekly, in minutes. The
+// server's getInboxConnections.sync_intervals is authoritative and replaces
+// these once loaded; both lists must stay identical (see inboxConnectors.ts).
+export const DEFAULT_INBOX_INTERVALS = [60, 360, 1440, 10080];
+
+const CADENCE_LABEL_KEYS = {
+  60: 'account.cadenceHourly',
+  360: 'account.cadence6h',
+  1440: 'account.cadence24h',
+  10080: 'account.cadenceWeekly',
+};
+
+export function normalizeCadence(minutes) {
+  const value = Number(minutes);
+  return DEFAULT_INBOX_INTERVALS.includes(value) ? value : DEFAULT_INBOX_INTERVALS[0];
+}
+
+// Human label for a cadence value, so the card and the sheet never disagree.
+export function cadenceLabel(minutes, t) {
+  return t(CADENCE_LABEL_KEYS[normalizeCadence(minutes)]);
+}

@@ -16,17 +16,28 @@ export default async function (req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
-    const { gathering_id, fields } = body;
-    if (!gathering_id || !fields) return Response.json({ error: 'gathering_id and fields required' }, { status: 400 });
-
-    const me = await getMyMember(base44, gathering_id, user.id);
-    if (!me) return Response.json({ error: 'Not a member' }, { status: 403 });
+    const { gathering_id, fields, scope } = body;
 
     const update = {};
     for (const key of ALLOWED) {
-      if (key in fields) update[key] = Boolean(fields[key]);
+      if (fields && key in fields) update[key] = Boolean(fields[key]);
     }
     if (!Object.keys(update).length) return Response.json({ error: 'No updatable fields' }, { status: 400 });
+
+    // scope "all" = one switch for the user in EVERY gathering (used by the
+    // Account preferences area). Otherwise a single gathering's membership.
+    if (scope === 'all') {
+      await base44.asServiceRole.entities.Member.updateMany({ user_id: user.id }, { $set: update });
+      if (user.email) {
+        await base44.asServiceRole.entities.Member.updateMany({ email: user.email }, { $set: update });
+      }
+      return Response.json({ ok: true, scope: 'all' });
+    }
+
+    if (!gathering_id) return Response.json({ error: 'gathering_id and fields required' }, { status: 400 });
+
+    const me = await getMyMember(base44, gathering_id, user.id);
+    if (!me) return Response.json({ error: 'Not a member' }, { status: 403 });
 
     await base44.asServiceRole.entities.Member.update(me.id, update);
     return Response.json({ ok: true });

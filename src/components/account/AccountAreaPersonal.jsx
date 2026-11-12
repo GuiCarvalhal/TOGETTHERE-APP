@@ -4,6 +4,9 @@ import { Skeleton } from '@/components/tt/Skeleton';
 import ProfileActionBar from '@/components/tt/ProfileActionBar';
 import OwnProfileEdit from '@/components/profile/OwnProfileEdit';
 import OwnProfileView from '@/components/profile/OwnProfileView';
+import { useNavigate } from 'react-router-dom';
+import { UserRound } from 'lucide-react';
+import AccountAreaHeader from '@/components/account/AccountAreaHeader';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n';
 
@@ -13,6 +16,7 @@ import { useI18n } from '@/lib/i18n';
 // reach; the area page header carries the single Back link to the hub.
 export default function AccountAreaPersonal() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +52,7 @@ export default function AccountAreaPersonal() {
   return (
     <>
       <ProfileActionBar
-        showBack={false}
+        onBack={() => navigate('/account')}
         isOwner
         editing={editing}
         onEdit={() => setEditing(true)}
@@ -56,6 +60,12 @@ export default function AccountAreaPersonal() {
         onCancel={() => setEditing(false)}
         canSave={dirty}
         saving={saving}
+      />
+
+      <AccountAreaHeader
+        Icon={UserRound}
+        titleKey="account.menuPersonal"
+        descKey="account.secPersonalDesc"
       />
 
       {loading ? (

@@ -73,13 +73,13 @@
     "sync_interval_minutes": {
       "type": "number",
       "enum": [
-        5,
-        15,
-        30,
-        60
+        60,
+        360,
+        1440,
+        10080
       ],
-      "default": 30,
-      "description": "How often this mailbox may be synced in the background. Manual 'Sync now' bypasses it. Absent on legacy rows and treated as 30."
+      "default": 60,
+      "description": "How often this mailbox may be synced in the background: 1h, 6h, 24h or Weekly. Manual 'Sync now' bypasses it. Absent or legacy values (5/15/30) are normalized to the 1h default."
     },
     "next_sync_at": {
       "type": "string",

@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useI18n } from '@/lib/i18n';
-import { Inbox } from 'lucide-react';
 import InboxConnectorCard from './InboxConnectorCard';
 import InboxCredentialSheet from './InboxCredentialSheet';
 import InboxCadenceSheet from './InboxCadenceSheet';
 import { DEFAULT_INBOX_INTERVALS, INBOX_PROVIDERS } from './inboxProviders';
 
-// Inbox connectors section on the Account page. Each provider can hold SEVERAL
-// mailboxes (say, two Gmails), so connections are listed per account, grouped
-// by provider, with per-account Sync now / Cadence / Disconnect plus a
-// "Connect another account" action. Credentials never leave the server.
+// Mailbox sync controls for the integrations area — deliberately dense: one
+// grouped list per provider, one row per mailbox (status dot, address,
+// cadence · last sync, icon actions), and the same connect/sync/cadence/
+// disconnect behavior as before. Each provider can hold several mailboxes.
 export default function InboxConnectors() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
@@ -114,26 +113,20 @@ export default function InboxConnectors() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Inbox className="w-4 h-4 text-terra-deep" />
-        <p className="tt-label text-ink-deep/50">{t('account.inboxTitle')}</p>
-      </div>
-      <p className="text-xs text-ink-deep/55">{t('account.inboxDesc')}</p>
-
       {loading ? (
         <div className="space-y-2">
-          <div className="tt-skeleton h-24 w-full" />
-          <div className="tt-skeleton h-24 w-full" />
+          <div className="tt-skeleton h-9 w-full" />
+          <div className="tt-skeleton h-9 w-full" />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {INBOX_PROVIDERS.map(({ provider, labelKey, auth, hintKey }) => {
             const rows = connections.filter((c) => c.provider === provider);
             const isConfigured = configured[provider] !== false;
             return (
-              <div key={provider} className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-ink-deep">{t(labelKey)}</p>
+              <div key={provider}>
+                <div className="flex items-center justify-between gap-2 px-1 pb-1">
+                  <p className="tt-label text-ink-deep/45">{t(labelKey)}</p>
                   {rows.length > 0 && isConfigured ? (
                     <button
                       type="button"
@@ -145,30 +138,32 @@ export default function InboxConnectors() {
                   ) : null}
                 </div>
 
-                {rows.length === 0 ? (
-                  <InboxConnectorCard
-                    label={t(labelKey)}
-                    hint={hintKey ? t(hintKey) : ''}
-                    connection={null}
-                    configured={isConfigured}
-                    busy={busyKey === `connect:${provider}`}
-                    onConnect={() => handleConnect(provider, auth)}
-                  />
-                ) : (
-                  rows.map((connection) => (
+                <div className="rounded-2xl border border-ink-charcoal/12 bg-foreground/[0.03] divide-y divide-ink-charcoal/10 overflow-hidden">
+                  {rows.length === 0 ? (
                     <InboxConnectorCard
-                      key={connection.id}
                       label={t(labelKey)}
-                      connection={connection}
+                      hint={hintKey ? t(hintKey) : ''}
+                      connection={null}
                       configured={isConfigured}
-                      busy={busyKey === connection.id}
+                      busy={busyKey === `connect:${provider}`}
                       onConnect={() => handleConnect(provider, auth)}
-                      onSync={() => handleSync(connection)}
-                      onDisconnect={() => handleDisconnect(connection)}
-                      onEditCadence={() => setCadenceConnection(connection)}
                     />
-                  ))
-                )}
+                  ) : (
+                    rows.map((connection) => (
+                      <InboxConnectorCard
+                        key={connection.id}
+                        label={t(labelKey)}
+                        connection={connection}
+                        configured={isConfigured}
+                        busy={busyKey === connection.id}
+                        onConnect={() => handleConnect(provider, auth)}
+                        onSync={() => handleSync(connection)}
+                        onDisconnect={() => handleDisconnect(connection)}
+                        onEditCadence={() => setCadenceConnection(connection)}
+                      />
+                    ))
+                  )}
+                </div>
               </div>
             );
           })}

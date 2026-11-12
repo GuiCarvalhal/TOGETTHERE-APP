@@ -4,24 +4,27 @@ import { useI18n } from '@/lib/i18n';
 import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
+import { DEFAULT_INBOX_INTERVALS, cadenceLabel, normalizeCadence } from './inboxProviders';
 
-// Sync cadence for ONE mailbox. The allowed values come from the server
-// (getInboxConnections.sync_intervals) so the UI can never offer a cadence the
-// backend would reject.
+// Sync cadence for ONE mailbox, limited to 1h / 6h / 24h / Weekly. The allowed
+// values come from the server (getInboxConnections.sync_intervals) so the UI can
+// never offer a cadence the backend would reject.
 export default function InboxCadenceSheet({ open, connection, intervals, onOpenChange, onSaved }) {
   const { t } = useI18n();
-  const [selected, setSelected] = useState(30);
+  const [selected, setSelected] = useState(DEFAULT_INBOX_INTERVALS[0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  const current = normalizeCadence(connection?.sync_interval_minutes);
+
   useEffect(() => {
     if (!open || !connection) return;
-    setSelected(connection.sync_interval_minutes || 30);
+    setSelected(normalizeCadence(connection.sync_interval_minutes));
     setError('');
     setBusy(false);
   }, [open, connection]);
 
-  const options = Array.isArray(intervals) && intervals.length ? intervals : [5, 15, 30, 60];
+  const options = Array.isArray(intervals) && intervals.length ? intervals : DEFAULT_INBOX_INTERVALS;
 
   const save = async () => {
     if (!connection) return;
@@ -66,7 +69,7 @@ export default function InboxCadenceSheet({ open, connection, intervals, onOpenC
                     : 'border-ink-charcoal/15 text-ink-deep/60 hover:bg-foreground/5'
                 }`}
               >
-                {t('account.inboxCadenceEvery', { count: minutes })}
+                {cadenceLabel(minutes, t)}
                 {active ? <Check className="w-4 h-4" /> : null}
               </button>
             );
@@ -76,7 +79,7 @@ export default function InboxCadenceSheet({ open, connection, intervals, onOpenC
         {error ? <p className="text-xs text-destructive break-words">{error}</p> : null}
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Button onClick={save} disabled={busy || selected === (connection?.sync_interval_minutes || 30)}>
+          <Button onClick={save} disabled={busy || selected === current}>
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
             {t('common.save')}
           </Button>
