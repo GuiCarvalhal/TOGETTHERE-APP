@@ -59,6 +59,14 @@
     "photo": {
       "type": "string",
       "description": "Avatar photo URL \u2014 global profile field"
+    },
+    "distance_unit": {
+      "type": "string",
+      "enum": [
+        "mi",
+        "km"
+      ],
+      "description": "Preferred distance unit for the distances shown in the Journey timeline. Set from System Preferences via updateMe; when absent the default derives from the app language (English \u2192 mi, Portuguese \u2192 km). Durations are unaffected."
     }
   },
   "required": [

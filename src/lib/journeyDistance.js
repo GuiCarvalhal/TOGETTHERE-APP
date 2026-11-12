@@ -1,5 +1,5 @@
 // Pure helpers for the per-day distance & duration summary. No React, no API
-// calls — fed to useJourneyDayTotals (fetch) and the unit tests (fixtures).
+// calls — fed to useJourneyLegDistances (fetch) and the unit tests (fixtures).
 // Reuses the same place/coordinate shape as journeyMap.js (from_place /
 // to_place / place with lat,lng) so the legs read the same stored data the
 // route map and cards already use.
@@ -59,6 +59,13 @@ export function departureString(item) {
 // are kept (so the day can be marked incomplete); same-origin/destination legs
 // are flagged so the fetcher skips them and the totals treat them as a known
 // zero rather than an unknown.
+// Stable key for ONE inter-segment leg: dayKey + the index of the leg's ORIGIN
+// entry inside that day (0 = the leg between entry 0 and entry 1). The timeline
+// renders a row per leg, so the key is how a resolved leg finds its row.
+export function legKey(dayKey, idx) {
+  return `${dayKey}:${idx}`;
+}
+
 export function buildDayLegs(entries) {
   const byDay = {};
   (entries || []).forEach((e) => {
@@ -83,6 +90,34 @@ export function buildDayLegs(entries) {
   return legs;
 }
 
+// Per-LEG travel state, keyed by legKey(dayKey, idx). This is what the timeline
+// renders between two consecutive cards: the real displacement from one segment
+// to the next (not a day aggregate).
+// state: 'ok'      → routed (distanceMeters + durationSeconds present)
+//        'same'    → both endpoints are the same place: a known zero
+//        'unknown' → a missing endpoint, or the route could not be resolved
+// origin/destination are the exact routable strings the distance was measured
+// on (lat,lng when coordinates exist, else address/name), so the row's Google
+// Maps deep link targets the same two points.
+export function computeLegStates(legs, results) {
+  const out = {};
+  let ri = 0;
+  (legs || []).forEach((l) => {
+    const k = legKey(l.dayKey, l.idx);
+    const base = { origin: l.origin, destination: l.destination };
+    if (!l.origin || !l.destination) { out[k] = { ...base, state: 'unknown' }; return; }
+    if (l.samePlace) { out[k] = { ...base, state: 'same', distanceMeters: 0, durationSeconds: 0 }; return; }
+    if (!results) { out[k] = { ...base, state: 'unknown' }; return; }
+    const r = results[ri]; ri++;
+    if (r && r.ok && typeof r.distanceMeters === 'number' && typeof r.durationSeconds === 'number') {
+      out[k] = { ...base, state: 'ok', distanceMeters: r.distanceMeters, durationSeconds: r.durationSeconds };
+    } else {
+      out[k] = { ...base, state: 'unknown' };
+    }
+  });
+  return out;
+}
+
 // Fold fetched route results into per-day totals. `results` is the array from
 // getJourneyLegRoutes, aligned to the FETCHABLE legs (both endpoints present,
 // not samePlace) in order. null => the call failed (every fetchable leg is
@@ -90,23 +125,20 @@ export function buildDayLegs(entries) {
 // known zero. Returns { [dayKey]: { state, distanceMeters, durationSeconds,
 // legs } } where state is 'none' | 'unavailable' | 'partial' | 'ready'.
 export function computeDayTotals(legs, results) {
+  // Same per-leg resolution the timeline rows use — one source of truth.
+  const states = computeLegStates(legs, results);
   const byDay = {};
-  let ri = 0;
   (legs || []).forEach((l) => {
     if (!byDay[l.dayKey]) byDay[l.dayKey] = { distanceMeters: 0, durationSeconds: 0, attempted: 0, ok: 0, unknown: 0 };
     const d = byDay[l.dayKey];
-    if (!l.origin || !l.destination) { d.attempted++; d.unknown++; return; }
-    if (l.samePlace) { d.attempted++; d.ok++; return; }
+    const s = states[legKey(l.dayKey, l.idx)];
     d.attempted++;
-    if (results) {
-      const r = results[ri]; ri++;
-      if (r && r.ok && typeof r.distanceMeters === 'number' && typeof r.durationSeconds === 'number') {
-        d.distanceMeters += r.distanceMeters;
-        d.durationSeconds += r.durationSeconds;
-        d.ok++;
-      } else {
-        d.unknown++;
-      }
+    if (s && s.state === 'ok') {
+      d.distanceMeters += s.distanceMeters;
+      d.durationSeconds += s.durationSeconds;
+      d.ok++;
+    } else if (s && s.state === 'same') {
+      d.ok++;
     } else {
       d.unknown++;
     }
@@ -124,15 +156,18 @@ export function computeDayTotals(legs, results) {
   return totals;
 }
 
-// --- Locale-aware formatters for the summary line ---
-export function formatDistanceMeters(meters, locale) {
+// --- Formatters for the travel rows ---
+// `unit` is the user's distance preference ('mi' | 'km'). A locale string is
+// still accepted for backwards compatibility ('pt*' → km, anything else → mi).
+export function formatDistanceMeters(meters, unit = 'mi') {
   if (meters == null || !isFinite(meters)) return '';
-  if (locale === 'en') {
-    const miles = meters / 1609.344;
-    return miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`;
+  const metric = unit === 'km' || /^pt/i.test(String(unit));
+  if (metric) {
+    const km = meters / 1000;
+    return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
   }
-  const km = meters / 1000;
-  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+  const miles = meters / 1609.344;
+  return miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`;
 }
 
 export function formatDurationSeconds(seconds) {

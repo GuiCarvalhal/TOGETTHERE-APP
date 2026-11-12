@@ -6,16 +6,18 @@ import { useGathering } from '@/lib/gatheringContext';
 import { base44 } from '@/api/base44Client';
 import { JOURNEY_TYPES, canAddJourney, canEditJourneyItem, journeyViewerForcedPrefs, itemParticipantUserIds, filterJourneyByMembers, eligibleRosterMembers } from '@/lib/gatheringHelpers';
 import { tzDateKey } from '@/lib/formatPlaceTime';
-import { Timeline, TimelineDay } from '@/components/tt/Timeline';
+import { Timeline } from '@/components/tt/Timeline';
 import { useItemStartTzMap } from '@/lib/useItemPlace';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
-import DailyTravelSummary from '@/components/journey/DailyTravelSummary';
+import JourneyDayHeader from '@/components/journey/JourneyDayHeader';
+import JourneyLegRow from '@/components/journey/JourneyLegRow';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
 import { useDeviceLayout } from '@/hooks/useDeviceLayout';
 import { useStickyBarHeight, deskTopOffset, deskPanelHeight } from '@/hooks/useStickyBarHeight';
-import useJourneyDayTotals from '@/hooks/useJourneyDayTotals';
+import useJourneyLegDistances from '@/hooks/useJourneyLegDistances';
+import { legKey } from '@/lib/journeyDistance';
 import { itemRouteNumbers } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import { useOfflineJourneyCache } from '@/lib/useOfflineSync';
@@ -202,10 +204,11 @@ export default function GatheringJourney() {
     }
   });
   entries.sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
-  // Per-day driving distance + duration between consecutive segments. Built
-  // from the same entries above (each now carrying its dayKey), fetched in one
-  // batch, non-blocking. See useJourneyDayTotals / journeyDistance.
-  const { totals: dayTotals, loading: dayTotalsLoading } = useJourneyDayTotals(entries);
+  // Driving distance + duration for each leg between CONSECUTIVE segments,
+  // built from the same entries above (each carrying its dayKey), fetched in one
+  // batch, non-blocking. Rendered between the cards — not as a day aggregate.
+  // See useJourneyLegDistances / journeyDistance.
+  const { legs: legStates } = useJourneyLegDistances(entries);
   const byDay = {};
   entries.forEach((e) => {
     const k = dayKey(e.at, tzMap[e.item.id]);
@@ -332,16 +335,26 @@ export default function GatheringJourney() {
               >
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
-                    <TimelineDay day={day} />
+                    <JourneyDayHeader day={day} />
                   </div>
                   {!isViewer && (
                     <DayAgentButton gatheringId={gatheringId} day={day} />
                   )}
                 </div>
-                <DailyTravelSummary total={dayTotals[day]} loading={dayTotalsLoading} />
                 <div className={pairRight ? 'grid grid-cols-3 gap-x-6 gap-y-3 items-stretch' : 'space-y-3'}>
-                  {byDay[day].map((entry) => (
+                  {byDay[day].map((entry, i) => (
                     <React.Fragment key={entry.key}>
+                      {/* Travel line from the PREVIOUS segment to this one:
+                          distance + duration for that exact leg, and a link to
+                          Google Maps directions between the two items. */}
+                      {i > 0 && (
+                        <JourneyLegRow
+                          leg={legStates[legKey(day, i - 1)]}
+                          fromLabel={byDay[day][i - 1]?.item?.title || ''}
+                          toLabel={entry.item?.title || ''}
+                          className={pairRight ? 'col-span-3' : undefined}
+                        />
+                      )}
                       <div
                         className={pairRight ? 'col-span-1 min-w-0 [&>*]:h-full' : undefined}
                         onMouseEnter={isDesktop && effectiveMapOpen ? () => setHoverId(entry.item.id) : undefined}

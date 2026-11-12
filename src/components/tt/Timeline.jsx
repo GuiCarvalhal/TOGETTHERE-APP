@@ -25,7 +25,7 @@ export function Timeline({ children }) {
 // "in 2 days", "3 days ago", etc. — replaces the generic "Day" label which
 // carried no useful information. `day` is a YYYY-MM-DD string parsed as local
 // midnight so it never shifts across timezones; 'unscheduled' stays as-is.
-function relativeDayLabel(day) {
+export function relativeDayLabel(day) {
   if (day === 'unscheduled') return 'Unscheduled';
   const target = new Date(`${day}T00:00:00`);
   const today = new Date(); today.setHours(0, 0, 0, 0);
