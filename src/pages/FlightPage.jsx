@@ -178,7 +178,7 @@ export default function FlightPage() {
     return (
       <div className="space-y-4">
         <DetailActionBar onBack={back} />
-        <div className="tt-card p-4 space-y-3">
+        <div className="tt-card-hairline p-4 space-y-3">
           <Skeleton className="h-5 w-40" tone="cream" />
           <Skeleton className="h-10 w-full" tone="cream" />
           <Skeleton className="h-10 w-full" tone="cream" />
@@ -192,7 +192,7 @@ export default function FlightPage() {
     return (
       <div className="space-y-4">
         <DetailActionBar onBack={back} />
-        <div className="tt-card p-10 text-center max-w-md mx-auto">
+        <div className="tt-card-hairline p-10 text-center max-w-md mx-auto">
           <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
           <p className="font-display text-2xl mb-2 text-ink-deep">{t('journeyForm.couldNotLoadFlight')}</p>
           <p className="text-ink-deep/60 mb-6 text-sm">{error.message || t('common.error')}</p>
@@ -207,7 +207,7 @@ export default function FlightPage() {
     return (
       <div className="space-y-4">
         <DetailActionBar onBack={back} />
-        <div className="tt-card p-10 text-center max-w-md mx-auto">
+        <div className="tt-card-hairline p-10 text-center max-w-md mx-auto">
           <p className="font-display text-2xl mb-2 text-ink-deep">{t('common.notAllowed')}</p>
           <p className="text-ink-deep/60 mb-6 text-sm">{t('journeyForm.notAllowedFlight', { action: isEdit ? t('journeyForm.notAllowedFlightEdit') : t('journeyForm.notAllowedFlightAdd') })}</p>
           <Button onClick={back}>{t('journeyDetail.backToJourney')}</Button>
@@ -234,14 +234,14 @@ export default function FlightPage() {
         }
       />
       <div className="mt-5 space-y-4">
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <div className="flex items-center gap-2 mb-1">
             <Plane className="w-4 h-4 text-terra-deep" />
             <span className="tt-label text-ink-deep/50">{isEdit ? t('journeyForm.editFlight') : t('journeyForm.addFlight')}</span>
           </div>
           <p className="text-xs text-ink-deep/55">{t('journeyForm.flightIntro')}</p>
         </div>
-        <form id="flight-form" onSubmit={handleSave} className="tt-card p-4 space-y-4">
+        <form id="flight-form" onSubmit={handleSave} className="tt-card-hairline p-4 space-y-4">
           <FlightEditor
             form={form}
             setForm={setForm}

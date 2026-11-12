@@ -141,7 +141,10 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
       {/* Card — identical content box whether Images is ON or OFF (same border,
           same padding, same reserved participant slot) so toggling is a skin
           change, not a relayout. */}
-      <div className={`flex-1 min-w-0 rounded-2xl overflow-hidden relative border ${onCover ? 'border-transparent' : 'border-ink-charcoal/15 bg-card'}`} style={!onCover ? { boxShadow: '0 10px 30px rgba(0,0,0,0.12)' } : undefined}>
+      {/* Hairline surface, no drop shadow: the border + spacing separate the
+          cards from the canvas (lighter, editorial timeline). Photo cards carry
+          their own scrim, so they need no border either. */}
+      <div className={`flex-1 min-w-0 rounded-2xl overflow-hidden relative border ${onCover ? 'border-transparent' : 'border-ink-charcoal/15 bg-card'}`}>
         {onCover && (
           <>
             <Image src={cover} alt="" className="absolute inset-0 w-full h-full" fittingType="fill" />

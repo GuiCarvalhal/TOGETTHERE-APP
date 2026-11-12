@@ -9,7 +9,7 @@ const SUPPORTS_GROUP = ['flight', 'car', 'train', 'hotel', 'activity', 'cruise']
 function Disclosure({ icon: Icon, title, subtitle, children }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="tt-card p-4">
+    <div className="tt-card-hairline p-4">
       <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 w-full text-left">
         {Icon && <Icon className="w-4 h-4 text-terra-deep shrink-0" />}
         <div className="min-w-0 flex-1">

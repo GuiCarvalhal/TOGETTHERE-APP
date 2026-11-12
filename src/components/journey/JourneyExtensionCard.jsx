@@ -29,7 +29,7 @@ export default function JourneyExtensionCard({ item, gatheringId, attendees = []
   const onEdit = () => navigate(item.type === 'flight' ? `${base}/edit` : `${base}?edit=1`);
 
   return (
-    <div className="tt-card p-2.5 h-full min-h-[10.5rem] flex gap-3 overflow-hidden">
+    <div className="tt-card-hairline p-2.5 h-full min-h-[10.5rem] flex gap-3 overflow-hidden">
       <div className="w-[34%] max-w-[220px] shrink-0 rounded-xl overflow-hidden border border-ink-charcoal/10 bg-cream-pale">
         {hasMap ? (
           <SegmentMap

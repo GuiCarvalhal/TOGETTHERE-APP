@@ -154,12 +154,12 @@ export default function JourneyDetail() {
     return (
       <div className="space-y-4">
         <DetailActionBar onBack={back} />
-        <div className="tt-card p-4 space-y-4">
+        <div className="tt-card-hairline p-4 space-y-4">
           <Skeleton className="h-12 w-12 rounded-xl" />
           <Skeleton className="h-7 w-2/3" tone="cream" />
           <Skeleton className="h-4 w-1/2" tone="cream" />
         </div>
-        <div className="tt-card p-4 space-y-3">
+        <div className="tt-card-hairline p-4 space-y-3">
           <Skeleton className="h-4 w-1/3" tone="cream" />
           <Skeleton className="h-32 w-full rounded-xl" tone="cream" />
         </div>
@@ -170,7 +170,7 @@ export default function JourneyDetail() {
     return (
       <div className="space-y-4">
         <DetailActionBar onBack={back} />
-        <div className="tt-card p-10 text-center max-w-md mx-auto">
+        <div className="tt-card-hairline p-10 text-center max-w-md mx-auto">
           <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
           <p className="font-display text-2xl mb-2 text-ink-deep">{t('journeyDetail.segmentNotFound')}</p>
           <p className="text-ink-deep/60 text-sm">{t('journeyDetail.segmentNotFoundBody')}</p>
@@ -223,7 +223,7 @@ export default function JourneyDetail() {
       ) : (
         <div className="mt-5 space-y-4">
       {/* Hero */}
-      <div className="tt-card p-4">
+      <div className="tt-card-hairline p-4">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${typeColor}1A`, color: typeColor, border: `1px solid ${typeColor}33` }}>
             <Icon className="w-7 h-7" strokeWidth={2} />
@@ -249,7 +249,7 @@ export default function JourneyDetail() {
 
       {/* Dates / times — Start / End side by side; collapses to one column if no end */}
       {(start || end) && (
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.when')}</p>
           <div className={`grid gap-3 ${start && end ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {start && (
@@ -272,7 +272,7 @@ export default function JourneyDetail() {
 
       {/* Locations */}
       {(item.location_from || item.location_to || item.location_name) && (
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.where')}</p>
           <div className="space-y-2 text-sm text-ink-deep">
             {item.location_from && item.location_to && (
@@ -303,7 +303,7 @@ export default function JourneyDetail() {
       )}
 
       {/* People — participants only (owner display removed; owner field still drives permissions) */}
-      <div className="tt-card p-4">
+      <div className="tt-card-hairline p-4">
         <div className="flex items-center justify-between mb-2.5">
           <p className="tt-label text-ink-deep/40">{t('journeyDetail.people')}</p>
           {attendees.length > 0 && <span className="text-xs text-ink-deep/45">{t('journeyDetail.onSegment', { count: attendees.length })}</span>}
@@ -320,7 +320,7 @@ export default function JourneyDetail() {
 
       {/* Notes */}
       {item.notes && (
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2">{t('journeyDetail.notes')}</p>
           <p className="text-sm text-ink-deep/80 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
         </div>
@@ -330,7 +330,7 @@ export default function JourneyDetail() {
 
       {/* Attachments */}
       {(images.length > 0 || docs.length > 0) && (
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.attachments')}</p>
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-2.5 mb-3">

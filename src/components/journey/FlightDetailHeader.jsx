@@ -34,7 +34,7 @@ export default function FlightDetailHeader({ item }) {
   const endFull = item.end_datetime ? formatTimeAbbrAlpha3(item.end_datetime, endTz, endCc3) : '';
 
   return (
-    <div className="tt-card p-4">
+    <div className="tt-card-hairline p-4">
       <div className="flex items-start gap-3">
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-sky-100 text-sky-700 border border-sky-200">
           <Plane className="w-5 h-5" strokeWidth={2} />

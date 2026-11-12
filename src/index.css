@@ -157,6 +157,14 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   }
 
+  /* Same cream card surface, NO drop shadow: separation comes from the hairline
+     border and the surrounding spacing. Used by the Journey timeline (segment
+     cards, their desktop extensions and the page's own state panels) so the
+     list reads light and editorial instead of stacked/floating. */
+  .tt-card-hairline {
+    @apply bg-card text-card-foreground rounded-[1.25rem] border border-ink-charcoal/15;
+  }
+
   .tt-card-flat {
     @apply bg-card text-card-foreground rounded-[1rem] border border-ink-charcoal/10;
   }

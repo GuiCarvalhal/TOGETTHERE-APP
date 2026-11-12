@@ -59,7 +59,7 @@ export default function FlightStatusCard({ flightNumber, date, originTimezone, d
 
   if (loading) {
     return (
-      <div className="tt-card p-4 space-y-3">
+      <div className="tt-card-hairline p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Skeleton className="h-7 w-28 rounded-full" />
           <Skeleton className="h-6 w-20 ml-auto rounded-full" />
@@ -78,7 +78,7 @@ export default function FlightStatusCard({ flightNumber, date, originTimezone, d
   const arr = data.arrival || {};
 
   return (
-    <div className="tt-card p-4">
+    <div className="tt-card-hairline p-4">
       <div className="flex items-center gap-2 mb-3">
         <Plane className="w-4 h-4 text-terra-deep shrink-0" />
         <span className="tt-label text-ink-deep/50">{t('flightStatus.flightStatus')}</span>

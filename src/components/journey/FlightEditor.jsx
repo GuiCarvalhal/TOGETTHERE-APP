@@ -301,7 +301,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
 
       {showSummary && (
         <>
-          <div className="tt-card p-3 border-terra/30">
+          <div className="tt-card-hairline p-3 border-terra/30">
             <div>
               <p className="font-display font-semibold text-sm text-ink-deep">
                 {dispAirline ? `${dispAirline} · ` : ''}{dispNumber}

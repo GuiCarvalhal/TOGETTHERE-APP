@@ -274,7 +274,7 @@ export default function GatheringJourney() {
                       <Skeleton className="w-10 h-10 rounded-full" />
                       <Skeleton className="h-3 w-10 mt-1.5" />
                     </div>
-                    <div className="flex-1 tt-card p-3 space-y-2">
+                    <div className="flex-1 tt-card-hairline p-3 space-y-2">
                       <Skeleton className="h-3 w-1/4" tone="cream" />
                       <Skeleton className="h-4 w-2/3" tone="cream" />
                       <Skeleton className="h-3 w-1/2" tone="cream" />
@@ -289,7 +289,7 @@ export default function GatheringJourney() {
     </div>
   );
   if (error) return (
-    <div className="tt-card p-10 text-center max-w-md mx-auto">
+    <div className="tt-card-hairline p-10 text-center max-w-md mx-auto">
       <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
       <p className="font-display text-2xl mb-2 text-ink-deep">{t('journey.couldNotLoad')}</p>
       <p className="text-ink-deep/60 mb-6 text-sm">{error.message || t('common.error')}</p>

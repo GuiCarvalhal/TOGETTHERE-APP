@@ -41,14 +41,14 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
 
       {/* Where — map only, no redundant text labels around the route */}
       {(origin || destination || point) && (
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.where')}</p>
           <SegmentMap key={item.id} origin={origin} destination={destination} point={point} isFlight />
         </div>
       )}
 
       {/* People — avatar row + compact Join/Leave on the right */}
-      <div className="tt-card p-4">
+      <div className="tt-card-hairline p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="tt-label text-ink-deep/40 mb-2">{t('journeyDetail.people')}</p>
@@ -66,7 +66,7 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
 
       {/* Notes */}
       {item.notes && (
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2">{t('journeyDetail.notes')}</p>
           <p className="text-sm text-ink-deep/80 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
         </div>
@@ -76,7 +76,7 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
 
       {/* Attachments */}
       {(images.length > 0 || docs.length > 0) && (
-        <div className="tt-card p-4">
+        <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.attachments')}</p>
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-2.5 mb-3">
