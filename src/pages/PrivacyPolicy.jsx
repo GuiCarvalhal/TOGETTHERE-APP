@@ -11,7 +11,7 @@ const EFFECTIVE_DATE = 'November 5, 2026';
 const LAST_UPDATED = 'November 5, 2026';
 
 // Single place to change the published contact route for privacy requests.
-const CONTACT_EMAIL = 'privacy@togethere.app';
+const CONTACT_EMAIL = 'admin@togetthere.app';
 
 const GOOGLE_USER_DATA_POLICY =
   'https://developers.google.com/terms/api-services-user-data-policy';
