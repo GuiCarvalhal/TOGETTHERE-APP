@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Inbox as InboxIcon, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Inbox as InboxIcon, Loader2, Plus, RefreshCw, Route, Receipt } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import AppHeader from '@/components/tt/AppHeader';
 import EmptyState from '@/components/tt/EmptyState';
@@ -8,6 +8,8 @@ import StickyBar from '@/components/tt/StickyBar';
 import InboxItemCard from '@/components/inbox/InboxItemCard';
 import InboxImportSheet from '@/components/inbox/InboxImportSheet';
 import FileInboxItemSheet from '@/components/inbox/FileInboxItemSheet';
+import InboxStreamSwitch from '@/components/inbox/InboxStreamSwitch';
+import FinancialAccounts from '@/components/account/FinancialAccounts';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { useI18n } from '@/lib/i18n';
@@ -30,6 +32,10 @@ export default function Inbox() {
   const [filing, setFiling] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  // Two streams share this inbox: imported reservations and imported
+  // bank/card transactions (with their account management).
+  const [stream, setStream] = useState('journey');
+  const [financialPending, setFinancialPending] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -37,7 +43,9 @@ export default function Inbox() {
         base44.functions.invoke('getJourneyInbox', {}),
         base44.entities.Gathering.filter({}),
       ]);
-      setItems((inboxRes.data || inboxRes).items || []);
+      const inboxData = inboxRes.data || inboxRes;
+      setItems(inboxData.items || []);
+      setFinancialPending(inboxData.pendingFinancialCount || 0);
       setGatherings(Array.isArray(gatheringRows) ? gatheringRows : (gatheringRows?.items || []));
       setError('');
     } catch (e) {
@@ -49,8 +57,10 @@ export default function Inbox() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Keep the global header badge in sync with what is actually listed here.
-  useEffect(() => { if (!loading) setInboxCount(items.length); }, [items, loading]);
+  // Keep the global header badge in sync with what is actually waiting here:
+  // unfiled reservations plus transactions still to review.
+  const totalWaiting = items.length + financialPending;
+  useEffect(() => { if (!loading) setInboxCount(totalWaiting); }, [totalWaiting, loading]);
 
   // The inbox opens from the header, Home and the journey page, so it always
   // needs a way back; a direct link with no history falls back to Home.
@@ -144,9 +154,9 @@ export default function Inbox() {
           <div className="flex items-center gap-2 min-w-0">
             <InboxIcon className="w-4 h-4 text-terra-coral shrink-0" />
             <h1 className="font-display text-lg font-bold text-ink-deep truncate">{t('inbox.title')}</h1>
-            {items.length > 0 && (
+            {totalWaiting > 0 && (
               <span className="shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-terra text-cream text-[11px] font-bold">
-                {items.length}
+                {totalWaiting}
               </span>
             )}
           </div>
@@ -162,9 +172,24 @@ export default function Inbox() {
           </div>
         </StickyBar>
 
-        <p className="text-sm text-ink-deep/60 mt-4 mb-5">{t('inbox.intro')}</p>
+        <div className="mt-4 mb-5 space-y-3">
+          <InboxStreamSwitch
+            value={stream}
+            onChange={setStream}
+            ariaLabel={t('inbox.streams')}
+            options={[
+              { key: 'journey', label: t('inbox.streamJourney'), icon: <Route /> },
+              { key: 'expenses', label: t('inbox.streamExpenses'), icon: <Receipt /> },
+            ]}
+          />
+          <p className="text-sm text-ink-deep/60">
+            {stream === 'journey' ? t('inbox.intro') : t('inbox.expensesIntro')}
+          </p>
+        </div>
 
-        {loading ? (
+        {stream === 'expenses' ? (
+          <FinancialAccounts onPendingCountChange={setFinancialPending} />
+        ) : loading ? (
           <div className="tt-card p-10 flex items-center justify-center text-ink-deep/50">
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>

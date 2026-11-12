@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useNavigate, Navigate, Link, useLocation } from 'react-router-dom';
 import {
   Inbox as InboxIcon, ChevronRight, UserRound, SlidersHorizontal, Bell, Plug, ShieldCheck, Smartphone,
 } from 'lucide-react';
@@ -13,7 +13,6 @@ import OwnProfileEdit from '@/components/profile/OwnProfileEdit';
 import OwnProfileView from '@/components/profile/OwnProfileView';
 import AccountPreferences from '@/components/account/AccountPreferences';
 import AccountSecuritySection from '@/components/account/AccountSecuritySection';
-import FinancialAccounts from '@/components/account/FinancialAccounts';
 import InboxConnectors from '@/components/account/InboxConnectors';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n';
@@ -23,16 +22,18 @@ import { useI18n } from '@/lib/i18n';
 // gatherings). Independent of any gathering: profile reads/writes target only
 // the authenticated account globally (updateMe), with no Member/ACL/role writes.
 //
-// Organized as five scannable sections so it stays easy to navigate as settings
-// grow — Personal info, Preferences, System & notifications, Connected apps &
-// integrations, Security & privacy. Every existing control lives in exactly one
-// of them; nothing is removed. Chrome matches the rest of the app: the shared
+// Organized as four scannable sections that match the avatar menu one to one —
+// Personal info, System preferences (device + notifications), Connected apps &
+// integrations, Security & privacy. Each carries a section id so the avatar menu
+// can deep-link straight to it. Banking lives in the Inbox (Expenses stream).
+// Chrome matches the rest of the app: the shared
 // TopBar header + the sticky ProfileActionBar (Back / Edit / Save / Cancel) that
 // edits the Personal info section.
 export default function Account() {
   const { t } = useI18n();
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,6 +57,15 @@ export default function Account() {
   }, [user?.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // The avatar menu deep-links to a section (e.g. /account#integrations), so the
+  // matching block is scrolled to whenever the hash changes.
+  useEffect(() => {
+    const id = (hash || '').replace('#', '');
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [hash]);
 
   // After a self-profile save, reload the profile data AND refresh the shared
   // auth user so the top avatar / name update everywhere without a full reload.
@@ -99,7 +109,7 @@ export default function Account() {
 
         <div className="mt-7 space-y-9">
           {/* 1 — Personal info */}
-          <SettingsSection icon={UserRound} title={t('account.secPersonal')} subtitle={t('account.secPersonalDesc')}>
+          <SettingsSection id="personal" className="scroll-mt-20" icon={UserRound} title={t('account.secPersonal')} subtitle={t('account.secPersonalDesc')}>
             {loading ? (
               <div className="tt-card p-6 space-y-4">
                 <div className="flex items-center gap-3">
@@ -129,13 +139,9 @@ export default function Account() {
             )}
           </SettingsSection>
 
-          {/* 2 — Preferences */}
-          <SettingsSection icon={SlidersHorizontal} title={t('account.secPreferences')} subtitle={t('account.secPreferencesDesc')}>
+          {/* 2 — System preferences (appearance, language, this device, alerts) */}
+          <SettingsSection id="preferences" className="scroll-mt-20" icon={SlidersHorizontal} title={t('account.secPreferences')} subtitle={t('account.secPreferencesDesc')}>
             <AccountPreferences />
-          </SettingsSection>
-
-          {/* 3 — System & notifications */}
-          <SettingsSection icon={Bell} title={t('account.secSystem')} subtitle={t('account.secSystemDesc')}>
             <div className="tt-card p-1.5 sm:p-2">
               <SettingsRow
                 icon={Smartphone}
@@ -148,8 +154,8 @@ export default function Account() {
             </div>
           </SettingsSection>
 
-          {/* 4 — Connected apps & integrations */}
-          <SettingsSection icon={Plug} title={t('account.secIntegrations')} subtitle={t('account.secIntegrationsDesc')}>
+          {/* 3 — Connected apps & integrations */}
+          <SettingsSection id="integrations" className="scroll-mt-20" icon={Plug} title={t('account.secIntegrations')} subtitle={t('account.secIntegrationsDesc')}>
             <div className="tt-card p-4 sm:p-5">
               <InboxConnectors />
             </div>
@@ -161,13 +167,10 @@ export default function Account() {
                 to="/inbox"
               />
             </div>
-            {/* Banks & cards — imported transactions stay suggestions until the
-                user creates an expense from one through the standard form. */}
-            <FinancialAccounts />
           </SettingsSection>
 
-          {/* 5 — Security & privacy */}
-          <SettingsSection icon={ShieldCheck} title={t('account.secSecurity')} subtitle={t('account.secSecurityDesc')}>
+          {/* 4 — Security & privacy */}
+          <SettingsSection id="security" className="scroll-mt-20" icon={ShieldCheck} title={t('account.secSecurity')} subtitle={t('account.secSecurityDesc')}>
             <AccountSecuritySection />
           </SettingsSection>
         </div>

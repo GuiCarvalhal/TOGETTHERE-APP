@@ -4,9 +4,9 @@ import React from 'react';
 // optional one-line subtitle, then its content on a consistent vertical rhythm.
 // Gives every Account section the same rhythm so the page reads as a list of
 // clear groups instead of one long stack of cards.
-export default function SettingsSection({ icon: Icon, title, subtitle, children, className = '' }) {
+export default function SettingsSection({ icon: Icon, title, subtitle, children, className = '', id }) {
   return (
-    <section className={`space-y-3 ${className}`}>
+    <section id={id} className={`space-y-3 ${className}`}>
       <div className="flex items-start gap-2.5">
         {Icon && (
           <span className="mt-px grid place-items-center w-7 h-7 rounded-full bg-terra/10 text-terra-deep shrink-0">

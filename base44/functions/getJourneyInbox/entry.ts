@@ -48,7 +48,14 @@ export default async function (req: Request) {
         source_content: row.source_content || '',
       }));
 
-    return Response.json({ items });
+    // The same inbox also holds imported bank/card transactions awaiting review,
+    // so the header badge counts both streams and never under-reports.
+    const pendingRaw = await base44.asServiceRole.entities.FinancialTransaction
+      .filter({ owner_user_id: user.id, review_status: { $in: ['new', 'suggested'] } })
+      .catch(() => []);
+    const pendingFinancialCount = (Array.isArray(pendingRaw) ? pendingRaw : (pendingRaw?.items || [])).length;
+
+    return Response.json({ items, pendingFinancialCount });
   } catch (error: any) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -113,6 +113,13 @@ export default async function(req) {
       .sort((a: any, b: any) => String(a.start_datetime || '').localeCompare(String(b.start_datetime || '')));
     const inboxImportIds = new Set(inboxRows.map((row: any) => row.import_id).filter(Boolean));
 
+    // Card/bank transactions awaiting review live in the same Inbox, so the
+    // badge Home publishes covers both streams.
+    const pendingTxRaw = await base44.asServiceRole.entities.FinancialTransaction
+      .filter({ owner_user_id: user.id, review_status: { $in: ['new', 'suggested'] } })
+      .catch(() => []);
+    const pendingTxCount = (Array.isArray(pendingTxRaw) ? pendingTxRaw : (pendingTxRaw?.items || [])).length;
+
     const pendingRaw = await base44.asServiceRole.entities.ReservationImport.list('-created_date', 100).catch(() => []);
     const pendingImports = (pendingRaw || [])
       .filter((row) => {
@@ -151,7 +158,7 @@ export default async function(req) {
       previews,
       itemsByGathering,
       pendingImports,
-      inboxCount: inboxRows.length,
+      inboxCount: inboxRows.length + pendingTxCount,
       userId: user.id,
       nextUpcoming: chosen
         ? { item: chosen.item, gatheringId: chosen.gatheringId, participants: chosen.participants, ongoing: chosen === ongoing }

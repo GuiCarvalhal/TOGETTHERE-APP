@@ -1,9 +1,11 @@
 import { base44 } from '@/api/base44Client';
 
-// Shared journey-inbox count so the global header badge and the Journey Inbox
-// page can never disagree. The inbox page pushes the exact number after every
-// file / dismiss; the header only re-reads from the server when its value is
-// older than maxAgeMs, so navigating between pages doesn't re-query each time.
+// Shared inbox count so the global header badge and the Inbox page can never
+// disagree. The number covers BOTH streams waiting there: imported reservations
+// and imported bank/card transactions still to review. The inbox page pushes the
+// exact number after every file / dismiss / review; the header only re-reads from
+// the server when its value is older than maxAgeMs, so navigating between pages
+// doesn't re-query each time.
 let count = 0;
 let lastFetchedAt = 0;
 const listeners = new Set();
@@ -33,7 +35,8 @@ export async function refreshInboxCount({ maxAgeMs = 60000 } = {}) {
   lastFetchedAt = Date.now();
   try {
     const res = await base44.functions.invoke('getJourneyInbox', {});
-    count = ((res.data || res)?.items || []).length;
+    const data = res.data || res;
+    count = (data?.items || []).length + (data?.pendingFinancialCount || 0);
   } catch {
     /* keep the last known count */
   }

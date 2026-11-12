@@ -14,7 +14,6 @@ import JourneyCard from '@/components/tt/cards/JourneyCard';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
-import JourneyInboxPanel from '@/components/home/JourneyInboxPanel';
 import PendingImportCard from '@/components/home/PendingImportCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import { useI18n } from '@/lib/i18n';
@@ -40,8 +39,6 @@ export default function Home() {
   const [previews, setPreviews] = useState({});
   const [itemsByGathering, setItemsByGathering] = useState({});
   const [pendingImports, setPendingImports] = useState([]);
-  const [inboxConnections, setInboxConnections] = useState([]);
-  const [inboxCount, setInboxCount] = useState(0);
   const [importChoiceById, setImportChoiceById] = useState({});
   const [resolvingImportId, setResolvingImportId] = useState('');
   const [createForImportId, setCreateForImportId] = useState('');
@@ -70,9 +67,8 @@ export default function Home() {
       setPreviews(data.previews || {});
       setItemsByGathering(data.itemsByGathering || {});
       setPendingImports(data.pendingImports || []);
-      setInboxConnections(data.inboxConnections || []);
-      setInboxCount(data.inboxCount || 0);
-      // Keep the header badge on the same number Home already shows.
+      // Keep the header badge in step with what automatic mailbox sync just
+      // pulled in (journey items + pending transactions).
       publishInboxBadge(data.inboxCount || 0);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
@@ -226,16 +222,6 @@ export default function Home() {
       {/* Install prompt ??? sits above the gatherings list; hidden when running as an installed app */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
         <InstallBanner />
-      </section>
-
-      {/* Journey inbox — imported reservations waiting to be reviewed, with the
-          mailbox sync controls for the inboxes that feed it. */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
-        <JourneyInboxPanel
-          count={inboxCount}
-          connections={inboxConnections}
-          onSynced={() => load({ silent: true })}
-        />
       </section>
 
       {pendingImports.length > 0 && (

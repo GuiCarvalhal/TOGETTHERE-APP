@@ -14,7 +14,7 @@ import TransactionExpenseSheet from '@/components/account/TransactionExpenseShee
 // or provider sync), review the suggestions and turn one into an expense through
 // the standard form. Nothing is ever written to a gathering or to Expenses by an
 // import.
-export default function FinancialAccounts() {
+export default function FinancialAccounts({ onPendingCountChange }) {
   const { t, fmt } = useI18n();
   const navigate = useNavigate();
   const [data, setData] = useState({ connections: [], transactions: [], counts: {} });
@@ -56,6 +56,10 @@ export default function FinancialAccounts() {
   const connections = (data.connections || []).filter((c) => c.status !== 'disconnected');
   const syncable = connections.filter((c) => c.provider !== 'import');
   const pendingCount = (data.counts?.new || 0) + (data.counts?.suggested || 0);
+
+  // The Inbox page owns the header badge, so it needs this stream's pending
+  // count to keep the number consistent whichever stream is on screen.
+  useEffect(() => { onPendingCountChange?.(pendingCount); }, [pendingCount, onPendingCountChange]);
 
   async function sync(connectionId) {
     setBusyId(connectionId || 'all');
@@ -171,7 +175,7 @@ export default function FinancialAccounts() {
               <p className="text-[11px] text-ink-deep/55 leading-relaxed">{t('finance.emailImportsBody')}</p>
             </div>
           </div>
-          <Button size="sm" variant="secondary" onClick={() => navigate('/account')}>
+          <Button size="sm" variant="secondary" onClick={() => navigate('/account#integrations')}>
             <Mail /> {t('finance.emailImportsAction')}
           </Button>
         </div>

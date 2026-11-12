@@ -246,8 +246,8 @@ export const en = {
   topbar: {
     openAccountMenu: 'Open account menu',
     yourProfile: 'your profile',
-    inbox: 'Journey inbox',
-    inboxCount: 'Journey inbox, {count} waiting',
+    inbox: 'Inbox',
+    inboxCount: 'Inbox, {count} waiting',
   },
 
   account: {
@@ -288,12 +288,14 @@ export const en = {
     inboxRowDesc: 'Bookings you imported and have not filed yet.',
     secPersonal: 'Personal info',
     secPersonalDesc: 'Your name, photo, home base, interests and family.',
-    secPreferences: 'Preferences',
-    secPreferencesDesc: 'Appearance and language, applied everywhere.',
-    secSystem: 'System & notifications',
-    secSystemDesc: 'This device and the alerts you receive.',
+    secPreferences: 'System preferences',
+    secPreferencesDesc: 'Appearance, language, this device and the alerts you receive.',
+    menuPersonal: 'Personal Info',
+    menuPreferences: 'System Preferences',
+    menuIntegrations: 'Connected Integrations',
+    menuSecurity: 'Security & Privacy',
     secIntegrations: 'Connected apps & integrations',
-    secIntegrationsDesc: 'Mailboxes, banks and imported bookings.',
+    secIntegrationsDesc: 'Mailboxes and the bookings they import.',
     secSecurity: 'Security & privacy',
     secSecurityDesc: 'Sign-in protection and your data.',
     inboxTitle: 'Inbox connectors',
@@ -519,7 +521,7 @@ export const en = {
   },
 
   inbox: {
-  title: 'Journey inbox',
+  title: 'Inbox',
   syncNow: 'Sync now',
   import: 'Import',
   importTitle: 'Import a booking',
@@ -556,7 +558,11 @@ export const en = {
     viewEmail: 'View the original email',
     createGathering: 'Create a gathering',
     alreadyResolved: 'This item was already handled',
-    open: 'Open the journey inbox',
+    open: 'Open the inbox',
+    streams: 'Inbox stream',
+    streamJourney: 'Journey',
+    streamExpenses: 'Expenses',
+    expensesIntro: 'Imported card and bank transactions wait here for review. Nothing becomes an expense until you confirm it.',
   },
 
   finance: {

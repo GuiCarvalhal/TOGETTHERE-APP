@@ -242,8 +242,8 @@ export const ptBR = {
   topbar: {
     openAccountMenu: 'Abrir menu da conta',
     yourProfile: 'seu perfil',
-    inbox: 'Caixa do itinerário',
-    inboxCount: 'Caixa do itinerário, {count} esperando',
+    inbox: 'Caixa de entrada',
+    inboxCount: 'Caixa de entrada, {count} aguardando',
   },
 
   account: {
@@ -283,12 +283,14 @@ export const ptBR = {
     inboxRowDesc: 'Reservas importadas que ainda não foram arquivadas.',
     secPersonal: 'Informações pessoais',
     secPersonalDesc: 'Seu nome, foto, cidade, interesses e família.',
-    secPreferences: 'Preferências',
-    secPreferencesDesc: 'Aparência e idioma, aplicados em todo o app.',
-    secSystem: 'Sistema e notificações',
-    secSystemDesc: 'Este dispositivo e os alertas que você recebe.',
+    secPreferences: 'Preferências do sistema',
+    secPreferencesDesc: 'Aparência, idioma, este dispositivo e os alertas que você recebe.',
+    menuPersonal: 'Informações pessoais',
+    menuPreferences: 'Preferências do sistema',
+    menuIntegrations: 'Integrações conectadas',
+    menuSecurity: 'Segurança e privacidade',
     secIntegrations: 'Apps e integrações conectadas',
-    secIntegrationsDesc: 'Caixas de entrada, bancos e reservas importadas.',
+    secIntegrationsDesc: 'Caixas de entrada e as reservas que elas importam.',
     secSecurity: 'Segurança e privacidade',
     secSecurityDesc: 'Proteção de acesso e seus dados.',
     installApp: 'Adicionar ?? tela inicial',
@@ -515,7 +517,7 @@ export const ptBR = {
   },
 
   inbox: {
-    title: 'Caixa de entrada do roteiro',
+    title: 'Caixa de entrada',
     syncNow: 'Sincronizar',
     import: 'Importar',
     importTitle: 'Importar uma reserva',
@@ -552,7 +554,11 @@ export const ptBR = {
     viewEmail: 'Ver o e-mail original',
     createGathering: 'Criar um gathering',
     alreadyResolved: 'Este item já foi tratado',
-    open: 'Abrir a caixa de entrada do roteiro',
+    open: 'Abrir a caixa de entrada',
+    streams: 'Fluxo da caixa de entrada',
+    streamJourney: 'Roteiro',
+    streamExpenses: 'Despesas',
+    expensesIntro: 'Transações importadas de cartão e banco esperam aqui para revisão. Nada vira despesa sem a sua confirmação.',
   },
 
   finance: {
