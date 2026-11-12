@@ -409,27 +409,34 @@ export default function GatheringJourney() {
     <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={isDesktop ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
       {isDesktop && effectiveMapOpen ? (
         // Map ON. The card list stays a single column on the left and the map
-        // becomes the right 2/3 layer, pinned under the measured toolbar with
-        // no scroll of its own; only the card column scrolls. Hovering a card
+        // becomes the right 2/3 panel, pinned under the measured toolbar with no
+        // scroll of its own; only the card column scrolls. Hovering a card
         // highlights that segment in place (no camera change).
+        //
+        // The pinned top includes the same 20px gutter PageToolbar's content
+        // wrapper gives the card column (mt-5), so both columns start on one
+        // line and the map no longer sits 20px low and then jumps flush under
+        // the bar after the first scroll. deskPanelHeight() already subtracts
+        // --tt-desk-top (gutter included), so the panel still exactly fits the
+        // band between the pinned toolbar and the bottom dock: no page overflow,
+        // no inner scroll container of its own.
         <div
           className="grid grid-cols-3 gap-6 items-start"
-          style={{ '--tt-desk-top': deskTopOffset(barH) }}
+          style={{ '--tt-desk-top': `calc(${deskTopOffset(barH)} + 1.25rem)` }}
         >
           <div className="col-span-1 min-w-0">{renderList(false)}</div>
-          <div className="col-span-2 min-w-0 sticky" style={{ top: 'var(--tt-desk-top)' }}>
-            {/* Fits the band between the pinned toolbar and the bottom dock
-                exactly, so the panel never overflows and has no inner scroll. */}
-            <div className="flex flex-col" style={{ height: deskPanelHeight() }}>
-              <JourneyMapPanel
-                items={filteredMapItems}
-                gatheringId={gatheringId}
-                itemsPending={itemCoordsPending}
-                highlightItemId={hoverId}
-                className="h-full flex flex-col"
-                heightClass="flex-1 min-h-0"
-              />
-            </div>
+          <div
+            className="col-span-2 min-w-0 sticky"
+            style={{ top: 'var(--tt-desk-top)', height: deskPanelHeight() }}
+          >
+            <JourneyMapPanel
+              items={filteredMapItems}
+              gatheringId={gatheringId}
+              itemsPending={itemCoordsPending}
+              highlightItemId={hoverId}
+              className="h-full"
+              heightClass="flex-1 min-h-0"
+            />
           </div>
         </div>
       ) : isDesktop ? (

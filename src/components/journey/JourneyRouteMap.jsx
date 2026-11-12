@@ -33,7 +33,10 @@ function escapeHtml(s) {
 //    enough. Clicking a suggestion pin keeps its info card + detail link.
 // Reuses the shared maps loader + getMapsConfig — no second integration.
 // Fails gracefully (never crashes the page).
-export default function JourneyRouteMap({ items, gatheringId, suggestions, heightClass = OVERLAY_VIEWPORT_CLASS, highlightItemId = null }) {
+// `bare` (JourneyMapPanel): the map draws no border/rounding of its own because
+// the panel already owns the single surface — so the map's edges ARE the panel's
+// edges and there is never a double hairline or an inset gutter.
+export default function JourneyRouteMap({ items, gatheringId, suggestions, heightClass = OVERLAY_VIEWPORT_CLASS, highlightItemId = null, bare = false }) {
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'fallback'
@@ -249,7 +252,7 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
   }, [highlightItemId]);
 
   return (
-    <div className={`relative w-full ${heightClass} rounded-xl overflow-hidden border border-ink-charcoal/15 bg-cream-pale`}>
+    <div className={`relative w-full ${heightClass} overflow-hidden bg-cream-pale ${bare ? '' : 'rounded-xl border border-ink-charcoal/15'}`}>
       <div ref={mapRef} className="absolute inset-0" />
       {status === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-cream-pale">
