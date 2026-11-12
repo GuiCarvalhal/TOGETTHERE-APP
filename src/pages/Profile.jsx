@@ -56,10 +56,10 @@ export default function Profile() {
 
   const isOwner = !!data?.isSelf;
 
-  // Self-profile now lives on the unified Account page; redirect there so the
-  // legacy /profile/<ownId> route (and any deep links) land on the canonical
-  // surface instead of rendering a duplicate.
-  if (!loading && isOwner) return <Navigate to="/account" replace />;
+  // Self-profile now lives on the Personal info area of the Account flow;
+  // redirect there so the legacy /profile/<ownId> route (and any deep links)
+  // land on the canonical surface instead of rendering a duplicate.
+  if (!loading && isOwner) return <Navigate to="/account/personal" replace />;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Inbox, UserRound, SlidersHorizontal, Plug, ShieldCheck } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+import { Inbox } from 'lucide-react';
 import ActivityBell from '@/components/tt/ActivityBell';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import BrandLogo from '@/components/tt/BrandLogo';
@@ -17,22 +9,13 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n';
 import { refreshInboxCount, subscribeInboxCount } from '@/lib/inboxBadge';
 
-// Avatar menu — a short list of topics, each opening the matching Account
-// section (the section ids live on the Account page).
-const ACCOUNT_TOPICS = [
-  { hash: 'personal', tk: 'account.menuPersonal', Icon: UserRound },
-  { hash: 'preferences', tk: 'account.menuPreferences', Icon: SlidersHorizontal },
-  { hash: 'integrations', tk: 'account.menuIntegrations', Icon: Plug },
-  { hash: 'security', tk: 'account.menuSecurity', Icon: ShieldCheck },
-];
-
 // Universal app header used on every page (Home, gathering pages, Account,
 // How-it-works). Left: the TOGETTHERE brand mark + wordmark. Right: the journey
 // inbox shortcut (with its pending badge), the activity bell (gathering-scoped)
-// and the signed-in user's avatar, which opens a short topic menu whose entries
-// deep-link into the matching Account section. Sticky at h-12 (3rem)
-// so the shared StickyBar action bars pin directly below it at
-// calc(3rem + env(safe-area-inset-top)) with no overlap or jump.
+// and the signed-in user's avatar, which navigates straight to the Account hub
+// page (/account) — the hub then offers the four areas as cards. No menu opens
+// from the avatar. Sticky at h-12 (3rem) so the shared StickyBar action bars pin
+// directly below it at calc(3rem + env(safe-area-inset-top)) with no overlap.
 // The bar is fully opaque on purpose: a translucent + backdrop-blurred surface
 // let the scrolled page show through and blurred the brand mark, wordmark and
 // avatar. The whole brand lockup (logo + wordmark) links to Home.
@@ -84,36 +67,14 @@ export default function TopBar({ gatheringId }) {
             )}
           </button>
           <ActivityBell gatheringId={gatheringId} />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={t('topbar.openAccountMenu')}
-                className="rounded-full transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]"
-              >
-                <MemberAvatar member={{ photo, full_name: label }} size="sm" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60 bg-popover text-popover-foreground">
-              <DropdownMenuLabel className="min-w-0">
-                <span className="block text-sm font-semibold truncate">{label}</span>
-                {user?.email && label !== user.email && (
-                  <span className="block text-[11px] font-normal text-muted-foreground truncate">{user.email}</span>
-                )}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {ACCOUNT_TOPICS.map((topic) => (
-                <DropdownMenuItem
-                  key={topic.hash}
-                  onSelect={() => navigate(`/account#${topic.hash}`)}
-                  className="gap-2.5 min-h-[40px] cursor-pointer"
-                >
-                  <topic.Icon className="w-4 h-4 text-ink-deep/60" />
-                  <span className="truncate">{t(topic.tk)}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <button
+            type="button"
+            onClick={() => navigate('/account')}
+            aria-label={t('topbar.openAccount')}
+            className="rounded-full transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[36px]"
+          >
+            <MemberAvatar member={{ photo, full_name: label }} size="sm" />
+          </button>
         </div>
       </div>
     </div>

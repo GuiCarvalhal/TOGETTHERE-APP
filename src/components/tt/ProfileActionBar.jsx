@@ -13,13 +13,17 @@ import { Button } from '@/components/ui/button';
 //    primary; no-op when nothing changed / while saving).
 // Other viewers see Back only — no permission is loosened. Labels come from the
 // shared dictionaries so the bar follows the app language.
-export default function ProfileActionBar({ onBack, isOwner, editing, onEdit, onSave, onCancel, canSave, saving }) {
+// `showBack` (default true) lets a page that already carries its own back link
+// (the account area pages) keep the edit controls without a second Back button.
+export default function ProfileActionBar({ onBack, showBack = true, isOwner, editing, onEdit, onSave, onCancel, canSave, saving }) {
   const { t } = useI18n();
   return (
     <StickyBar>
-      <Button variant="default" size="icon" onClick={onBack} aria-label={t('common.back')} className="shrink-0">
-        <ArrowLeft />
-      </Button>
+      {showBack && (
+        <Button variant="default" size="icon" onClick={onBack} aria-label={t('common.back')} className="shrink-0">
+          <ArrowLeft />
+        </Button>
+      )}
 
       {isOwner && (
         <div className="ml-auto flex items-center gap-2">

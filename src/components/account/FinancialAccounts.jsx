@@ -175,7 +175,7 @@ export default function FinancialAccounts({ onPendingCountChange }) {
               <p className="text-[11px] text-ink-deep/55 leading-relaxed">{t('finance.emailImportsBody')}</p>
             </div>
           </div>
-          <Button size="sm" variant="secondary" onClick={() => navigate('/account#integrations')}>
+          <Button size="sm" variant="secondary" onClick={() => navigate('/account/integrations')}>
             <Mail /> {t('finance.emailImportsAction')}
           </Button>
         </div>

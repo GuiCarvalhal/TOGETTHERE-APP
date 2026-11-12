@@ -244,7 +244,7 @@ export const en = {
   },
 
   topbar: {
-    openAccountMenu: 'Open account menu',
+    openAccount: 'Account settings',
     yourProfile: 'your profile',
     inbox: 'Inbox',
     inboxCount: 'Inbox, {count} waiting',
@@ -254,6 +254,7 @@ export const en = {
     settingsAccount: 'Settings & account',
     account: 'Account',
     accountDesc: 'Your profile and app settings, available everywhere.',
+    chooseArea: 'Choose an area to manage.',
     appSettings: 'App settings',
     member: 'Member',
     appearance: 'Appearance',

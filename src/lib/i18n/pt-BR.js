@@ -240,7 +240,7 @@ export const ptBR = {
   },
 
   topbar: {
-    openAccountMenu: 'Abrir menu da conta',
+    openAccount: 'Configurações da conta',
     yourProfile: 'seu perfil',
     inbox: 'Caixa de entrada',
     inboxCount: 'Caixa de entrada, {count} aguardando',
@@ -249,6 +249,7 @@ export const ptBR = {
   account: {
     settingsAccount: 'Configura????es & conta',
     account: 'Conta',
+    chooseArea: 'Escolha uma área para gerenciar.',
     accountDesc: 'Seu perfil e configura????es do app, dispon??veis em qualquer lugar.',
     appSettings: 'Configura????es do app',
     member: 'Membro',

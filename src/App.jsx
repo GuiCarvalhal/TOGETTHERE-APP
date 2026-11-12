@@ -33,6 +33,7 @@ import GatheringSettings from '@/pages/GatheringSettings';
 import Profile from '@/pages/Profile';
 import ProfileRedirect from '@/components/ProfileRedirect';
 import Account from '@/pages/Account';
+import AccountSection from '@/pages/AccountSection';
 import Inbox from '@/pages/Inbox';
 import AddToHomeScreen from '@/pages/AddToHomeScreen';
 import JoinGathering from '@/pages/JoinGathering';
@@ -75,6 +76,7 @@ function App() {
             <Route element={<ProtectedRoute unauthenticatedElement={<UnauthenticatedRedirect />} />}>
               <Route path="/" element={<Home />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/account/:section" element={<AccountSection />} />
               <Route path="/inbox" element={<Inbox />} />
               <Route path="/add-to-home-screen" element={<AddToHomeScreen />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
