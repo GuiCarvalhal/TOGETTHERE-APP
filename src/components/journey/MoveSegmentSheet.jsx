@@ -38,7 +38,7 @@ export default function MoveSegmentSheet({ open, onOpenChange, item, currentGath
         if (!active) return;
         const list = Array.isArray(gatheringRows) ? gatheringRows : (gatheringRows?.items || []);
         const roleByGid = Object.fromEntries((myMemberships || []).map((m) => [m.gathering_id, m.role]));
-        setTargets(list.filter((g) => g.id !== currentGatheringId && roleByGid[g.id] && roleByGid[g.id] !== 'viewer'));
+        setTargets(list.filter((g) => g.is_deleted !== true && g.id !== currentGatheringId && roleByGid[g.id] && roleByGid[g.id] !== 'viewer'));
       } catch {
         if (active) setTargets([]);
       } finally {

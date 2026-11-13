@@ -16,6 +16,8 @@ import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
 import PendingImportCard from '@/components/home/PendingImportCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
+import RecentlyDeletedRow from '@/components/tt/RecentlyDeletedRow';
+import RecentlyDeletedSheet from '@/components/tt/RecentlyDeletedSheet';
 import { useI18n } from '@/lib/i18n';
 import { describeImportFailure } from '@/lib/importErrors';
 import { setInboxCount as publishInboxBadge } from '@/lib/inboxBadge';
@@ -47,6 +49,10 @@ export default function Home() {
   const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState('all');
   const [nextUpcoming, setNextUpcoming] = useState(null);
+  // Soft-deleted gatherings the owner can still bring back (30-day window).
+  const [deletedGatherings, setDeletedGatherings] = useState([]);
+  const [deletedOpen, setDeletedOpen] = useState(false);
+  const [restoringGatheringId, setRestoringGatheringId] = useState('');
   // Every refresh takes a ticket; only the newest one may apply its response, so
   // a background sync finishing after an explicit refresh can never overwrite
   // fresher data (or resurrect an import that was just resolved).
@@ -72,6 +78,7 @@ export default function Home() {
       publishInboxBadge(data.inboxCount || 0);
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
+      setDeletedGatherings(data.deletedGatherings || []);
       setLoadError(false);
     } catch (e) {
       console.error(e);
@@ -156,6 +163,24 @@ export default function Home() {
     if (importId) setImportChoiceById((cur) => ({ ...cur, [importId]: gathering.id }));
     toast({ title: t('newGathering.created') });
     await load({ silent: true });
+  }
+
+  async function restoreGathering(row) {
+    if (restoringGatheringId === row.id) return;
+    setRestoringGatheringId(row.id);
+    try {
+      await base44.functions.invoke('restoreGathering', { gathering_id: row.id });
+      toast({ title: t('recentlyDeleted.restored'), description: t('recentlyDeleted.restoredDesc', { title: row.title }) });
+      await load({ silent: true });
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: t('recentlyDeleted.restoreFailed'),
+        description: e?.response?.data?.error || e?.data?.error || e?.message,
+      });
+    } finally {
+      setRestoringGatheringId('');
+    }
   }
 
   // Featured eyebrow: date-focused relative + absolute timing for the next
@@ -261,6 +286,22 @@ export default function Home() {
         onCreated={handleGatheringCreated}
       />
 
+      <RecentlyDeletedSheet
+        open={deletedOpen}
+        onClose={() => setDeletedOpen(false)}
+        title={t('recentlyDeleted.gatheringsTitle')}
+        items={deletedGatherings.map((g) => ({
+          id: g.id,
+          title: g.name || t('common.untitled'),
+          meta: (g.destinations || []).join(' · '),
+          deletedAt: g.deleted_at,
+        }))}
+        loading={false}
+        onRestore={restoreGathering}
+        restoringId={restoringGatheringId}
+        emptyLabel={t('recentlyDeleted.gatheringsEmpty')}
+      />
+
       {/* Gatherings grid */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
         <div className="flex items-center justify-between gap-3 mb-5">
@@ -334,6 +375,12 @@ export default function Home() {
             ))}
           </div>
         )}
+
+        <RecentlyDeletedRow
+          count={deletedGatherings.length}
+          label={t('recentlyDeleted.openAction')}
+          onClick={() => setDeletedOpen(true)}
+        />
       </section>
 
       {/* Three pillars ??? horizontal, icon + headline only, each links to how-it-works */}

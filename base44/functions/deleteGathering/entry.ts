@@ -1,40 +1,28 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { gatheringOwnerUserId } from '../../shared/gatheringAcl.ts';
+import { softDeletePatch } from '../../shared/softDelete.ts';
 
-// Delete an entire gathering and every record scoped to it. Runs as the
-// service role (bypassing RLS) so the permission can be enforced explicitly:
-// ONLY the gathering Owner may delete — never admins, members, or viewers
-// (and not even a platform app-admin, since this is irreversible and the
-// owner asked for owner-only access). Cascades through every child entity so
-// no orphaned records remain.
+// Move an entire gathering to Recently deleted. Nothing is removed on this
+// pass: the row is flagged (is_deleted + deleted_at + deleted_by) and every
+// normal gathering list filters it out, while its segments, expenses, splits,
+// members, tasks, activity and join requests stay untouched — so a restore
+// returns the gathering exactly as it was.
 //
-// Records removed (all scoped to gathering_id, except JourneyNote which is
-// scoped to the gathering's journey items):
-//   - JourneyNote   (by journey_item_id $in the gathering's JourneyItem ids)
-//   - ExpenseSplit  (by gathering_id)
-//   - Expense       (by gathering_id)
-//   - JourneyItem   (by gathering_id)
-//   - Task          (by gathering_id)
-//   - Activity      (by gathering_id)
-//   - JoinRequest   (by gathering_id)
-//   - Member        (by gathering_id)
-//   - Gathering     (by id)  — last, after all children are gone
-// Family records are user-scoped (not gathering-scoped) and are NOT touched.
+// Only the gathering Owner may do this (never admins, members or viewers).
+// Permanent removal happens later, and only in purgeDeletedItems, once the
+// 30-day retention window has passed.
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch((e) => (e.status === 401 ? null : Promise.reject(e)));
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
     const { gathering_id } = body;
     if (!gathering_id) return Response.json({ error: 'gathering_id required' }, { status: 400 });
 
-    let gathering;
-    try {
-      gathering = await base44.asServiceRole.entities.Gathering.get(gathering_id);
-    } catch {
-      gathering = null;
-    }
+    const gathering = await base44.asServiceRole.entities.Gathering
+      .get(gathering_id)
+      .catch((e) => (e.status === 404 ? null : Promise.reject(e)));
     if (!gathering) return Response.json({ error: 'Gathering not found' }, { status: 404 });
 
     const members = await base44.asServiceRole.entities.Member.filter({ gathering_id });
@@ -43,24 +31,11 @@ export default async function (req) {
       return Response.json({ error: 'Only the gathering owner can delete this gathering' }, { status: 403 });
     }
 
-    // Fetch journey item ids so their per-user notes can be cleaned up too.
-    const journeyItems = await base44.asServiceRole.entities.JourneyItem.filter({ gathering_id });
-    const journeyItemIds = (journeyItems || []).map((j) => j.id).filter(Boolean);
+    // Already in Recently deleted: idempotent no-op so a retry is safe.
+    if (gathering.is_deleted === true) return Response.json({ ok: true, already_deleted: true });
 
-    // Delete children before the parent.
-    if (journeyItemIds.length) {
-      await base44.asServiceRole.entities.JourneyNote.deleteMany({ journey_item_id: { $in: journeyItemIds } });
-    }
-    await base44.asServiceRole.entities.ExpenseSplit.deleteMany({ gathering_id });
-    await base44.asServiceRole.entities.Expense.deleteMany({ gathering_id });
-    await base44.asServiceRole.entities.JourneyItem.deleteMany({ gathering_id });
-    await base44.asServiceRole.entities.Task.deleteMany({ gathering_id });
-    await base44.asServiceRole.entities.Activity.deleteMany({ gathering_id });
-    await base44.asServiceRole.entities.JoinRequest.deleteMany({ gathering_id });
-    await base44.asServiceRole.entities.Member.deleteMany({ gathering_id });
-    await base44.asServiceRole.entities.Gathering.delete(gathering_id);
-
-    return Response.json({ ok: true });
+    await base44.asServiceRole.entities.Gathering.update(gathering_id, softDeletePatch(user.id));
+    return Response.json({ ok: true, soft_deleted: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -48,7 +48,7 @@ export default function FinancialAccounts({ onPendingCountChange }) {
   useEffect(() => {
     load();
     base44.entities.Gathering.filter({})
-      .then((rows) => setGatherings((rows || []).map((g) => ({ id: g.id, name: g.name }))))
+      .then((rows) => setGatherings((rows || []).filter((g) => g.is_deleted !== true).map((g) => ({ id: g.id, name: g.name }))))
       .catch(() => {});
   }, [load]);
 

@@ -1,0 +1,45 @@
+{
+  "name": "Purge recently deleted",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 3 * * *",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Every day at 3am, permanently removes journeys segments, expenses and gatherings that were deleted more than 30 days ago. Items still inside the 30-day window stay restorable.",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "purge_recently_deleted",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "purge_expired": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "purgeDeletedItems",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Purge items deleted over 30 days ago",
+            "description": "Gatherings, segments and expenses"
+          }
+        }
+      }
+    ]
+  }
+}

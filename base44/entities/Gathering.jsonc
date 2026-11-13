@@ -77,6 +77,20 @@
       "default": "planning",
       "description": "Deprecated: the status concept is dead. The column is kept so existing records don't break, but nothing in the UI reads or writes it \u2014 ordering/labels are derived from journey-item dates."
     },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Soft-delete flag. true = the gathering was moved to Recently deleted on Home: it is excluded from every normal gathering list, but the record and all of its children (segments, expenses, splits, members, tasks, activity, join requests) are kept so a restore brings it back exactly as it was. Absent/false on live rows (legacy rows have no value at all)."
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the gathering was soft-deleted. Restorable for SOFT_DELETE_RETENTION_DAYS (30) days, after which purgeDeletedItems removes it and its children permanently."
+    },
+    "deleted_by": {
+      "type": "string",
+      "description": "App user id who moved this gathering to Recently deleted."
+    },
     "owner_user_id": {
       "type": "string"
     },

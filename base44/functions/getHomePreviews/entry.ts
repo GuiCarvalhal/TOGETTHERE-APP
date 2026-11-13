@@ -25,8 +25,24 @@ export default async function(req) {
     const { members: myMembers } = await resolveMyMembers(base44, user);
     const gids = (myMembers || []).map((m) => m.gathering_id).filter(Boolean);
 
-    const gatherings = await base44.entities.Gathering.list('-created_date', 100);
-    const mine = gatherings.filter((g) => gids.includes(g.id));
+    const allGatherings = await base44.entities.Gathering.list('-created_date', 100);
+    // Soft-deleted gatherings are hidden from every normal gathering list. The
+    // owner alone sees them in Home's "Recently deleted" panel, where restoring
+    // one clears the flags (nothing was removed when it was deleted).
+    const mine = allGatherings.filter((g) => gids.includes(g.id) && g.is_deleted !== true);
+    const activeGids = mine.map((g) => g.id);
+    const myEmail = normalizeEmail(user.email || '');
+    const deletedGatherings = allGatherings
+      .filter((g) => g.is_deleted === true && gids.includes(g.id))
+      .filter((g) => (g.created_by_id === user.id)
+        || (!!g.owner_user_id && (g.owner_user_id === user.id || normalizeEmail(g.owner_user_id) === myEmail)))
+      .map((g) => ({
+        id: g.id,
+        name: g.name || '',
+        destinations: g.destinations || [],
+        start_date: g.start_date || null,
+        deleted_at: g.deleted_at || null,
+      }));
 
     const previews = {};
     const itemsByGathering = {};
@@ -48,7 +64,7 @@ export default async function(req) {
     const startOfTodayMs = Math.floor((nowMs - offsetMs) / 86400000) * 86400000 + offsetMs;
     let ongoing = null;
     let nextUpcoming = null;
-    await Promise.all(gids.map(async (gid) => {
+    await Promise.all(activeGids.map(async (gid) => {
       const [ms, its] = await Promise.all([
         base44.asServiceRole.entities.Member.filter({ gathering_id: gid }),
         base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gid }),
@@ -153,6 +169,7 @@ export default async function(req) {
     const chosen = ongoing || nextUpcoming;
     return Response.json({
       gatherings: mine,
+      deletedGatherings,
       inboxConnections,
       memberships: (myMembers || []).map((m) => ({ gathering_id: m.gathering_id, role: m.role })),
       previews,

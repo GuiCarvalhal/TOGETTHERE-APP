@@ -46,7 +46,8 @@ export default function Inbox() {
       const inboxData = inboxRes.data || inboxRes;
       setItems(inboxData.items || []);
       setFinancialPending(inboxData.pendingFinancialCount || 0);
-      setGatherings(Array.isArray(gatheringRows) ? gatheringRows : (gatheringRows?.items || []));
+      const gatheringList = Array.isArray(gatheringRows) ? gatheringRows : (gatheringRows?.items || []);
+      setGatherings(gatheringList.filter((g) => g.is_deleted !== true));
       setError('');
     } catch (e) {
       setError(e.message || t('inbox.loadFailed'));
