@@ -15,6 +15,7 @@ import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
 import PendingImportCard from '@/components/home/PendingImportCard';
+import NextBriefCard from '@/components/home/NextBriefCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import RecentlyDeletedRow from '@/components/tt/RecentlyDeletedRow';
 import RecentlyDeletedSheet from '@/components/tt/RecentlyDeletedSheet';
@@ -47,7 +48,9 @@ export default function Home() {
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [filter, setFilter] = useState('all');
+  // Home opens on the trips that matter now: Upcoming is the default view every
+  // time the page loads. The full All / Past options stay one tap away.
+  const [filter, setFilter] = useState('upcoming');
   const [nextUpcoming, setNextUpcoming] = useState(null);
   // Soft-deleted gatherings the owner can still bring back (30-day window).
   const [deletedGatherings, setDeletedGatherings] = useState([]);
@@ -242,6 +245,10 @@ export default function Home() {
         )}
       </section>
 
+      {/* Next / Now AI Agent brief: the top-priority info hub, three actionable
+          tips for the segment Home already flagged as current or next. */}
+      <NextBriefCard next={nextUpcoming} />
+
       <ProfileCompleteReminder />
 
       {/* Install prompt ??? sits above the gatherings list; hidden when running as an installed app */}
@@ -307,7 +314,9 @@ export default function Home() {
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3 min-w-0 flex-wrap">
             <h2 className="font-display text-2xl font-bold whitespace-nowrap">{t('home.yourGatherings')}</h2>
-            {gatherings.length > 1 && (
+            {/* Upcoming is the default view, so the switcher must also appear when
+                that default would otherwise hide the user's only gathering. */}
+            {(gatherings.length > 1 || (gatherings.length > 0 && sorted.length === 0)) && (
               <div className="flex items-center gap-2">
                 {FILTER_KEYS.map((f) => (
                   <button key={f.key} onClick={() => setFilter(f.key)}
