@@ -74,3 +74,27 @@ export async function fetchFlightByNumber(key, flightNumber, date) {
     arr_name: text(flight.arrival.airport?.name),
   };
 }
+
+// Rich LIVE status for one flight number on one calendar date: on-time/delayed/
+// cancelled, gates, terminals, scheduled vs revised local times and the
+// provider's own last-updated stamp. Goes through the same paced `request` as
+// the metadata resolver, so both share the provider's per-second limit instead
+// of doubling the call rate. Returns null when the provider has no such flight.
+export async function fetchFlightLiveByNumber(key, flightNumber, date) {
+  const source = 'aerodatabox.flight';
+  const data = await request(key, `/flights/number/${encodeURIComponent(flightNumber)}/${encodeURIComponent(date)}`, source);
+  if (data === null) return null;
+  if (!Array.isArray(data) || data.some(f => !f || typeof f.number !== 'string' || !f.departure || !f.arrival)) throw invalidProviderShape(source);
+  if (!data.length) return null;
+  const f = data.find(value => !value.isCodeshare) || data[0];
+  const side = (s) => ({
+    iata: text(s?.airport?.iata), name: text(s?.airport?.name),
+    scheduled: text(s?.scheduledTime?.local), revised: text(s?.revisedTime?.local),
+    actual: text(s?.actualTime?.local), terminal: text(s?.terminal), gate: text(s?.gate),
+  });
+  return {
+    status: text(f.status), airline: text(f.airline?.name),
+    lastUpdatedUtc: text(f.lastUpdatedUtc),
+    departure: side(f.departure), arrival: side(f.arrival),
+  };
+}

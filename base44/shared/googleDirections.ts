@@ -21,6 +21,7 @@ export async function fetchDrivingRoute(key, origin, destination) {
     duration: leg.duration?.text || '',
     durationSeconds: typeof leg.duration?.value === 'number' ? leg.duration.value : null,
     durationInTraffic: leg.duration_in_traffic?.text || '',
+    durationInTrafficSeconds: typeof leg.duration_in_traffic?.value === 'number' ? leg.duration_in_traffic.value : null,
     startAddress: leg.start_address || '',
     endAddress: leg.end_address || '',
     mapsUrl,
