@@ -834,7 +834,6 @@ export const ptBR = {
     saved: 'Salvo',
     couldNotSave: 'N??o foi poss??vel salvar as configura????es',
     photoSearchFailed: 'Falha na busca de fotos',
-    myNotifications: 'Minhas notifica????es',
     dangerZone: 'Zona de perigo',
     dangerDesc: 'Exclui este encontro e tudo nele: segmentos de roteiro, despesas, divisões, membros, tarefas, atividade e pedidos de entrada. Ele vai para Excluídos recentemente na Home, onde você pode restaurá-lo por 30 dias; depois disso é removido permanentemente.',
     deleteGathering: 'Excluir encontro',

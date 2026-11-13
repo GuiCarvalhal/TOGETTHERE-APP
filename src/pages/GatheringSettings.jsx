@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useGathering } from '@/lib/gatheringContext';
-import { useOutletContext } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { gatheringDestinations } from '@/lib/gatheringDates';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Image } from '@/components/ui/image';
 import { Loader2, Save, Search, Trash2, AlertTriangle, Check } from 'lucide-react';
 import DestinationPicker from '@/components/tt/DestinationPicker';
-import GatheringNotificationPrefs from '@/components/tt/GatheringNotificationPrefs';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -27,7 +25,6 @@ const SAMPLE_COVERS = [
 export default function GatheringSettings() {
   const { t } = useI18n();
   const { gatheringId, gathering, role, refresh, setFab } = useGathering();
-  const { onesignal } = useOutletContext() || {};
   const isOwner = role === 'owner';
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -121,9 +118,6 @@ export default function GatheringSettings() {
         <h2 className="font-display text-3xl font-bold">{t('settings.settings')}</h2>
         <p className="text-muted-foreground text-sm mt-1">{t('settings.settingsDesc')}</p>
       </div>
-
-      {/* My notification preferences — all members (per-gathering subscriptions) */}
-      <GatheringNotificationPrefs onesignal={onesignal} />
 
       {/* Trip details — owner only */}
       {isOwner && (

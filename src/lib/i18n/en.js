@@ -838,7 +838,6 @@ export const en = {
     saved: 'Saved',
     couldNotSave: 'Could not save settings',
     photoSearchFailed: 'Photo search failed',
-    myNotifications: 'My notifications',
     dangerZone: 'Danger zone',
     dangerDesc: 'Delete this gathering and everything in it: journey segments, expenses, splits, members, tasks, activity, and join requests. It moves to Recently deleted on Home, where you can restore it for 30 days; after that it is removed permanently.',
     deleteGathering: 'Delete gathering',
