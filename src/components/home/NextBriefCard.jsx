@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Sparkles, Plane, Navigation, CloudSun, Coffee, RefreshCw, Clock, MapPin, Info,
+  Sparkles, Plane, Navigation, CloudSun, Coffee, RefreshCw, Clock, MapPin, Info, Globe,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useI18n } from '@/lib/i18n';
@@ -26,6 +26,8 @@ const ICONS = {
   cutoff: Clock,
   terminal: Info,
   hint: Info,
+  tz: Globe,
+  yourtime: Globe,
 };
 
 export default function NextBriefCard({ next }) {
