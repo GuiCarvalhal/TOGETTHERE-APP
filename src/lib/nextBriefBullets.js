@@ -223,7 +223,11 @@ function trafficDelta(live, t) {
 // A booking reference the card does not print (flights show the flight number
 // only; transfers and stays show their location).
 function refBullet(item, t) {
-  const ref = text(item.booking_reference) || text(item.confirmation_number);
+  // A flight's confirmation_number IS the flight number the card's meta line
+  // prints, so only the separate PNR counts as new information there.
+  const ref = item.type === FLIGHT
+    ? text(item.booking_reference)
+    : (text(item.booking_reference) || text(item.confirmation_number));
   if (!ref) return null;
   return { id: 'ref', icon: 'hint', text: t('home.brief.stayConfirmation', { code: ref }) };
 }
