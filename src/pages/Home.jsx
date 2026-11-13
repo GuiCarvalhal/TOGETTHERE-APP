@@ -212,9 +212,11 @@ export default function Home() {
       {/* Hero intro ??? or the user's next upcoming journey segment when one exists */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10">
         {nextUpcoming ? (
-          <div>
+          /* ONE continuous module: the NEXT line, the featured segment and the
+             agent tips share a single surface — no stacked cards, no second box. */
+          <div className="tt-card-hairline p-3.5 sm:p-4">
             {featuredEyebrow && (
-              <p className="text-sm font-bold mb-3 tracking-wide flex flex-wrap items-center gap-x-2">
+              <p className="text-sm font-bold mb-2.5 tracking-wide flex flex-wrap items-center gap-x-2 px-0.5">
                 <span className="text-terra-coral uppercase">{featuredEyebrow.statusLabel}</span>
                 <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-deep/25" />
                 <span className="text-ink-deep uppercase">{featuredEyebrow.relative}</span>
@@ -229,8 +231,10 @@ export default function Home() {
               icon={journeyIcon(nextUpcoming.item.type)}
               participants={nextUpcoming.participants}
               showImages
+              embedded
               to={`/gathering/${nextUpcoming.gatheringId}/journey/${nextUpcoming.item.id}`}
             />
+            <NextBriefCard next={nextUpcoming} />
           </div>
         ) : (
           <>
@@ -244,10 +248,6 @@ export default function Home() {
           </>
         )}
       </section>
-
-      {/* Next / Now AI Agent brief: the top-priority info hub, three actionable
-          tips for the segment Home already flagged as current or next. */}
-      <NextBriefCard next={nextUpcoming} />
 
       <ProfileCompleteReminder />
 

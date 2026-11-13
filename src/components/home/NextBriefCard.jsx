@@ -53,33 +53,23 @@ export default function NextBriefCard({ next }) {
   const bullets = buildBriefBullets({ item, live, unit, t });
   if (!bullets.length) return null;
 
+  // Rendered INSIDE Home's NEXT module, under the featured card: the tips carry
+  // no chrome of their own — just a hairline divider and the bullet list.
   return (
-    <section className="max-w-6xl mx-auto px-4 sm:px-6 -mt-7 pb-6">
-      <div className="tt-card-hairline p-3.5 sm:p-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="tt-label text-terra-coral inline-flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3" aria-hidden="true" />
-            {t('home.brief.label')}
-          </p>
-          <span className="tt-stamp border-terra/25 bg-terra/10 text-terra-deep">
-            {next.ongoing ? t('home.happeningNow') : t('home.upNext')}
-          </span>
-        </div>
-
-        <ul className="mt-2 space-y-1.5">
-          {bullets.map((bullet) => {
-            const Icon = ICONS[bullet.icon] || Sparkles;
-            return (
-              <li key={bullet.id} className="flex items-start gap-2">
-                <Icon className="w-3.5 h-3.5 mt-[3px] shrink-0 text-terra-deep" aria-hidden="true" />
-                <span className="text-xs sm:text-[0.8125rem] leading-snug text-ink-deep/80 min-w-0">
-                  {bullet.text}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </section>
+    <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
+      <ul className="space-y-1.5">
+        {bullets.map((bullet) => {
+          const Icon = ICONS[bullet.icon] || Sparkles;
+          return (
+            <li key={bullet.id} className="flex items-start gap-2">
+              <Icon className="w-3.5 h-3.5 mt-[3px] shrink-0 text-terra-deep" aria-hidden="true" />
+              <span className="text-xs sm:text-[0.8125rem] leading-snug text-ink-deep/80 min-w-0">
+                {bullet.text}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

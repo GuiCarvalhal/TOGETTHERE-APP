@@ -32,9 +32,13 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // reserved min-height participant slot pushed to the bottom via mt-auto so
 // the height never depends on whether avatars are present. On narrow screens
 // where the timing row wraps, the card grows instead of clipping.
-export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber, onSelect }) {
+export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber, onSelect, embedded }) {
   const navigate = useNavigate();
   const { t } = useI18n();
+  // `embedded` drops the card's own surface (border + fill) and the rail's
+  // page-canvas backgrounds so the card reads as part of a larger module that
+  // already owns the white surface (Home's NEXT module).
+  const railBg = embedded ? 'bg-card' : 'bg-background';
   const isFlight = item.type === 'flight';
   const startTz = useItemStartTz(item, isFlight);
   const endTz = useItemEndTz(item, isFlight);
@@ -116,23 +120,23 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
           backgrounds so the rail line never shows through them. */}
       <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center relative z-10 ring-2 ring-background shadow-sm"
+          className={`w-10 h-10 rounded-full flex items-center justify-center relative z-10 ring-2 ${embedded ? 'ring-card' : 'ring-background shadow-sm'}`}
           style={{ backgroundColor: typeColor }}
         >
           <Icon className="w-5 h-5 text-white" strokeWidth={2} />
         </div>
         {allDay ? (
-          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded relative z-10">
+          <div className={`mt-1.5 text-center leading-tight ${railBg} px-1.5 rounded relative z-10`}>
             <p className="text-[0.625rem] font-bold text-foreground/70 whitespace-nowrap">{t('journeyCard.allDay')}</p>
           </div>
         ) : railTime ? (
-          <div className="mt-1.5 text-center leading-tight bg-background px-1.5 rounded relative z-10">
+          <div className={`mt-1.5 text-center leading-tight ${railBg} px-1.5 rounded relative z-10`}>
             <p className="text-xs font-bold text-foreground whitespace-nowrap">{railTime}</p>
             {railAbbr && <p className="text-[0.625rem] text-foreground/45 mt-0.5">{railAbbr}</p>}
           </div>
         ) : null}
         {routeNumber != null && (
-          <span className="mt-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-terra/35 bg-background text-terra-deep text-[0.625rem] font-bold relative z-10">
+          <span className={`mt-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-terra/35 ${railBg} text-terra-deep text-[0.625rem] font-bold relative z-10`}>
             {routeNumber}
           </span>
         )}
@@ -144,7 +148,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
       {/* Hairline surface, no drop shadow: the border + spacing separate the
           cards from the canvas (lighter, editorial timeline). Photo cards carry
           their own scrim, so they need no border either. */}
-      <div className={`flex-1 min-w-0 rounded-2xl overflow-hidden relative border ${onCover ? 'border-transparent' : 'border-ink-charcoal/15 bg-card'}`}>
+      <div className={`flex-1 min-w-0 rounded-2xl overflow-hidden relative border ${(onCover || embedded) ? 'border-transparent' : 'border-ink-charcoal/15 bg-card'}`}>
         {onCover && (
           <>
             <Image src={cover} alt="" className="absolute inset-0 w-full h-full" fittingType="fill" />
