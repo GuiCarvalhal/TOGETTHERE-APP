@@ -5,10 +5,18 @@ import { TZ_COUNTRY } from '../../shared/googlePlaces.ts';
 // countries they added by hand (visited) or put on their bucket list.
 //
 // Stamps are DERIVED, never copied: a country is stamped because a live journey
-// item of a gathering the user belongs to resolves to that country, so editing a
-// trip updates the passport with no sync job and nothing to back-fill. Only the
-// manual additions live in PassportCountry rows.
+// item the user PERSONALLY travels on resolves to that country, so editing a trip
+// updates the passport with no sync job and nothing to back-fill. Only the manual
+// additions live in PassportCountry rows.
+//
+// "Personally travels on" means both:
+//   1. the gathering counts — the user is its owner/creator or a participant
+//      member there. A VIEWER never earns a stamp.
+//   2. the item counts — the user is on that segment: in attendee_user_ids, or
+//      (for non-flight segments with nobody opted in) its creator. A segment the
+//      rest of the group took without them stamps nothing.
 const ISO2 = /^[A-Z]{2}$/;
+const ROLE_RANK = { owner: 4, admin: 3, member: 2, viewer: 1 };
 
 // A place stores the ISO short_name from Google address components; when a
 // legacy row has no country, the IANA timezone is a safe fallback.
@@ -37,22 +45,34 @@ export default async function (req) {
 
     // ── The gatherings this user travelled on ───────────────────────────
     // Memberships cover the gatherings they joined; the owner of a gathering is
-    // a traveller even when no Member row was ever written for them.
-    const [byId, byEmail, owned] = await Promise.all([
+    // a traveller even when no Member row was ever written for them. One query
+    // per condition (no $or): a single unparsable $or would widen this to every
+    // gathering in the app and stamp trips the user never took.
+    const [byId, byEmail, byContact, ownerOf, created, aclMember, aclParticipant] = await Promise.all([
       svc.Member.filter({ user_id: user.id }).catch(() => []),
       email ? svc.Member.filter({ email }).catch(() => []) : [],
-      svc.Gathering.filter({
-        $or: [
-          { owner_user_id: user.id },
-          { created_by_id: user.id },
-          { member_user_ids: { $in: [user.id] } },
-        ],
-      }).catch(() => []),
+      email ? svc.Member.filter({ contact_info: email }).catch(() => []) : [],
+      svc.Gathering.filter({ owner_user_id: user.id }).catch(() => []),
+      svc.Gathering.filter({ created_by_id: user.id }).catch(() => []),
+      svc.Gathering.filter({ member_user_ids: { $in: [user.id] } }).catch(() => []),
+      svc.Gathering.filter({ participant_user_ids: { $in: [user.id] } }).catch(() => []),
     ]);
+    const myMembers = [...(byId || []), ...(byEmail || []), ...(byContact || [])];
     const gatheringIds = [...new Set([
-      ...[...(byId || []), ...(byEmail || [])].map((m: any) => m.gathering_id).filter(Boolean),
-      ...(owned || []).map((g: any) => g.id).filter(Boolean),
+      ...myMembers.map((m: any) => m.gathering_id).filter(Boolean),
+      ...[...(ownerOf || []), ...(created || []), ...(aclMember || []), ...(aclParticipant || [])]
+        .map((g: any) => g.id).filter(Boolean),
     ])].slice(0, 200);
+
+    // Strongest role the user holds per gathering (a legacy duplicate row must
+    // never downgrade a real member to viewer, or the other way round).
+    const roleRank = new Map<string, number>();
+    for (const m of myMembers) {
+      const gid = m?.gathering_id;
+      if (!gid) continue;
+      const rank = m?.role ? (ROLE_RANK[m.role] || 0) : 2; // legacy row with no role = member
+      if (rank > (roleRank.get(gid) || 0)) roleRank.set(gid, rank);
+    }
 
     const [gatherings, items, saved] = await Promise.all([
       gatheringIds.length ? svc.Gathering.filter({ id: { $in: gatheringIds } }).catch(() => []) : [],
@@ -60,11 +80,34 @@ export default async function (req) {
       svc.PassportCountry.filter({ target_user_keys: { $in: keys } }).catch(() => []),
     ]);
 
+    // Gatherings the user genuinely travels on: owner/creator, or a participant
+    // member. A viewer (rank 1) only counts when they own the gathering.
+    const travelsOn = (g: any) => {
+      if (g.owner_user_id === user.id || g.created_by_id === user.id) return true;
+      const rank = roleRank.get(g.id) || 0;
+      if (rank) return rank >= 2; // member/admin/owner yes, viewer no
+      return Array.isArray(g.participant_user_ids) && g.participant_user_ids.includes(user.id);
+    };
+
     const tripById = new Map(
       (gatherings || [])
-        .filter((g: any) => !g.is_deleted)
+        .filter((g: any) => !g.is_deleted && travelsOn(g))
         .map((g: any) => [g.id, { id: g.id, name: g.name || '', date: dayOf(g.start_date) }]),
     );
+
+    // Segments the user is personally on. When the segment has an attendee list,
+    // that list decides: someone else's side trip stamps nothing for them. When
+    // it has none (segments migrated in from the previous app), the segment is
+    // the group's — but only if it carries no real app user as its owner, so a
+    // member's own segment still never stamps anyone else.
+    const isRealUserId = (v: any) => /^[0-9a-f]{24}$/i.test(String(v || ''));
+    const isOnItem = (item: any) => {
+      const attendees = Array.isArray(item.attendee_user_ids) ? item.attendee_user_ids : [];
+      if (attendees.length) return attendees.includes(user.id);
+      const owner = String(item.owner_id || '');
+      if (!owner) return true;
+      return owner === user.id || !isRealUserId(owner);
+    };
 
     // ── Stamps earned on real trips ─────────────────────────────────────
     const stamped = new Map();
@@ -72,6 +115,7 @@ export default async function (req) {
       if (item.is_deleted) continue;
       const trip: any = tripById.get(item.gathering_id);
       if (!trip) continue;
+      if (!isOnItem(item)) continue;
       const day = dayOf(item.start_datetime) || dayOf(item.end_datetime);
       const codes = new Set(
         [countryOf(item.place), countryOf(item.from_place), countryOf(item.to_place)].filter(Boolean),
