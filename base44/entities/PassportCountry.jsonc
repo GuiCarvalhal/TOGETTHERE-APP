@@ -1,0 +1,66 @@
+{
+  "name": "PassportCountry",
+  "type": "object",
+  "properties": {
+    "target_user_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Read-ACL keys for the passport owner (user id and normalized email), matching the pattern used by ReservationImport and JourneyInboxItem."
+    },
+    "country_code": {
+      "type": "string",
+      "description": "ISO 3166-1 alpha-2 country code, uppercased (e.g. 'IT'). One row per user and country."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "visited",
+        "bucket"
+      ],
+      "default": "visited",
+      "enumColors": [
+        "green",
+        "yellow"
+      ],
+      "description": "visited = the user has been there; bucket = a country still on their wish list. Countries visited on real gatherings are derived live from the journey and never need a row here."
+    }
+  },
+  "required": [
+    "country_code",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.target_user_keys": "{{user.id}}"
+        },
+        {
+          "data.target_user_keys": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -31,6 +31,9 @@ const ALPHA2_TO_ALPHA3 = {
   ZA: 'ZAF', ZM: 'ZMB', ZW: 'ZWE',
 };
 
+// Every code we know, alphabetical — the country picker searches this list.
+export const ISO_ALPHA2_CODES = Object.keys(ALPHA2_TO_ALPHA3);
+
 export function alpha2ToAlpha3(code) {
   const c = (code || '').trim().toUpperCase();
   return ALPHA2_TO_ALPHA3[c] || '';

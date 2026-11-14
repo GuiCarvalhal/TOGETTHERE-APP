@@ -3,6 +3,7 @@ import { Navigate, useParams } from 'react-router-dom';
 import AppHeader from '@/components/tt/AppHeader';
 import { ACCOUNT_AREAS } from '@/components/account/accountAreas';
 import AccountAreaPersonal from '@/components/account/AccountAreaPersonal';
+import AccountAreaPassport from '@/components/account/AccountAreaPassport';
 import AccountAreaPreferences from '@/components/account/AccountAreaPreferences';
 import AccountAreaIntegrations from '@/components/account/AccountAreaIntegrations';
 import AccountAreaCommunity from '@/components/account/AccountAreaCommunity';
@@ -11,6 +12,7 @@ import { useAuth } from '@/lib/AuthContext';
 
 const AREA_CONTENT = {
   personal: AccountAreaPersonal,
+  passport: AccountAreaPassport,
   preferences: AccountAreaPreferences,
   integrations: AccountAreaIntegrations,
   community: AccountAreaCommunity,
