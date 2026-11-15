@@ -18,6 +18,13 @@ export const ACCOUNT_AREAS = [
   { key: 'security', Icon: ShieldCheck, titleKey: 'account.menuSecurity', descKey: 'account.secSecurityDesc' },
 ];
 
+// The hub groups the areas into stacked list sections. Sections keep the menu
+// scannable as it grows: a new area is one more row, never another big card.
+export const ACCOUNT_SECTIONS = [
+  { key: 'you', titleKey: 'account.sectionYou', areaKeys: ['personal', 'passport-awards'] },
+  { key: 'app', titleKey: 'account.sectionApp', areaKeys: ['preferences', 'integrations', 'security'] },
+];
+
 // Old bookmarks and links that still point at the two areas that were merged.
 export const LEGACY_AREA_REDIRECTS = {
   passport: 'passport-awards',

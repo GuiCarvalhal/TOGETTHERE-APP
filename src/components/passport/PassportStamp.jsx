@@ -25,7 +25,7 @@ export default function PassportStamp({ code, name, visited, date, trips = 0, co
     <figure className="min-w-0" title={title}>
       {/* Only the stamp art is tilted — the companion row stays upright. */}
       <div
-        className={visited ? 'text-terra-deep' : 'text-ink-deep/40 opacity-70'}
+        className={visited ? '' : 'opacity-60 grayscale'}
         style={{ transform: `rotate(${tilt(code)}deg)` }}
       >
         <StampArt code={code} name={name} caption={caption} style={style} />

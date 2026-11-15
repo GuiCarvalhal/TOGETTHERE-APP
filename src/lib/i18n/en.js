@@ -202,6 +202,14 @@ export const en = {
     inboxSyncFailedCount: { one: '{count} mailbox failed', other: '{count} mailboxes failed' },
     inboxSyncFailed: 'Sync failed. Try again.',
     couldNotLoad: "Couldn't load your gatherings.",
+    // Home "caixas" — the two large thematic cards.
+    profileCaixaLabel: 'Your profile',
+    statGatherings: 'Gatherings',
+    statUpcoming: 'Upcoming',
+    caixaUpcoming: 'Coming up',
+    caixaNoItems: 'Nothing planned in this gathering yet.',
+    openGathering: 'Open gathering',
+    pastGatherings: 'Past gatherings',
     // "Next / Now" AI Agent brief on Home — dense, numeric bullets for the
     // segment Home already flagged. Live sources (flight status, traffic,
     // weather, lounge) fill the specifics; the *Bare/*Approx variants keep the
@@ -422,6 +430,12 @@ export const en = {
     notifCategoriesHint: 'Applies to every gathering you belong to.',
     notifSaveFailed: 'Could not update your notification settings.',
     menuPassportAwards: 'Passport & Awards',
+    sectionYou: 'You',
+    sectionApp: 'App & data',
+    palette: 'Palette',
+    paletteColorful: 'Colorful',
+    paletteNeutral: 'Neutral',
+    paletteDesc: 'Colorful keeps the warm trip palette. Neutral is calmer, with lower-saturation surfaces and softer elevation. Separate from Light or Dark.',
     secPassportAwardsDesc: 'Every country you have been to, the badges you unlock, and the ones still on your list.',
   },
 

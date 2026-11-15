@@ -150,6 +150,107 @@
   }
 }
 
+@layer base {
+  /* ── NEUTRAL palette ─────────────────────────────────────────────────────
+     A second appearance axis, independent of light/dark: applied as .neutral
+     on <html> next to (never instead of) `dark`. Same tokens, lower
+     saturation — calmer surfaces, a slate accent that replaces the terracotta,
+     slightly softer elevation. No component, layout or content changes. */
+  .neutral {
+    --background: 40 9% 94%;
+    --foreground: 200 14% 17%;
+    --card: 40 12% 99%;
+    --card-foreground: 200 14% 17%;
+    --popover: 40 12% 99%;
+    --popover-foreground: 200 14% 17%;
+    --primary: 202 13% 38%;
+    --primary-foreground: 40 20% 98%;
+    --secondary: 40 8% 91%;
+    --secondary-foreground: 200 14% 20%;
+    --muted: 40 7% 88%;
+    --muted-foreground: 200 8% 42%;
+    --accent: 200 12% 45%;
+    --accent-foreground: 40 20% 98%;
+    --border: 40 8% 82%;
+    --input: 40 8% 85%;
+    --ring: 202 13% 38%;
+    --chart-1: 202 13% 42%;
+    --chart-2: 40 12% 58%;
+    --chart-3: 200 16% 46%;
+    --chart-4: 265 10% 58%;
+    --chart-5: 150 12% 44%;
+    --radius: 0.875rem;
+
+    --ink: 40 9% 94%;
+    --ink-soft: 40 7% 91%;
+    --ink-charcoal: 40 8% 80%;
+    --ink-deep: 200 14% 19%;
+    --ink-scrim: 210 14% 12%;
+    --cream: 40 20% 98%;
+    --cream-pale: 40 8% 94%;
+    --cream-warm: 40 7% 90%;
+    --terra: 202 12% 42%;
+    --terra-coral: 202 14% 36%;
+    --terra-deep: 202 18% 27%;
+
+    --sidebar-background: 40 9% 94%;
+    --sidebar-foreground: 200 10% 34%;
+    --sidebar-primary: 202 13% 38%;
+    --sidebar-primary-foreground: 40 20% 98%;
+    --sidebar-accent: 40 7% 88%;
+    --sidebar-accent-foreground: 200 14% 17%;
+    --sidebar-border: 40 8% 82%;
+    --sidebar-ring: 202 13% 38%;
+  }
+
+  .dark.neutral {
+    --background: 210 10% 9%;
+    --foreground: 40 12% 93%;
+    --card: 210 8% 13%;
+    --card-foreground: 40 12% 93%;
+    --popover: 210 8% 13%;
+    --popover-foreground: 40 12% 93%;
+    --primary: 200 10% 54%;
+    --primary-foreground: 210 12% 8%;
+    --secondary: 210 8% 18%;
+    --secondary-foreground: 40 12% 93%;
+    --muted: 210 6% 16%;
+    --muted-foreground: 40 8% 74%;
+    --accent: 200 10% 60%;
+    --accent-foreground: 210 12% 8%;
+    --border: 210 7% 22%;
+    --input: 210 7% 20%;
+    --ring: 200 10% 54%;
+
+    --ink: 210 10% 9%;
+    --ink-soft: 210 8% 12%;
+    --ink-charcoal: 210 7% 25%;
+    --ink-deep: 40 12% 93%;
+    --ink-scrim: 210 14% 6%;
+    --cream: 40 12% 95%;
+    --cream-pale: 210 6% 17%;
+    --cream-warm: 210 6% 20%;
+    --terra: 200 10% 54%;
+    --terra-coral: 200 12% 64%;
+    --terra-deep: 200 14% 72%;
+
+    --sidebar-background: 210 8% 11%;
+    --sidebar-foreground: 40 10% 82%;
+    --sidebar-primary: 200 10% 54%;
+    --sidebar-primary-foreground: 210 12% 8%;
+    --sidebar-accent: 210 6% 17%;
+    --sidebar-accent-foreground: 40 12% 93%;
+    --sidebar-border: 210 7% 22%;
+    --sidebar-ring: 200 10% 54%;
+  }
+
+  /* Calmer surface: a very subtle vertical grade instead of a flat fill. */
+  .neutral body {
+    background-image: linear-gradient(180deg, hsl(var(--ink-soft)) 0%, hsl(var(--background)) 58%);
+    background-attachment: fixed;
+  }
+}
+
 @layer components {
   /* Editorial bento card — works in both themes via tokens */
   .tt-card {
@@ -207,6 +308,14 @@
 }
 
 @layer utilities {
+  /* Neutral palette: softer elevation and a slightly tighter display rhythm.
+     Kept in the utilities layer so they can override the component shadows
+     (.tt-card, .tt-shadow-*) defined earlier in the cascade. */
+  .neutral .tt-card { box-shadow: 0 1px 2px hsl(var(--ink-scrim) / 0.06); }
+  .neutral .tt-shadow-float { box-shadow: 0 8px 22px hsl(var(--ink-scrim) / 0.1); }
+  .neutral .tt-shadow-soft { box-shadow: 0 4px 12px hsl(var(--ink-scrim) / 0.08); }
+  .neutral .font-display { letter-spacing: -0.012em; }
+
   .font-display {
     font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.025em;

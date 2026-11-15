@@ -46,7 +46,7 @@ export default function StampStyleGallery() {
                 active ? 'border-terra/60 bg-terra/[0.07]' : 'border-ink-charcoal/15 hover:bg-foreground/5'
               }`}
             >
-              <div className={`mx-auto w-full max-w-[70px] ${active ? 'text-terra-deep' : 'text-ink-deep/45'}`}>
+              <div className={`mx-auto w-full max-w-[70px] ${active ? '' : 'opacity-60 grayscale'}`}>
                 <StampArt
                   code={PREVIEW_CODE}
                   name={countryName(PREVIEW_CODE, fmt.locale)}
@@ -71,7 +71,7 @@ export default function StampStyleGallery() {
           <div className="grid grid-cols-3 gap-3">
             {SAMPLE_STAMP_COUNTRIES.map((code) => (
               <div key={code} className="min-w-0 text-center">
-                <div className="text-terra-deep">
+                <div>
                   <StampArt
                     code={code}
                     name={countryName(code, fmt.locale)}

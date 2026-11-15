@@ -197,6 +197,14 @@ export const ptBR = {
     inboxSyncFailedCount: { one: '{count} caixa com falha', other: '{count} caixas com falha' },
     inboxSyncFailed: 'Falha na sincronização. Tente novamente.',
     couldNotLoad: 'Não foi possível carregar seus gatherings.',
+    // Caixas da Home — os dois cartões temáticos grandes.
+    profileCaixaLabel: 'Seu perfil',
+    statGatherings: 'Encontros',
+    statUpcoming: 'Próximos',
+    caixaUpcoming: 'Em seguida',
+    caixaNoItems: 'Nada planejado neste encontro ainda.',
+    openGathering: 'Abrir encontro',
+    pastGatherings: 'Encontros anteriores',
     brief: {
       label: 'Dicas do Agente de IA',
       min: '{count} min',
@@ -413,6 +421,12 @@ export const ptBR = {
     notifCategoriesHint: 'Vale para todos os encontros dos quais você participa.',
     notifSaveFailed: 'Não foi possível atualizar suas notificações.',
     menuPassportAwards: 'Passaporte e Conquistas',
+    sectionYou: 'Você',
+    sectionApp: 'App e dados',
+    palette: 'Paleta',
+    paletteColorful: 'Colorida',
+    paletteNeutral: 'Neutra',
+    paletteDesc: 'A paleta Colorida mantém o clima quente de viagem. A Neutra é mais calma, com superfícies menos saturadas e elevação mais suave. Independente de Claro ou Escuro.',
     secPassportAwardsDesc: 'Todos os países onde você já esteve, os selos que conquista e os que ainda quer conhecer.',
   },
 

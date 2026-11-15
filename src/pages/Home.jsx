@@ -19,6 +19,9 @@ import NextBriefCard from '@/components/home/NextBriefCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import PassportAwardsBanner from '@/components/home/PassportAwardsBanner';
 import HeroSkeleton from '@/components/home/HeroSkeleton';
+import ProfileCaixa from '@/components/home/ProfileCaixa';
+import NowNextCaixa from '@/components/home/NowNextCaixa';
+import PastGatheringRow from '@/components/home/PastGatheringRow';
 import RecentlyDeletedRow from '@/components/tt/RecentlyDeletedRow';
 import RecentlyDeletedSheet from '@/components/tt/RecentlyDeletedSheet';
 import { useI18n } from '@/lib/i18n';
@@ -179,6 +182,10 @@ export default function Home() {
   const sorted = [...filtered].sort((a, b) =>
     a.sortKey.bucket - b.sortKey.bucket || a.sortKey.ts - b.sortKey.ts
   );
+  // Live trips stay as full cards; past ones drop to a compact row list so they
+  // never compete with the caixas above.
+  const liveSorted = sorted.filter(({ status }) => status.key !== 'past');
+  const pastSorted = sorted.filter(({ status }) => status.key === 'past');
   // Default each import to its suggested gathering, but never overwrite a choice
   // the user already made while a refresh is in flight.
   useEffect(() => {
@@ -267,6 +274,20 @@ export default function Home() {
     return { statusLabel, relative, absDate };
   })();
 
+  // Caixas data: the next gathering's own itinerary (ordered, never the
+  // soft-deleted rows) and how many trips are live right now.
+  const nextAnnotation = nextUpcoming
+    ? annotated.find((a) => a.g.id === nextUpcoming.gatheringId)
+    : null;
+  const caixaItems = nextUpcoming
+    ? (itemsByGathering[nextUpcoming.gatheringId] || [])
+        .filter((it) => !it.is_deleted)
+        .slice()
+        .sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0))
+        .slice(0, 12)
+    : [];
+  const activeCount = annotated.filter(({ status }) => status.key === 'ongoing' || status.key === 'upcoming').length;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Universal header */}
@@ -314,6 +335,27 @@ export default function Home() {
             )}
           </>
         )}
+      </section>
+
+      {/* Home "caixas" — two large thematic cards: the profile summary and the
+          gathering happening now/next, whose upcoming items scroll inside the
+          card. The NEXT ITEM module above stays the first thing on the page. */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
+          <ProfileCaixa
+            user={user}
+            gatheringCount={gatherings.length}
+            upcomingCount={activeCount}
+          />
+          {nextAnnotation ? (
+            <NowNextCaixa
+              annotation={nextAnnotation}
+              items={caixaItems}
+              people={previews[nextAnnotation.g.id] || []}
+              ongoing={!!nextUpcoming?.ongoing}
+            />
+          ) : null}
+        </div>
       </section>
 
       {/* Passport & Awards: progress at a glance, and the celebration when a new
@@ -441,18 +483,39 @@ export default function Home() {
             body={filter === 'past' ? t('home.noPastBody') : t('home.noUpcomingBody')}
           />
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sorted.map(({ g, status, meta }) => (
-              <GatheringCard
-                key={g.id}
-                gathering={g}
-                dateLabel={status.label}
-                meta={meta}
-                role={roleOf(g.id)}
-                people={previews[g.id] || []}
-                to={`/gathering/${g.id}/journey`}
-              />
-            ))}
+          <div className="space-y-6">
+            {liveSorted.length > 0 && (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {liveSorted.map(({ g, status, meta }) => (
+                  <GatheringCard
+                    key={g.id}
+                    gathering={g}
+                    dateLabel={status.label}
+                    meta={meta}
+                    role={roleOf(g.id)}
+                    people={previews[g.id] || []}
+                    to={`/gathering/${g.id}/journey`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Past gatherings: compact rows, still one tap from the journey. */}
+            {pastSorted.length > 0 && (
+              <div>
+                <h3 className="tt-label text-ink-deep/45 mb-2">{t('home.pastGatherings')}</h3>
+                <div className="tt-card-hairline overflow-hidden">
+                  {pastSorted.map(({ g, status }, i) => (
+                    <PastGatheringRow
+                      key={g.id}
+                      gathering={g}
+                      dateLabel={status.label}
+                      last={i === pastSorted.length - 1}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
