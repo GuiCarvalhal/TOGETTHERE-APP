@@ -10,6 +10,13 @@ import { listUserConnections, maybeSyncInboxInBackground, sanitizeConnection } f
 // gathering's date range (earliest..latest across the user's items, falling
 // back to all items, then legacy start_date/end_date). Member + JourneyItem
 // reads use the service role and return only non-sensitive / minimal fields.
+//
+// Performance shape (Home is the first screen after sign-in):
+//   • every independent query starts at once — the response waits for the
+//     slowest call, not for the sum of them;
+//   • Members and JourneyItems are fetched ONCE for all gatherings instead of
+//     once per gathering, and the User display overlay is a single batched read;
+//   • gatherings are read by id instead of pulling a global recent list.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,16 +29,48 @@ export default async function(req) {
     // sent, at most once per throttle window, and never surfaces an error here.
     waitUntil(maybeSyncInboxInBackground(base44, user).catch(() => {}));
 
-    const { members: myMembers } = await resolveMyMembers(base44, user);
-    const gids = (myMembers || []).map((m) => m.gathering_id).filter(Boolean);
+    const svc = base44.asServiceRole.entities;
+    const myEmail = normalizeEmail(user.email || '');
+    const userKeys = new Set([user.id, myEmail].filter(Boolean));
 
-    const allGatherings = await base44.entities.Gathering.list('-created_date', 100);
+    const [myMembersRes, inboxRaw, pendingTxRaw, pendingRaw, connectionsRaw] = await Promise.all([
+      resolveMyMembers(base44, user).catch(() => ({ members: [] })),
+      svc.JourneyInboxItem.filter({ owner_user_id: user.id, status: 'new' }).catch(() => []),
+      svc.FinancialTransaction.filter({ owner_user_id: user.id, review_status: { $in: ['new', 'suggested'] } }).catch(() => []),
+      svc.ReservationImport.list('-created_date', 100).catch(() => []),
+      listUserConnections(base44, user).catch(() => []),
+    ]);
+
+    const myMembers = myMembersRes?.members || [];
+    const gids = [...new Set(myMembers.map((m) => m.gathering_id).filter(Boolean))];
+
+    const [gatheringRows, memberRows, itemRows] = await Promise.all([
+      gids.length ? svc.Gathering.filter({ id: { $in: gids } }).catch(() => []) : [],
+      gids.length ? svc.Member.filter({ gathering_id: { $in: gids } }).catch(() => []) : [],
+      gids.length ? svc.JourneyItem.filter({ gathering_id: { $in: gids } }).catch(() => []) : [],
+    ]);
+    const allGatherings = Array.isArray(gatheringRows) ? gatheringRows : (gatheringRows?.items || []);
+    const memberList = await overlayUserDisplay(base44, (Array.isArray(memberRows) ? memberRows : (memberRows?.items || [])));
+    const itemList = Array.isArray(itemRows) ? itemRows : (itemRows?.items || []);
+
+    const membersByGathering = {};
+    for (const m of memberList) {
+      const key = m.gathering_id;
+      if (!key) continue;
+      (membersByGathering[key] = membersByGathering[key] || []).push(m);
+    }
+    const itemsByGatheringRaw = {};
+    for (const it of itemList) {
+      const key = it.gathering_id;
+      if (!key) continue;
+      (itemsByGatheringRaw[key] = itemsByGatheringRaw[key] || []).push(it);
+    }
+
     // Soft-deleted gatherings are hidden from every normal gathering list. The
     // owner alone sees them in Home's "Recently deleted" panel, where restoring
     // one clears the flags (nothing was removed when it was deleted).
     const mine = allGatherings.filter((g) => gids.includes(g.id) && g.is_deleted !== true);
     const activeGids = mine.map((g) => g.id);
-    const myEmail = normalizeEmail(user.email || '');
     const deletedGatherings = allGatherings
       .filter((g) => g.is_deleted === true && gids.includes(g.id))
       .filter((g) => (g.created_by_id === user.id)
@@ -46,7 +85,6 @@ export default async function(req) {
 
     const previews = {};
     const itemsByGathering = {};
-    const userKeys = new Set([user.id, normalizeEmail(user.email || '')].filter(Boolean));
     // The user's "current" journey item to surface on Home ??? an ONGOING activity
     // (started, not yet ended) takes priority; otherwise the next UPCOMING one
     // (start in the future). Participant = item creator (owner_id) or explicit
@@ -64,16 +102,14 @@ export default async function(req) {
     const startOfTodayMs = Math.floor((nowMs - offsetMs) / 86400000) * 86400000 + offsetMs;
     let ongoing = null;
     let nextUpcoming = null;
-    await Promise.all(activeGids.map(async (gid) => {
-      const [ms, its] = await Promise.all([
-        base44.asServiceRole.entities.Member.filter({ gathering_id: gid }),
-        base44.asServiceRole.entities.JourneyItem.filter({ gathering_id: gid }),
-      ]);
-      const overlaidMs = await overlayUserDisplay(base44, ms || []);
+
+    for (const gid of activeGids) {
+      const overlaidMs = membersByGathering[gid] || [];
+      const its = itemsByGatheringRaw[gid] || [];
       previews[gid] = overlaidMs
         .map((m) => ({ full_name: m.full_name, photo: m.photo, role: m.role }))
         .slice(0, 8);
-      itemsByGathering[gid] = (its || []).filter((it) => it.is_deleted !== true).map((it) => ({
+      itemsByGathering[gid] = its.filter((it) => it.is_deleted !== true).map((it) => ({
         type: it.type || null,
         start_datetime: it.start_datetime || null,
         end_datetime: it.end_datetime || null,
@@ -96,7 +132,7 @@ export default async function(req) {
           .filter(Boolean)
           .map((m) => ({ id: m.id, photo: m.photo, full_name: m.full_name }));
       };
-      for (const it of (its || [])) {
+      for (const it of its) {
         const isParticipant = it.owner_id === user.id || (it.attendee_user_ids || []).includes(user.id);
         if (!isParticipant || !it.start_datetime) continue;
         const startMs = new Date(it.start_datetime).getTime();
@@ -116,14 +152,12 @@ export default async function(req) {
           }
         }
       }
-    }));
+    }
 
     // Journey inbox summary: how many imported segments are still waiting plus a
-    // short preview of the soonest. Loaded BEFORE the pending imports so a row
-    // already represented in the inbox can be left out of that list.
-    const inboxRaw = await base44.asServiceRole.entities.JourneyInboxItem
-      .filter({ owner_user_id: user.id, status: 'new' })
-      .catch(() => []);
+    // short preview of the soonest. Read above (in parallel with everything else)
+    // so a row already represented in the inbox can be left out of the pending
+    // imports list below.
     const inboxRows = (Array.isArray(inboxRaw) ? inboxRaw : (inboxRaw?.items || []))
       .slice()
       .sort((a: any, b: any) => String(a.start_datetime || '').localeCompare(String(b.start_datetime || '')));
@@ -131,13 +165,9 @@ export default async function(req) {
 
     // Card/bank transactions awaiting review live in the same Inbox, so the
     // badge Home publishes covers both streams.
-    const pendingTxRaw = await base44.asServiceRole.entities.FinancialTransaction
-      .filter({ owner_user_id: user.id, review_status: { $in: ['new', 'suggested'] } })
-      .catch(() => []);
     const pendingTxCount = (Array.isArray(pendingTxRaw) ? pendingTxRaw : (pendingTxRaw?.items || [])).length;
 
-    const pendingRaw = await base44.asServiceRole.entities.ReservationImport.list('-created_date', 100).catch(() => []);
-    const pendingImports = (pendingRaw || [])
+    const pendingImports = (Array.isArray(pendingRaw) ? pendingRaw : (pendingRaw?.items || []))
       .filter((row) => {
         if (row.status !== 'pending') return false;
         // Already waiting in the Journey Inbox: the inbox panel presents it, so
@@ -163,15 +193,14 @@ export default async function(req) {
 
     // Home shows a single "Sync now" entry point, so it needs to know whether the
     // user has any mailbox at all (and its state) without a second round trip.
-    const inboxConnections = (await listUserConnections(base44, user).catch(() => []))
-      .map(sanitizeConnection);
+    const inboxConnections = (connectionsRaw || []).map(sanitizeConnection);
 
     const chosen = ongoing || nextUpcoming;
     return Response.json({
       gatherings: mine,
       deletedGatherings,
       inboxConnections,
-      memberships: (myMembers || []).map((m) => ({ gathering_id: m.gathering_id, role: m.role })),
+      memberships: myMembers.map((m) => ({ gathering_id: m.gathering_id, role: m.role })),
       previews,
       itemsByGathering,
       pendingImports,

@@ -42,13 +42,23 @@ export default function NextBriefCard({ next }) {
     let alive = true;
     setLive(null);
     if (!itemId || !gatheringId) return () => { alive = false; };
-    base44.functions.invoke('getNextBrief', { gathering_id: gatheringId, item_id: itemId })
+    // Live enrichment is the most expensive call on Home (flight status, traffic,
+    // weather). It is deferred to the first idle moment: the deterministic bullets
+    // are already on screen by then, so nothing waits for it.
+    const run = () => base44.functions.invoke('getNextBrief', { gathering_id: gatheringId, item_id: itemId })
       .then((res) => {
         const data = res?.data;
         if (alive && data && !data.error) setLive(data);
       })
       .catch(() => {});
-    return () => { alive = false; };
+    const idle = typeof window.requestIdleCallback === 'function'
+      ? window.requestIdleCallback(run, { timeout: 1500 })
+      : window.setTimeout(run, 400);
+    return () => {
+      alive = false;
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
   }, [itemId, gatheringId]);
 
   if (!item) return null;

@@ -1,34 +1,36 @@
 import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import AppHeader from '@/components/tt/AppHeader';
-import { ACCOUNT_AREAS } from '@/components/account/accountAreas';
+import { ACCOUNT_AREAS, LEGACY_AREA_REDIRECTS } from '@/components/account/accountAreas';
 import AccountAreaPersonal from '@/components/account/AccountAreaPersonal';
-import AccountAreaPassport from '@/components/account/AccountAreaPassport';
+import AccountAreaPassportAwards from '@/components/account/AccountAreaPassportAwards';
 import AccountAreaPreferences from '@/components/account/AccountAreaPreferences';
 import AccountAreaIntegrations from '@/components/account/AccountAreaIntegrations';
-import AccountAreaCommunity from '@/components/account/AccountAreaCommunity';
 import AccountAreaSecurity from '@/components/account/AccountAreaSecurity';
 import { useAuth } from '@/lib/AuthContext';
 
 const AREA_CONTENT = {
   personal: AccountAreaPersonal,
-  passport: AccountAreaPassport,
+  'passport-awards': AccountAreaPassportAwards,
   preferences: AccountAreaPreferences,
   integrations: AccountAreaIntegrations,
-  community: AccountAreaCommunity,
   security: AccountAreaSecurity,
 };
 
 // Account area — STEP 2 of the account flow. Shows ONLY the selected area: each
 // area renders the standard action bar (orange Back + its own contextual
 // actions) directly under the app header, then its title and controls. The route
-// segment is the area key, so every area is directly linkable; an unknown
-// segment goes back to the hub instead of showing a half-empty page.
+// segment is the area key, so every area is directly linkable; the old Passport
+// and Awards routes fold into the merged area, and an unknown segment goes back
+// to the hub instead of showing a half-empty page.
 export default function AccountSection() {
   const { section } = useParams();
   const { user } = useAuth();
 
   if (!user?.id) return <Navigate to="/" replace />;
+
+  const legacyTarget = LEGACY_AREA_REDIRECTS[section];
+  if (legacyTarget) return <Navigate to={`/account/${legacyTarget}`} replace />;
 
   const area = ACCOUNT_AREAS.find((entry) => entry.key === section);
   if (!area) return <Navigate to="/account" replace />;

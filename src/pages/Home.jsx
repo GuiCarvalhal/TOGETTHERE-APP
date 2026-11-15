@@ -17,11 +17,14 @@ import InstallBanner from '@/components/tt/InstallBanner';
 import PendingImportCard from '@/components/home/PendingImportCard';
 import NextBriefCard from '@/components/home/NextBriefCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
+import PassportAwardsBanner from '@/components/home/PassportAwardsBanner';
+import HeroSkeleton from '@/components/home/HeroSkeleton';
 import RecentlyDeletedRow from '@/components/tt/RecentlyDeletedRow';
 import RecentlyDeletedSheet from '@/components/tt/RecentlyDeletedSheet';
 import { useI18n } from '@/lib/i18n';
 import { describeImportFailure } from '@/lib/importErrors';
 import { setInboxCount as publishInboxBadge } from '@/lib/inboxBadge';
+import { useAuth } from '@/lib/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 
 const FILTER_KEYS = [
@@ -30,12 +33,42 @@ const FILTER_KEYS = [
   { key: 'past', tk: 'home.filterPast' },
 ];
 
+// Shell of the last successful Home payload. A return visit paints the trips
+// immediately from here while the fresh payload loads behind it — the network is
+// still the source of truth, the cache only removes the empty first frame.
+// Inbox cards and counters are deliberately NOT cached: a resolved import must
+// never reappear, and those are cheap to wait for.
+const SHELL_KEY = 'tt-home-shell-v1';
+const SHELL_TTL = 2 * 60 * 1000;
+
+function readShellCache(userId) {
+  if (!userId) return null;
+  try {
+    const raw = sessionStorage.getItem(SHELL_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.userId !== userId) return null;
+    if (Date.now() - parsed.at > SHELL_TTL) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeShellCache(userId, data) {
+  if (!userId) return;
+  try {
+    sessionStorage.setItem(SHELL_KEY, JSON.stringify({ at: Date.now(), userId, data }));
+  } catch { /* ignore */ }
+}
+
 // JOURNEY_ICONS is imported from @/lib/journeyIcons (centralized with the
 // Journey timeline and Add Segment picker so Main Event always renders Star).
 const JOURNEY_TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.color]));
 
 export default function Home() {
   const { t, fmt } = useI18n();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [memberships, setMemberships] = useState([]);
   const [gatherings, setGatherings] = useState([]);
@@ -60,10 +93,13 @@ export default function Home() {
   // a background sync finishing after an explicit refresh can never overwrite
   // fresher data (or resurrect an import that was just resolved).
   const loadSeqRef = useRef(0);
+  // True once anything is on screen (cache or network): suppresses the skeleton
+  // so a revalidating refresh never flashes it back.
+  const hydratedRef = useRef(false);
 
   async function load({ silent = false } = {}) {
     const seq = ++loadSeqRef.current;
-    if (!silent) setLoading(true);
+    if (!silent && !hydratedRef.current) setLoading(true);
     try {
       // The user's timezone decides what "today" means for the featured card.
       const res = await base44.functions.invoke('getHomePreviews', {
@@ -83,6 +119,16 @@ export default function Home() {
       setNextUpcoming(data.nextUpcoming || null);
       setDeletedGatherings(data.deletedGatherings || []);
       setLoadError(false);
+      writeShellCache(data.userId || user?.id, {
+        gatherings: data.gatherings || [],
+        memberships: data.memberships || [],
+        previews: data.previews || {},
+        itemsByGathering: data.itemsByGathering || {},
+        nextUpcoming: data.nextUpcoming || null,
+        deletedGatherings: data.deletedGatherings || [],
+        userId: data.userId || user?.id || null,
+      });
+      hydratedRef.current = true;
     } catch (e) {
       console.error(e);
       if (seq === loadSeqRef.current) setLoadError(true);
@@ -90,6 +136,23 @@ export default function Home() {
       if (seq === loadSeqRef.current) setLoading(false);
     }
   }
+
+  // Paint the last shell first (return visits only), then let the network call
+  // above replace it. Synchronous, so it lands in the same frame as the mount.
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    const shell = readShellCache(user?.id);
+    if (!shell) return;
+    hydratedRef.current = true;
+    setGatherings(shell.gatherings || []);
+    setMemberships(shell.memberships || []);
+    setPreviews(shell.previews || {});
+    setItemsByGathering(shell.itemsByGathering || {});
+    setNextUpcoming(shell.nextUpcoming || null);
+    setDeletedGatherings(shell.deletedGatherings || []);
+    setUserId(shell.userId || user?.id || null);
+    setLoading(false);
+  }, [user?.id]);
 
   useEffect(() => { load(); }, []);
 
@@ -211,7 +274,11 @@ export default function Home() {
 
       {/* Hero intro ??? or the user's next upcoming journey segment when one exists */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10">
-        {nextUpcoming ? (
+        {loading && !nextUpcoming ? (
+          /* Instant placeholder: same shape as the module below, so the first
+             frame is never the marketing headline when a trip is about to load. */
+          <HeroSkeleton />
+        ) : nextUpcoming ? (
           /* ONE continuous module: the NEXT line, the featured segment and the
              agent tips share a single surface — no stacked cards, no second box. */
           <div className="tt-card-hairline p-3.5 sm:p-4">
@@ -248,6 +315,10 @@ export default function Home() {
           </>
         )}
       </section>
+
+      {/* Passport & Awards: progress at a glance, and the celebration when a new
+          stamp or award landed since the user last acknowledged one. */}
+      <PassportAwardsBanner />
 
       <ProfileCompleteReminder />
 
