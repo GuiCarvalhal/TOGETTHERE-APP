@@ -1,70 +1,37 @@
 import React, { useRef } from 'react';
-import { Plus, ChevronLeft, ChevronRight, Compass, RotateCw } from 'lucide-react';
-import { format, differenceInCalendarDays } from 'date-fns';
+import {
+  Plus, ChevronLeft, ChevronRight, Compass, RotateCw, CalendarDays, Clock, MapPin, Users, ArrowUpRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import GatheringCard from '@/components/tt/cards/GatheringCard';
-import JourneyCard from '@/components/tt/cards/JourneyCard';
-import NextBriefCard from '@/components/home/NextBriefCard';
-import { journeyIcon } from '@/lib/journeyIcons';
-import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
 import { useI18n } from '@/lib/i18n';
 
-const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((x) => [x.key, x.color]));
-
-// THE gatherings caixa — the single surface Home uses for trips, top to bottom:
-//   1. header line: NEXT / NOW (+ how soon, + date) with the New action on the right
-//   2. the featured card: the current/next trip's segment, with the Next brief
-//      intelligence attached underneath it (same component, same behaviour)
-//   3. the Upcoming / Past switch
-//   4. the remaining gatherings as cards in a horizontal carousel — native swipe
-//      on touch, explicit arrow buttons where a hover pointer exists
-// The featured trip is never repeated in the strip; the strip shows the rest.
+// BOX B — the dedicated Gatherings box, separate from the NOW/NEXT item box
+// above it. It owns everything trip-list shaped, in this order:
+//   1. header ("Your gatherings") with the New action inside the box
+//   2. the Upcoming / Past switch
+//   3. the gatherings as cards in a horizontal carousel — native swipe on touch,
+//      explicit overlay arrows only where a hover pointer exists
+//   4. a short, data-derived summary of the gatherings context (3–5 bullets)
 export default function GatheringsCaixa({
   loading,
   loadError,
   onRetry,
-  nextUpcoming,
-  featuredPeople,
   upcoming = [],
   past = [],
   filter,
   onFilterChange,
   roleOf,
-  previews,
+  previews = {},
   totalCount = 0,
   onNew,
 }) {
   const { t } = useI18n();
   const trackRef = useRef(null);
-  const now = new Date();
 
-  const featuredId = nextUpcoming?.gatheringId || null;
-  const listed = filter === 'past' ? past : upcoming;
-  const cards = filter === 'upcoming' && featuredId
-    ? listed.filter((a) => a.g.id !== featuredId)
-    : listed;
-
-  // Header line — the same NEXT/NOW wording the featured module always used.
-  const eyebrow = nextUpcoming
-    ? (() => {
-        const start = nextUpcoming.item?.start_datetime ? new Date(nextUpcoming.item.start_datetime) : null;
-        const refDate = nextUpcoming.ongoing ? now : start;
-        const absDate = refDate ? format(refDate, 'EEE, MMM d') : '';
-        const days = start ? differenceInCalendarDays(start, now) : 0;
-        const relative = nextUpcoming.ongoing || days <= 0
-          ? t('home.today')
-          : days === 1
-            ? t('home.tomorrow')
-            : t('home.inDays', { count: days });
-        return {
-          statusLabel: nextUpcoming.ongoing ? t('home.happeningNow') : t('home.upNext'),
-          relative,
-          absDate,
-        };
-      })()
-    : null;
+  const cards = filter === 'past' ? past : upcoming;
 
   function scrollStrip(dir) {
     const el = trackRef.current;
@@ -74,62 +41,63 @@ export default function GatheringsCaixa({
     el.scrollBy({ left: dir * step, behavior: 'smooth' });
   }
 
-  const emptyLine = cards.length
-    ? ''
-    : filter === 'past'
-      ? t('home.noPast')
-      : featuredId
-        ? t('home.noOtherGatherings')
-        : t('home.noUpcoming');
+  // Summary: straight from the data already on screen — counts, the next and
+  // last trip, how many people travel with you, how many places are involved.
+  const bullets = [];
+  if (totalCount > 0) {
+    bullets.push({
+      id: 'counts',
+      icon: CalendarDays,
+      text: t('home.summaryCounts', { upcoming: upcoming.length, past: past.length }),
+    });
+  }
+  const nextTrip = upcoming[0];
+  if (nextTrip) {
+    bullets.push({
+      id: 'next',
+      icon: Clock,
+      text: nextTrip.status?.key === 'ongoing'
+        ? t('home.summaryOngoing', { name: nextTrip.g.name || t('common.untitled') })
+        : t('home.summaryNext', { name: nextTrip.g.name || t('common.untitled'), when: nextTrip.status?.label || '' }),
+    });
+  }
+  const lastTrip = past[0];
+  if (lastTrip) {
+    bullets.push({
+      id: 'last',
+      icon: ArrowUpRight,
+      text: t('home.summaryLast', { name: lastTrip.g.name || t('common.untitled'), when: lastTrip.status?.label || '' }),
+    });
+  }
+  const people = new Set();
+  Object.values(previews).forEach((list) => (list || []).forEach((p) => people.add(p.id || p.email || p.name)));
+  if (people.size) {
+    bullets.push({ id: 'people', icon: Users, text: t('home.summaryPeople', { count: people.size }) });
+  }
+  const places = new Set();
+  [...upcoming, ...past].forEach(({ g }) => {
+    (g.destinations || []).forEach((d) => d && places.add(String(d).trim().toLowerCase()));
+    (g.destination_places || []).forEach((d) => d?.name && places.add(String(d.name).trim().toLowerCase()));
+  });
+  if (places.size) {
+    bullets.push({ id: 'places', icon: MapPin, text: t('home.summaryPlaces', { count: places.size }) });
+  }
+  const summary = bullets.slice(0, 5);
+
+  const emptyLine = filter === 'past' ? t('home.noPast') : t('home.noUpcoming');
 
   return (
     <section className="tt-card-hairline overflow-hidden">
-      {/* 1 — header line + New action */}
+      {/* 1 — header + New action, inside the box */}
       <div className="flex items-center justify-between gap-3 px-4 sm:px-5 pt-4 pb-3">
-        {eyebrow ? (
-          <p className="text-sm font-bold tracking-wide flex flex-wrap items-center gap-x-2 min-w-0">
-            <span className="text-terra-coral uppercase">{eyebrow.statusLabel}</span>
-            <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-deep/25" />
-            <span className="text-ink-deep uppercase">{eyebrow.relative}</span>
-            <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-deep/25" />
-            <span className="text-ink-deep/75">{eyebrow.absDate}</span>
-          </p>
-        ) : (
-          <p className="tt-label text-terra-coral min-w-0 truncate">{t('home.yourGatherings')}</p>
-        )}
+        <p className="tt-label text-terra-coral min-w-0 truncate">{t('home.yourGatherings')}</p>
         <Button onClick={onNew} size="sm" className="shrink-0">
           <Plus /> {t('home.new')}
         </Button>
       </div>
 
-      {/* 2 — featured card for the current / next trip */}
-      {loading && !nextUpcoming ? (
-        <div className="px-4 sm:px-5 pb-4 space-y-2">
-          <Skeleton className="h-3 w-28" tone="cream" />
-          <Skeleton className="h-[104px] w-full" tone="cream" />
-        </div>
-      ) : nextUpcoming ? (
-        <div className="px-2.5 sm:px-3 pb-1">
-          <JourneyCard
-            item={nextUpcoming.item}
-            leg={nextUpcoming.item.type === 'hotel' ? 'check-in' : undefined}
-            typeColor={TYPE_COLOR[nextUpcoming.item.type] || TYPE_COLOR.other}
-            icon={journeyIcon(nextUpcoming.item.type)}
-            participants={featuredPeople || []}
-            showImages
-            embedded
-            to={`/gathering/${nextUpcoming.gatheringId}/journey/${nextUpcoming.item.id}`}
-          />
-          <div className="px-1.5">
-            <NextBriefCard next={nextUpcoming} />
-          </div>
-        </div>
-      ) : totalCount > 0 ? (
-        <p className="px-4 sm:px-5 pb-4 text-sm text-ink-deep/60">{t('home.featuredEmpty')}</p>
-      ) : null}
-
-      {/* 3 — Upcoming / Past switch, in the same caixa */}
-      <div className="border-t border-ink-charcoal/10 px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3">
+      {/* 2 — Upcoming / Past switch */}
+      <div className="px-4 sm:px-5 pb-2.5">
         <div
           className="inline-flex rounded-full bg-foreground/5 p-1 border border-foreground/10"
           role="group"
@@ -155,7 +123,7 @@ export default function GatheringsCaixa({
         </div>
       </div>
 
-      {/* 4 — gatherings carousel */}
+      {/* 3 — carousel */}
       {loadError && !loading ? (
         <div className="px-4 sm:px-5 pb-4 flex items-center justify-between gap-3">
           <p className="text-sm text-ink-deep/70 min-w-0">{t('home.couldNotLoad')}</p>
@@ -207,15 +175,15 @@ export default function GatheringsCaixa({
             </div>
           )}
 
-          {/* Explicit arrows for pointer devices; hidden on touch, where the
-              strip is swiped directly. */}
+          {/* Explicit overlay arrows for pointer devices only: on touch the strip
+              is swiped directly. */}
           {!loading && cards.length > 1 && (
             <>
               <button
                 type="button"
                 onClick={() => scrollStrip(-1)}
                 aria-label={t('home.scrollPrev')}
-                className="hidden [@media(hover:hover)]:flex absolute left-1.5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep shadow-md hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="hidden [@media(hover:hover)]:flex absolute left-1.5 top-[calc(50%-8px)] -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep shadow-md hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -223,12 +191,29 @@ export default function GatheringsCaixa({
                 type="button"
                 onClick={() => scrollStrip(1)}
                 aria-label={t('home.scrollNext')}
-                className="hidden [@media(hover:hover)]:flex absolute right-1.5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep shadow-md hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="hidden [@media(hover:hover)]:flex absolute right-1.5 top-[calc(50%-8px)] -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep shadow-md hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* 4 — gatherings summary */}
+      {!loading && summary.length > 0 && (
+        <div className="border-t border-ink-charcoal/10 px-4 sm:px-5 py-3">
+          <ul className="space-y-1.5">
+            {summary.map((b) => {
+              const Icon = b.icon;
+              return (
+                <li key={b.id} className="flex items-start gap-2">
+                  <Icon className="w-3.5 h-3.5 mt-[3px] shrink-0 text-terra-deep" aria-hidden="true" />
+                  <span className="text-xs sm:text-[0.8125rem] leading-snug text-ink-deep/80 min-w-0">{b.text}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </section>

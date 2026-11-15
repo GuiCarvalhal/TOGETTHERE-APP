@@ -10,6 +10,7 @@ import PendingImportCard from '@/components/home/PendingImportCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
 import PassportAwardsBanner from '@/components/home/PassportAwardsBanner';
 import ProfileCaixa from '@/components/home/ProfileCaixa';
+import NextItemCaixa from '@/components/home/NextItemCaixa';
 import GatheringsCaixa from '@/components/home/GatheringsCaixa';
 import RecentlyDeletedRow from '@/components/tt/RecentlyDeletedRow';
 import RecentlyDeletedSheet from '@/components/tt/RecentlyDeletedSheet';
@@ -238,8 +239,8 @@ export default function Home() {
       <AppHeader />
 
       {/* Brand-new users only: the intro headline. Once there is anything to
-          show, the gatherings caixa below owns the top of the page (its header
-          line is the NEXT / NOW line), so the marketing copy never competes. */}
+          show, the two boxes below own the top of the page (the first of them is
+          the NEXT / NOW line), so the marketing copy never competes. */}
       {gatherings.length === 0 && !loading && (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-8">
           <p className="tt-label text-terra-coral mb-3">{t('home.groupTravel')}</p>
@@ -249,17 +250,24 @@ export default function Home() {
         </section>
       )}
 
-      {/* THE gatherings caixa — one surface for the whole resolution: the
-          NEXT/NOW header line with the New action, the featured segment with its
-          Next brief, the Upcoming / Past switch, and the other trips as a
-          swipeable carousel. */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-6">
+      {/* Two separate boxes, never merged:
+          BOX A — the current/next ITEM intelligence box (NOW/NEXT line, featured
+                  segment, Next brief). Its intelligence/dedupe behaviour is
+                  untouched by the trip list below it.
+          BOX B — the dedicated gatherings box (header + New, Upcoming/Past
+                  switch, carousel, short summary). */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-6 space-y-4">
+        <NextItemCaixa
+          next={nextUpcoming}
+          people={nextUpcoming ? previews[nextUpcoming.gatheringId] || [] : []}
+          loading={loading}
+          totalCount={gatherings.length}
+        />
+
         <GatheringsCaixa
           loading={loading}
           loadError={loadError}
           onRetry={() => load()}
-          nextUpcoming={nextUpcoming}
-          featuredPeople={nextUpcoming ? previews[nextUpcoming.gatheringId] || [] : []}
           upcoming={upcomingAnnotated}
           past={pastAnnotated}
           filter={filter}

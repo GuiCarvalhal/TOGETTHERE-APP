@@ -208,6 +208,12 @@ export const ptBR = {
     noOtherGatherings: 'Nenhum outro encontro para mostrar',
     scrollPrev: 'Rolar para os encontros anteriores',
     scrollNext: 'Rolar para mais encontros',
+    summaryCounts: '{upcoming} à frente · {past} passados',
+    summaryNext: 'Próximo: {name} · {when}',
+    summaryOngoing: 'Acontecendo agora: {name}',
+    summaryLast: 'Último: {name} · {when}',
+    summaryPeople: { one: '{count} viajante nos seus encontros', other: '{count} viajantes nos seus encontros' },
+    summaryPlaces: { one: '{count} destino nos seus encontros', other: '{count} destinos nos seus encontros' },
     brief: {
       label: 'Dicas do Agente de IA',
       min: '{count} min',

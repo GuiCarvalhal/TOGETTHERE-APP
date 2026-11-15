@@ -213,6 +213,13 @@ export const en = {
     noOtherGatherings: 'No other gatherings to show',
     scrollPrev: 'Scroll to previous gatherings',
     scrollNext: 'Scroll to more gatherings',
+    // Gatherings box summary — short, numeric context lines (3–5 max).
+    summaryCounts: '{upcoming} ahead · {past} past',
+    summaryNext: 'Next: {name} · {when}',
+    summaryOngoing: 'Happening now: {name}',
+    summaryLast: 'Last: {name} · {when}',
+    summaryPeople: { one: '{count} traveler across your trips', other: '{count} travelers across your trips' },
+    summaryPlaces: { one: '{count} destination across your trips', other: '{count} destinations across your trips' },
     // "Next / Now" AI Agent brief on Home — dense, numeric bullets for the
     // segment Home already flagged. Live sources (flight status, traffic,
     // weather, lounge) fill the specifics; the *Bare/*Approx variants keep the
