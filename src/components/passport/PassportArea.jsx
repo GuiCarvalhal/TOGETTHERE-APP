@@ -155,6 +155,7 @@ export default function PassportArea({ section = null }) {
               visited={tab === 'visited'}
               date={row.first_visit ? fmt.formatDate(row.first_visit, { month: 'short', year: 'numeric' }) : ''}
               trips={row.trip_count || 0}
+              companions={row.companions || []}
             />
           ))}
         </div>

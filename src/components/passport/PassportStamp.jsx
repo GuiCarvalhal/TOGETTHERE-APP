@@ -1,5 +1,6 @@
 import React from 'react';
 import StampArt from '@/components/passport/stamps/StampArt';
+import AvatarStack from '@/components/tt/AvatarStack';
 import { useStampStyle } from '@/lib/stampStyle';
 import { useI18n } from '@/lib/i18n';
 
@@ -14,17 +15,26 @@ function tilt(code) {
   return ANGLES[h % ANGLES.length];
 }
 
-export default function PassportStamp({ code, name, visited, date, trips = 0 }) {
+export default function PassportStamp({ code, name, visited, date, trips = 0, companions = [] }) {
   const { t } = useI18n();
   const style = useStampStyle();
   const title = visited && trips ? t('passport.fromTrips', { count: trips }) : (visited ? t('passport.manual') : t('passport.wish'));
   const caption = visited ? (date || t('passport.stamped')) : t('passport.wish');
 
   return (
-    <figure className="min-w-0" style={{ transform: `rotate(${tilt(code)}deg)` }} title={title}>
-      <div className={visited ? 'text-terra-deep' : 'text-ink-deep/40 opacity-70'}>
+    <figure className="min-w-0" title={title}>
+      {/* Only the stamp art is tilted — the companion row stays upright. */}
+      <div
+        className={visited ? 'text-terra-deep' : 'text-ink-deep/40 opacity-70'}
+        style={{ transform: `rotate(${tilt(code)}deg)` }}
+      >
         <StampArt code={code} name={name} caption={caption} style={style} />
       </div>
+      {visited && companions.length > 0 ? (
+        <figcaption className="mt-1.5 flex justify-center">
+          <AvatarStack people={companions} max={3} size="xs" ringClass="ring-card" />
+        </figcaption>
+      ) : null}
     </figure>
   );
 }

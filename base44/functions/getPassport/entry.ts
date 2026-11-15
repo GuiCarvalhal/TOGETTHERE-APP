@@ -109,6 +109,56 @@ export default async function (req) {
       return owner === user.id || !isRealUserId(owner);
     };
 
+    // ── Who was there, per gathering ────────────────────────────────────
+    // ONE batched directory read for every qualifying trip (never one query per
+    // item), so a country can accumulate its companions with no N+1 pattern.
+    // Viewers are not companions: they only watch the trip.
+    const tripIds = [...tripById.keys()];
+    const tripMembers = tripIds.length
+      ? await svc.Member.filter({ gathering_id: { $in: tripIds } }).catch(() => [])
+      : [];
+    const viewerIdsByTrip = new Map<string, Set<string>>();
+    const companionIdsByTrip = new Map<string, Set<string>>();
+    const personById = new Map<string, any>();
+    const bucketOf = (gid: string) => {
+      if (!companionIdsByTrip.has(gid)) {
+        companionIdsByTrip.set(gid, new Set());
+        viewerIdsByTrip.set(gid, new Set());
+      }
+      return companionIdsByTrip.get(gid)!;
+    };
+    for (const m of tripMembers || []) {
+      const gid = String(m?.gathering_id || '');
+      const uid = String(m?.user_id || '');
+      if (!tripById.has(gid) || !uid) continue;
+      if (m.role === 'viewer') { bucketOf(gid); viewerIdsByTrip.get(gid)!.add(uid); continue; }
+      bucketOf(gid).add(uid);
+      if (uid !== user.id && (m.full_name || m.photo) && !personById.has(uid)) {
+        personById.set(uid, { id: uid, full_name: m.full_name || '', photo: m.photo || '' });
+      }
+    }
+    for (const g of gatherings || []) {
+      if (!tripById.has(g.id)) continue;
+      const set = bucketOf(g.id);
+      const viewers = viewerIdsByTrip.get(g.id)!;
+      for (const raw of [...(g.participant_user_ids || []), ...(g.member_user_ids || [])]) {
+        const uid = String(raw || '');
+        if (isRealUserId(uid) && uid !== user.id && !viewers.has(uid)) set.add(uid);
+      }
+    }
+    for (const set of companionIdsByTrip.values()) set.delete(user.id);
+
+    // Names/photos for companions with no member row in that gathering: one more
+    // batched read instead of a lookup per person.
+    const needInfo = [...new Set([...companionIdsByTrip.values()].flatMap((s) => [...s]))]
+      .filter((uid) => isRealUserId(uid) && !personById.has(uid));
+    if (needInfo.length) {
+      const people = await svc.User.filter({ id: { $in: needInfo.slice(0, 200) } }).catch(() => []);
+      for (const u of people || []) {
+        if (!personById.has(u.id)) personById.set(u.id, { id: u.id, full_name: u.full_name || '', photo: u.photo || '' });
+      }
+    }
+
     // ── Stamps earned on real trips ─────────────────────────────────────
     const stamped = new Map();
     for (const item of items || []) {
@@ -116,14 +166,31 @@ export default async function (req) {
       const trip: any = tripById.get(item.gathering_id);
       if (!trip) continue;
       if (!isOnItem(item)) continue;
+      // Companions on THIS segment: when it carries an attendee list that list
+      // decides (someone who stayed home is not a companion on that trip),
+      // otherwise the gathering's participating crew. Viewers never qualify.
+      const attendees = Array.isArray(item.attendee_user_ids)
+        ? item.attendee_user_ids.filter((id: any) => isRealUserId(id))
+        : [];
+      const viewers = viewerIdsByTrip.get(item.gathering_id) || new Set<string>();
+      const segmentCompanions = attendees.length
+        ? attendees.filter((id: any) => !viewers.has(String(id)))
+        : [...(companionIdsByTrip.get(item.gathering_id) || [])];
+
       const day = dayOf(item.start_datetime) || dayOf(item.end_datetime);
       const codes = new Set(
         [countryOf(item.place), countryOf(item.from_place), countryOf(item.to_place)].filter(Boolean),
       );
       for (const code of codes) {
-        const entry: any = stamped.get(code) || { code, firstVisit: '', trips: new Map(), manual: false };
+        const entry: any = stamped.get(code) || { code, firstVisit: '', trips: new Map(), companions: new Set(), manual: false };
         if (day && (!entry.firstVisit || day < entry.firstVisit)) entry.firstVisit = day;
         entry.trips.set(trip.id, trip);
+        // Union across every segment and gathering that stamped this country,
+        // deduplicated by user id.
+        for (const uid of segmentCompanions) {
+          const key = String(uid);
+          if (key && key !== user.id) entry.companions.add(key);
+        }
         stamped.set(code, entry);
       }
     }
@@ -134,7 +201,7 @@ export default async function (req) {
       const code = String(row.country_code || '').trim().toUpperCase();
       if (!ISO2.test(code)) continue;
       if (row.status === 'visited') {
-        const entry: any = stamped.get(code) || { code, firstVisit: '', trips: new Map(), manual: false };
+        const entry: any = stamped.get(code) || { code, firstVisit: '', trips: new Map(), companions: new Set(), manual: false };
         entry.manual = true;
         stamped.set(code, entry);
       } else if (row.status === 'bucket' && !stamped.has(code)) {
@@ -148,6 +215,11 @@ export default async function (req) {
         source: e.manual ? (e.trips.size ? 'both' : 'manual') : 'trip',
         first_visit: e.firstVisit || '',
         trip_count: e.trips.size,
+        // Capped for a compact payload; companion_count keeps the true total.
+        companion_count: e.companions.size,
+        companions: [...e.companions]
+          .slice(0, 12)
+          .map((id: string) => personById.get(id) || { id, full_name: '', photo: '' }),
         trips: [...e.trips.values()]
           .sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')))
           .slice(0, 3),
