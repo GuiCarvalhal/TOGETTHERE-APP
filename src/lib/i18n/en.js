@@ -210,6 +210,9 @@ export const en = {
     caixaNoItems: 'Nothing planned in this gathering yet.',
     openGathering: 'Open gathering',
     pastGatherings: 'Past gatherings',
+    noOtherGatherings: 'No other gatherings to show',
+    scrollPrev: 'Scroll to previous gatherings',
+    scrollNext: 'Scroll to more gatherings',
     // "Next / Now" AI Agent brief on Home — dense, numeric bullets for the
     // segment Home already flagged. Live sources (flight status, traffic,
     // weather, lounge) fill the specifics; the *Bare/*Approx variants keep the

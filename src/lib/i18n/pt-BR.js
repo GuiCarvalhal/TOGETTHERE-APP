@@ -205,6 +205,9 @@ export const ptBR = {
     caixaNoItems: 'Nada planejado neste encontro ainda.',
     openGathering: 'Abrir encontro',
     pastGatherings: 'Encontros anteriores',
+    noOtherGatherings: 'Nenhum outro encontro para mostrar',
+    scrollPrev: 'Rolar para os encontros anteriores',
+    scrollNext: 'Rolar para mais encontros',
     brief: {
       label: 'Dicas do Agente de IA',
       min: '{count} min',
