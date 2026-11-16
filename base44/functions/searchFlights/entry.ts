@@ -252,7 +252,10 @@ export default async function (req) {
       if (!flightNumber) {
         return Response.json({ error: 'Enter a flight number (e.g. AA123).' }, { status: 400 });
       }
-      if (!/^[A-Z0-9]{2,5}$/.test(flightNumber) || !/\d/.test(flightNumber)) {
+      // Airline designator (2-3 chars) + 1-4 digits + optional letter suffix:
+      // AA1827 and G31970 are six characters, so a shorter cap rejected most
+      // real four-digit flight numbers before the provider was ever called.
+      if (!/^[A-Z0-9]{2,3}\d{1,4}[A-Z]?$/.test(flightNumber)) {
         return Response.json({ error: "That doesn't look like a flight number. Use the airline code plus number, e.g. AA123." }, { status: 400 });
       }
       const cacheKey = `fn:${flightNumber}:${date}`;
