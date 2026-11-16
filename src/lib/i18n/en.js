@@ -207,6 +207,14 @@ export const en = {
     couldNotLoad: "Couldn't load your gatherings.",
     // Home "caixas" — the two large thematic cards.
     profileCaixaLabel: 'Your profile',
+    // Profile box — the ring of steps that still need filling in.
+    profileSteps: 'Profile steps',
+    profileStepsProgress: '{done} of {total} done',
+    topicPersonal: 'Personal info',
+    topicCuisine: 'Cuisine',
+    topicInterests: 'Interests',
+    topicBucket: 'Bucket list',
+    topicInbox: 'Inbox',
     statGatherings: 'Gatherings',
     statUpcoming: 'Upcoming',
     caixaUpcoming: 'Coming up',

@@ -4,11 +4,9 @@ import { base44 } from '@/api/base44Client';
 import { Route, Receipt, Sparkles, Inbox } from 'lucide-react';
 import { gatheringDateStatus, gatheringSortKey, deriveGatheringMeta } from '@/lib/gatheringDates';
 import AppHeader from '@/components/tt/AppHeader';
-import ProfileCompleteReminder from '@/components/tt/ProfileCompleteReminder';
 import InstallBanner from '@/components/tt/InstallBanner';
 import PendingImportCard from '@/components/home/PendingImportCard';
 import NewGatheringSheet from '@/components/home/NewGatheringSheet';
-import PassportAwardsBanner from '@/components/home/PassportAwardsBanner';
 import ProfileCaixa from '@/components/home/ProfileCaixa';
 import NextItemCaixa from '@/components/home/NextItemCaixa';
 import GatheringsCaixa from '@/components/home/GatheringsCaixa';
@@ -71,6 +69,9 @@ export default function Home() {
   // Soft-deleted gatherings the owner can still bring back (30-day window).
   const [deletedGatherings, setDeletedGatherings] = useState([]);
   const [deletedOpen, setDeletedOpen] = useState(false);
+  // Whether the user has at least one mailbox connected — one of the profile
+  // steps drawn in the profile box.
+  const [hasInbox, setHasInbox] = useState(false);
   const [restoringGatheringId, setRestoringGatheringId] = useState('');
   // Every refresh takes a ticket; only the newest one may apply its response, so
   // a background sync finishing after an explicit refresh can never overwrite
@@ -101,6 +102,7 @@ export default function Home() {
       setUserId(data.userId || null);
       setNextUpcoming(data.nextUpcoming || null);
       setDeletedGatherings(data.deletedGatherings || []);
+      setHasInbox((data.inboxConnections || []).length > 0);
       setLoadError(false);
       writeShellCache(data.userId || user?.id, {
         gatherings: data.gatherings || [],
@@ -109,6 +111,7 @@ export default function Home() {
         itemsByGathering: data.itemsByGathering || {},
         nextUpcoming: data.nextUpcoming || null,
         deletedGatherings: data.deletedGatherings || [],
+        hasInbox: (data.inboxConnections || []).length > 0,
         userId: data.userId || user?.id || null,
       });
       hydratedRef.current = true;
@@ -133,6 +136,7 @@ export default function Home() {
     setItemsByGathering(shell.itemsByGathering || {});
     setNextUpcoming(shell.nextUpcoming || null);
     setDeletedGatherings(shell.deletedGatherings || []);
+    setHasInbox(!!shell.hasInbox);
     setUserId(shell.userId || user?.id || null);
     setLoading(false);
   }, [user?.id]);
@@ -230,9 +234,6 @@ export default function Home() {
     }
   }
 
-  // How many trips are live right now — used by the profile caixa.
-  const activeCount = annotated.filter(({ status }) => status.key === 'ongoing' || status.key === 'upcoming').length;
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Universal header */}
@@ -285,22 +286,13 @@ export default function Home() {
         />
       </section>
 
-      {/* Profile caixa — identity plus the shortcuts into the account areas. */}
+      {/* Profile caixa — identity, the steps still to fill in, and the latest
+          passport/awards, all on one surface. */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
-        <div className="sm:max-w-sm">
-          <ProfileCaixa
-            user={user}
-            gatheringCount={gatherings.length}
-            upcomingCount={activeCount}
-          />
+        <div className="sm:max-w-md">
+          <ProfileCaixa user={user} hasInbox={hasInbox} />
         </div>
       </section>
-
-      {/* Passport & Awards: progress at a glance, and the celebration when a new
-          stamp or award landed since the user last acknowledged one. */}
-      <PassportAwardsBanner />
-
-      <ProfileCompleteReminder />
 
       {/* Install prompt ??? sits above the gatherings list; hidden when running as an installed app */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">

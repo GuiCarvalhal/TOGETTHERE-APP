@@ -200,6 +200,14 @@ export const ptBR = {
     couldNotLoad: 'Não foi possível carregar seus gatherings.',
     // Caixas da Home — os dois cartões temáticos grandes.
     profileCaixaLabel: 'Seu perfil',
+    // Caixa de perfil — os círculos das etapas que faltam preencher.
+    profileSteps: 'Etapas do perfil',
+    profileStepsProgress: '{done} de {total} prontas',
+    topicPersonal: 'Dados pessoais',
+    topicCuisine: 'Culinária',
+    topicInterests: 'Passeios',
+    topicBucket: 'Bucket list',
+    topicInbox: 'Inbox',
     statGatherings: 'Encontros',
     statUpcoming: 'Próximos',
     caixaUpcoming: 'Em seguida',
