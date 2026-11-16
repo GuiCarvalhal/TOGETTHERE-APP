@@ -30,7 +30,7 @@ export default function PassportStamp({ code, name, visited, date, trips = 0, co
       >
         <StampArt code={code} name={name} caption={caption} style={style} />
       </div>
-      {visited && companions.length > 0 ? (
+      {companions.length > 0 ? (
         <figcaption className="mt-1.5 flex justify-center">
           <AvatarStack people={companions} max={3} size="xs" ringClass="ring-card" />
         </figcaption>

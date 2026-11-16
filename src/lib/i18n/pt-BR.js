@@ -467,6 +467,15 @@ export const ptBR = {
     open: 'Abrir Passaporte e Conquistas',
     dismiss: 'Dispensar',
     countries: { one: '{count} país', other: '{count} países' },
+    // Faixa compacta de status no topo de cada seção.
+    closest: 'Quase lá',
+    toGo: 'faltam {count}',
+    upNext: 'A seguir',
+    noUpcoming: 'Nenhuma viagem por vir',
+    inDays: 'em {count} dias',
+    beenThereLabel: 'Amigos que já estiveram',
+    beenThere: { one: '{count} pessoa já esteve lá', other: '{count} pessoas já estiveram lá' },
+    beenThereEmpty: 'Ninguém que viajou com você esteve lá ainda',
   },
 
   passport: {

@@ -9,6 +9,7 @@ import CountryPickerSheet from '@/components/passport/CountryPickerSheet';
 import StampStyleGallery from '@/components/passport/StampStyleGallery';
 import { countryName } from '@/lib/passport';
 import { invalidatePassportAwards } from '@/lib/passportAwardsSummary';
+import { loadCommunitySignals, peekCommunitySignals, peersForCountry } from '@/lib/communitySignals';
 import { useI18n } from '@/lib/i18n';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -36,6 +37,16 @@ export default function PassportArea({ section = null }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mode, setMode] = useState(section || 'visited');
   const [busy, setBusy] = useState('');
+  // People you travelled with who have already been to a wishlist country.
+  const [peers, setPeers] = useState(() => peekCommunitySignals()?.peers || []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadCommunitySignals()
+      .then((signals) => { if (!cancelled) setPeers(signals.peers || []); })
+      .catch(() => { /* faces are optional */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (section) { setTab(section); setMode(section); }
@@ -155,7 +166,7 @@ export default function PassportArea({ section = null }) {
               visited={tab === 'visited'}
               date={row.first_visit ? fmt.formatDate(row.first_visit, { month: 'short', year: 'numeric' }) : ''}
               trips={row.trip_count || 0}
-              companions={row.companions || []}
+              companions={tab === 'visited' ? (row.companions || []) : peersForCountry(peers, row.code)}
             />
           ))}
         </div>

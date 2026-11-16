@@ -482,6 +482,15 @@ export const en = {
     open: 'Open Passport & Awards',
     dismiss: 'Dismiss',
     countries: { one: '{count} country', other: '{count} countries' },
+    // Compact status strip on top of every section.
+    closest: 'Almost there',
+    toGo: '{count} to go',
+    upNext: 'Up next',
+    noUpcoming: 'No trips on the horizon',
+    inDays: 'in {count} days',
+    beenThereLabel: 'Friends who have been',
+    beenThere: { one: '{count} person has been there', other: '{count} people have been there' },
+    beenThereEmpty: 'Nobody you travelled with has been yet',
   },
 
   passport: {

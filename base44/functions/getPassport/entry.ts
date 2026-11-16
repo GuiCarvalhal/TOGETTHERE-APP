@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
-import { TZ_COUNTRY } from '../../shared/googlePlaces.ts';
+import { ISO2, countryOf, dayOf, isRealUserId } from '../../shared/passportShared.ts';
 
 // The user's passport: every country their own gatherings took them to, plus the
 // countries they added by hand (visited) or put on their bucket list.
@@ -15,23 +15,7 @@ import { TZ_COUNTRY } from '../../shared/googlePlaces.ts';
 //   2. the item counts — the user is on that segment: in attendee_user_ids, or
 //      (for non-flight segments with nobody opted in) its creator. A segment the
 //      rest of the group took without them stamps nothing.
-const ISO2 = /^[A-Z]{2}$/;
 const ROLE_RANK = { owner: 4, admin: 3, member: 2, viewer: 1 };
-
-// A place stores the ISO short_name from Google address components; when a
-// legacy row has no country, the IANA timezone is a safe fallback.
-function countryOf(place: any): string {
-  if (!place || typeof place !== 'object') return '';
-  const code = String(place.country || '').trim().toUpperCase();
-  if (ISO2.test(code)) return code;
-  const tz = String(place.tz || '').trim();
-  return tz ? (TZ_COUNTRY[tz] || '') : '';
-}
-
-function dayOf(value: any): string {
-  const s = String(value || '');
-  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
-}
 
 export default async function (req) {
   try {
@@ -107,7 +91,6 @@ export default async function (req) {
     //   3. never from gathering membership alone: being on the trip's roster is
     //      not being on its segments. owner_user_id is deliberately unused — it
     //      holds the GATHERING's owner, not the segment's.
-    const isRealUserId = (v: any) => /^[0-9a-f]{24}$/i.test(String(v || ''));
     const myKeys = new Set([String(user.id || ''), email].filter(Boolean));
     const ownerKeyOf = (item: any) => String(item.owner_id || '').trim().toLowerCase();
     const countryCodesOf = (item: any) =>

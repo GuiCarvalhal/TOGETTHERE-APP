@@ -1,5 +1,6 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
+import AvatarStack from '@/components/tt/AvatarStack';
 import { useI18n } from '@/lib/i18n';
 
 // One badge tile. Unlocked tiles carry the level's warm intensity and the icon;
@@ -14,7 +15,7 @@ const LEVEL_TONE = {
   6: 'bg-terra text-cream border-terra-deep',
 };
 
-export default function BadgeCard({ badge, locked = false }) {
+export default function BadgeCard({ badge, locked = false, peers = [] }) {
   const { t } = useI18n();
   const Icon = badge.topic.Icon;
   const name = `${t(`badges.topic.${badge.topic.id}`)} · ${t(`badges.level${badge.level}`)}`;
@@ -45,9 +46,14 @@ export default function BadgeCard({ badge, locked = false }) {
           </p>
         </div>
       </div>
-      <p className={`text-[0.6875rem] mt-2 leading-snug break-words ${locked ? 'text-ink-deep/40' : 'text-ink-deep/60'}`}>
-        {locked ? requirement : t('badges.progress', { current: badge.target, target: badge.target })}
-      </p>
+      <div className="mt-2 flex items-end justify-between gap-1.5">
+        <p className={`text-[0.6875rem] leading-snug break-words ${locked ? 'text-ink-deep/40' : 'text-ink-deep/60'}`}>
+          {locked ? requirement : t('badges.progress', { current: badge.target, target: badge.target })}
+        </p>
+        {!locked && peers.length ? (
+          <AvatarStack people={peers} max={2} size="xs" ringClass="ring-card" />
+        ) : null}
+      </div>
     </div>
   );
 }

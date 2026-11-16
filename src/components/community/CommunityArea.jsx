@@ -3,7 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/tt/Skeleton';
 import { Button } from '@/components/ui/button';
 import BadgeCard from '@/components/community/BadgeCard';
+import AvatarStack from '@/components/tt/AvatarStack';
 import { buildBadgeState } from '@/lib/achievements/badges';
+import { loadCommunitySignals, peekCommunitySignals, peersForBadge } from '@/lib/communitySignals';
 import { useI18n } from '@/lib/i18n';
 import { Award, Lock, Sparkles } from 'lucide-react';
 
@@ -15,6 +17,17 @@ export default function CommunityArea() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Faces of the people you travelled with who already hold each award. Missing
+  // signals only cost the avatars — the badge list itself renders regardless.
+  const [peers, setPeers] = useState(() => peekCommunitySignals()?.peers || []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadCommunitySignals()
+      .then((signals) => { if (!cancelled) setPeers(signals.peers || []); })
+      .catch(() => { /* avatars are optional */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,6 +126,9 @@ export default function CommunityArea() {
                       })}
                     </p>
                   </div>
+                  {peersForBadge(peers, badge).length ? (
+                    <AvatarStack people={peersForBadge(peers, badge)} max={2} size="xs" ringClass="ring-card" />
+                  ) : null}
                 </div>
               );
             })}
@@ -128,7 +144,9 @@ export default function CommunityArea() {
           <p className="text-xs text-ink-deep/50">{t('badges.none')}</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {state.unlocked.map((badge) => <BadgeCard key={badge.id} badge={badge} />)}
+            {state.unlocked.map((badge) => (
+              <BadgeCard key={badge.id} badge={badge} peers={peersForBadge(peers, badge)} />
+            ))}
           </div>
         )}
       </section>
