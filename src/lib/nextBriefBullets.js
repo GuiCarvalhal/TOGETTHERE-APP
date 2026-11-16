@@ -1,5 +1,6 @@
 import { formatTimeTz, formatTimeOnly, tzAbbrAt } from './formatPlaceTime';
 import { formatDistanceMeters } from './journeyDistance';
+import { alpha2ToAlpha3 } from './isoCountries';
 
 // Builds Home's "Next / Now" bullets from the segment plus the LIVE payload
 // returned by the getNextBrief function (flight status, traffic ETA, weather,
@@ -183,7 +184,9 @@ function localTz() {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
 }
 
-function tzBullet({ tz, t, now }) {
+// ONE timezone line per brief, never two: the zone is named the way the item
+// cards name it (abbreviation + country, "PST-USA") followed by the delta.
+function tzBullet({ tz, iso, country, t, now }) {
   const there = text(tz);
   if (!there) return null;
   const a = tzOffsetMinutes(now, there);
@@ -191,23 +194,15 @@ function tzBullet({ tz, t, now }) {
   if (a === null || b === null) return null;
   const delta = a - b;
   if (delta === 0) return null;
+  const abbr = tzAbbrAt(iso || now.toISOString(), there);
+  const zone = abbr ? (text(country) ? `${abbr}-${text(country)}` : abbr) : '';
+  const amount = minutesLabel(Math.abs(delta), t);
+  const deltaText = t(delta > 0 ? 'home.brief.tzAhead' : 'home.brief.tzBehind', { amount });
   return {
     id: 'tz',
     icon: 'tz',
-    text: t(delta > 0 ? 'home.brief.tzAhead' : 'home.brief.tzBehind', {
-      amount: minutesLabel(Math.abs(delta), t),
-    }),
+    text: zone ? `${zone} · ${deltaText}` : deltaText,
   };
-}
-
-// The same instant on the traveller's own clock — additive unless the card
-// already prints that exact time (then the dedupe filter drops it).
-function yourTimeBullet({ iso, t }) {
-  if (!iso) return null;
-  const tz = localTz();
-  const time = tz ? formatTimeOnly(iso, tz) : '';
-  if (!time) return null;
-  return { id: 'yourtime', icon: 'tz', text: t('home.brief.yourTime', { time }) };
 }
 
 // How much worse the live ETA is than the free-flow duration: the "delta".
@@ -272,6 +267,12 @@ function flightBullets({ item, live, unit, t, now }) {
       });
     } else if (status) {
       primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightScheduled') });
+    } else {
+      // No live feed at all for this flight (the airline's booking code was
+      // stored instead of a flight number, or the provider has no match yet):
+      // the gate line is the most important thing here, so say when it lands
+      // rather than going silent about it.
+      primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightGatePending') });
     }
   }
 
@@ -314,7 +315,13 @@ function flightBullets({ item, live, unit, t, now }) {
   }
 
   // 3. Timezone delta, then 4. weather, then 5. lounge / cutoffs / freshness.
-  const tzB = tzBullet({ tz: arrTz, t, now });
+  const tzB = tzBullet({
+    tz: arrTz,
+    iso: item.end_datetime,
+    country: item.to_place?.country_alpha3 || alpha2ToAlpha3(item.to_place?.country),
+    t,
+    now,
+  });
   if (tzB) primary.push(tzB);
 
   const weather = weatherBullet({ weather: live?.weather, unit, t, when: 'arrive' });
@@ -344,8 +351,6 @@ function flightBullets({ item, live, unit, t, now }) {
   }
   const feed = freshnessBullet(flight, t, now);
   if (feed) extras.push(feed);
-  const yourTime = yourTimeBullet({ iso: item.end_datetime || depIso, t });
-  if (yourTime) extras.push(yourTime);
 
   return { primary, extras };
 }
@@ -390,15 +395,19 @@ function transferBullets({ item, live, unit, t, now }) {
     }
   }
 
-  const tzB = tzBullet({ tz: destTz || tz, t, now });
+  const tzB = tzBullet({
+    tz: destTz || tz,
+    iso: item.end_datetime || item.start_datetime,
+    country: item.to_place?.country || item.place?.country,
+    t,
+    now,
+  });
   if (tzB) primary.push(tzB);
 
   const weather = weatherBullet({ weather: live?.weather, unit, t, when: 'arrive' });
   if (weather) primary.push(weather);
 
   const extras = [];
-  const yourTime = yourTimeBullet({ iso: item.end_datetime || item.start_datetime, t });
-  if (yourTime) extras.push(yourTime);
   const ref = refBullet(item, t);
   if (ref) extras.push(ref);
 
@@ -446,7 +455,13 @@ function stayBullets({ item, live, unit, t, now }) {
     }
   }
 
-  const tzB = tzBullet({ tz: startTz, t, now });
+  const tzB = tzBullet({
+    tz: startTz,
+    iso: startIso,
+    country: item.place?.country || item.to_place?.country,
+    t,
+    now,
+  });
   if (tzB) primary.push(tzB);
 
   const weather = weatherBullet({ weather: live?.weather, unit, t, when: 'start' });
@@ -464,8 +479,6 @@ function stayBullets({ item, live, unit, t, now }) {
   }
   const ref = refBullet(item, t);
   if (ref) extras.push(ref);
-  const yourTime = yourTimeBullet({ iso: startIso, t });
-  if (yourTime) extras.push(yourTime);
   if (live && live.origin && live.origin.source === 'none') {
     extras.push({ id: 'noOrigin', icon: 'hint', text: t('home.brief.noOrigin') });
   }

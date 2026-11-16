@@ -60,6 +60,15 @@ function localDate(iso, timeZone) {
   }
 }
 
+// Try each candidate designator in order and keep the first real match.
+async function liveFlight(key, codes, date) {
+  for (const code of codes) {
+    const found = await fetchFlightLiveByNumber(key, code, date).catch(() => null);
+    if (found) return found;
+  }
+  return null;
+}
+
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -151,14 +160,28 @@ export default async function (req) {
     const weatherInstant = family === 'flight'
       ? (item.end_datetime || item.start_datetime || '')
       : (item.start_datetime || item.end_datetime || '');
-    const flightCode = text(item.confirmation_number);
+    // A segment sometimes carries the airline's booking code (a PNR such as
+    // "LLMJYV") or keeps the number only in its title, so try every plausible
+    // designator before giving up on live status — the gate is the single most
+    // useful line on this card.
+    const DESIGNATOR = /^[A-Z0-9]{2}\d{1,4}$/i;
+    const designator = (v) => {
+      const s = text(v).replace(/\s+/g, '');
+      return DESIGNATOR.test(s) ? s : '';
+    };
+    const titleMatch = (text(item.title).match(/^(?:flight\s+)?([A-Z0-9]{2}\s?\d{1,4})(?:\b|$)/i) || [])[1];
+    const flightCodes = [...new Set([
+      designator(item.confirmation_number),
+      designator(item.booking_reference),
+      designator(titleMatch),
+    ].filter(Boolean))].slice(0, 2);
     const wantsRoute = !!(mapsKey && originAddress && destinationAddress);
-    const wantsFlight = family === 'flight' && !!rapidKey && !!flightCode;
+    const wantsFlight = family === 'flight' && !!rapidKey && flightCodes.length > 0;
 
     const [routeRes, flightRes, weatherRes] = await Promise.allSettled([
       wantsRoute ? fetchDrivingRoute(mapsKey, originAddress, destinationAddress) : Promise.resolve(null),
       wantsFlight
-        ? fetchFlightLiveByNumber(rapidKey, flightCode, localDate(item.start_datetime, originTz))
+        ? liveFlight(rapidKey, flightCodes, localDate(item.start_datetime, originTz))
         : Promise.resolve(null),
       weatherPoint && weatherInstant
         ? fetchWeatherAt(weatherPoint.lat, weatherPoint.lng, weatherInstant)

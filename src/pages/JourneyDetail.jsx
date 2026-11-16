@@ -183,6 +183,11 @@ export default function JourneyDetail() {
   const typeLabel = t('journeyTypes.' + item.type) || t('journeyTypes.other');
   const typeStyle = TYPE_STYLE[item.type] || TYPE_STYLE.other;
   const typeColor = TYPE_COLOR[item.type] || TYPE_COLOR.other;
+  // Neutral palette: every item icon shares ONE grey tone (tokens in index.css);
+  // Colorful keeps the per-type brand colour as the fallback.
+  const iconColor = `var(--tt-item-icon, ${typeColor})`;
+  const iconSoft = `var(--tt-item-icon-soft, ${typeColor}1A)`;
+  const iconBorder = `var(--tt-item-icon-border, ${typeColor}33)`;
   const q = mapsQuery(item);
   const { origin, destination, point } = itemMapPoints(item);
   const images = (item.attachments || []).filter(isImg);
@@ -225,11 +230,11 @@ export default function JourneyDetail() {
       {/* Hero */}
       <div className="tt-card-hairline p-4">
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${typeColor}1A`, color: typeColor, border: `1px solid ${typeColor}33` }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: iconSoft, color: iconColor, border: `1px solid ${iconBorder}` }}>
             <Icon className="w-7 h-7" strokeWidth={2} />
           </div>
           <div className="min-w-0">
-            <span className="tt-label" style={{ color: typeColor }}>{typeLabel}</span>
+            <span className="tt-label" style={{ color: iconColor }}>{typeLabel}</span>
             <h1 className="font-display text-2xl font-bold text-ink-deep leading-tight tt-text-balance">{item.title}</h1>
             {item.confirmation_number && (
               <p className="text-xs text-ink-deep/45 mt-1">{t('journeyDetail.confirmation', { code: item.confirmation_number })}</p>

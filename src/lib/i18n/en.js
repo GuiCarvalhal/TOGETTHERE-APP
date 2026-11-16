@@ -141,6 +141,9 @@ export const en = {
     today: 'TODAY',
     tomorrow: 'TOMORROW',
     inDays: 'IN {count} DAYS',
+    // Within 24h of a timed item's start the header counts down instead of
+    // naming the day: "IN 1 H 7 MIN".
+    inTime: 'In {time}',
     installBannerTitle: 'Use TOGETTHERE like an app',
     installBannerBody: "Add it to your phone's Home screen in a few steps",
     installBannerAria: 'Learn how to add TOGETTHERE to your Home screen',
@@ -236,6 +239,10 @@ export const en = {
       flightOnTimeGate: 'On time · gate {gate} · terminal {terminal}',
       flightGateNoTerminal: 'On time · gate {gate}',
       flightScheduled: 'On time · gate posts about 2h before departure',
+      // No live feed for this flight (e.g. the segment stores the airline's
+      // booking code instead of a flight number): say when the gate appears
+      // instead of dropping the most important line.
+      flightGatePending: 'Gate and terminal are shared about 2h before departure',
       flightDelayed: 'Delayed {minutes} min · departs {time} ({abbr})',
       flightCancelled: 'Cancelled · rebook before you set off',
       flightLeave: 'Leave by {leaveBy} ({abbr}) · {duration} in traffic{delta}, {distance}',
@@ -259,9 +266,8 @@ export const en = {
       stayConfirmation: 'Confirmation {code}',
       weatherArrive: '{temp}, {condition} when you land',
       weatherStart: '{temp}, {condition} at the start time',
-      tzAhead: 'Clocks there are {amount} ahead of yours',
-      tzBehind: 'Clocks there are {amount} behind yours',
-      yourTime: 'That is {time} on your own clock',
+      tzAhead: '{amount} ahead of your clock',
+      tzBehind: '{amount} behind your clock',
       trafficDelta: ' (+{minutes} min vs usual)',
       noOrigin: 'Add your home city in Account to get a leave-by time',
       wmo: {

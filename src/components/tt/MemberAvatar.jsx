@@ -8,7 +8,7 @@ export default function MemberAvatar({ member, size = 'md', className = '', ring
     .split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase();
   return (
     <div
-      className={`${SIZES[size]} rounded-full overflow-hidden border border-ink-charcoal/20 bg-cream-pale flex items-center justify-center font-display font-bold text-terra-deep shrink-0 ${ring ? 'ring-2 ring-terra ring-offset-2 ring-offset-ink' : ''} ${className}`}
+      className={`tt-avatar ${SIZES[size]} rounded-full overflow-hidden border border-ink-charcoal/20 bg-cream-pale flex items-center justify-center font-display font-bold text-terra-deep shrink-0 ${ring ? 'ring-2 ring-terra ring-offset-2 ring-offset-ink' : ''} ${className}`}
     >
       {member?.photo ? (
         <Image src={member.photo} alt={member.full_name || 'Member'} className="w-full h-full object-cover" fittingType="fill" />

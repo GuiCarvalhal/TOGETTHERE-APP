@@ -27,7 +27,6 @@ const ICONS = {
   terminal: Info,
   hint: Info,
   tz: Globe,
-  yourtime: Globe,
 };
 
 export default function NextBriefCard({ next }) {

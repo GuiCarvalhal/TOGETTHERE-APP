@@ -121,7 +121,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
       <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
         <div
           className={`w-10 h-10 rounded-full flex items-center justify-center relative z-10 ring-2 ${embedded ? 'ring-card' : 'ring-background shadow-sm'}`}
-          style={{ backgroundColor: typeColor }}
+          style={{ backgroundColor: `var(--tt-item-icon, ${typeColor})` }}
         >
           <Icon className="w-5 h-5 text-white" strokeWidth={2} />
         </div>

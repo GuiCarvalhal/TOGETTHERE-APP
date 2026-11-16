@@ -201,6 +201,13 @@
     --sidebar-accent-foreground: 200 14% 17%;
     --sidebar-border: 40 8% 82%;
     --sidebar-ring: 202 13% 38%;
+
+    /* Item icons: ONE calm grey for every journey type, so type colour never
+       competes with the surfaces. Components fall back to their per-type brand
+       colour whenever these are unset (i.e. the Colorful palette). */
+    --tt-item-icon: hsl(210 6% 46%);
+    --tt-item-icon-soft: hsl(210 6% 46% / 0.1);
+    --tt-item-icon-border: hsl(210 6% 46% / 0.22);
   }
 
   .dark.neutral {
@@ -242,6 +249,22 @@
     --sidebar-accent-foreground: 40 12% 93%;
     --sidebar-border: 210 7% 22%;
     --sidebar-ring: 200 10% 54%;
+
+    --tt-item-icon: hsl(210 5% 64%);
+    --tt-item-icon-soft: hsl(210 5% 64% / 0.12);
+    --tt-item-icon-border: hsl(210 5% 64% / 0.26);
+  }
+
+  /* Identity stays colourful in the Neutral palette: a member or user avatar is
+     a person, not a surface, so its chip keeps the warm brand tint everywhere. */
+  .neutral .tt-avatar {
+    --cream-pale: 40 30% 93%;
+    --terra-deep: 8 58% 48%;
+  }
+
+  .dark.neutral .tt-avatar {
+    --cream-pale: 215 22% 18%;
+    --terra-deep: 8 82% 67%;
   }
 
   /* Calmer surface: a very subtle vertical grade instead of a flat fill. */

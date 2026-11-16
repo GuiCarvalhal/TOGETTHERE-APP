@@ -135,7 +135,11 @@ export function gatheringDateStatus(gathering, items, userId, role, now = new Da
   const { start, end, hasRange } = deriveGatheringRange(gathering, items, userId, role);
   if (!hasRange) return { key: 'tbd', label: 'Dates TBD', tone: 'muted' };
   if (start && now < start) {
-    const days = Math.ceil((start - now) / 86400000);
+    // Calendar days, not elapsed hours: a gathering that starts tonight is
+    // "Starts today", never "Tomorrow" (ceil on raw hours said Tomorrow for any
+    // start less than 24h away).
+    const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((dayStart(start) - dayStart(now)) / 86400000);
     return { key: 'upcoming', label: days <= 0 ? 'Starts today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'terra' };
   }
   if (start && end && now >= start && now <= end) return { key: 'ongoing', label: 'In progress', tone: 'green' };

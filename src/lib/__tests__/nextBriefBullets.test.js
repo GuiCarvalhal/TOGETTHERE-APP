@@ -191,22 +191,27 @@ describe('buildBriefBullets — other families', () => {
     id: 'd1', type: 'car', title: 'Drive to Rome',
     start_datetime: '2026-11-13T16:00:00Z', end_datetime: '2026-11-13T18:30:00Z',
     from_place: { city: 'Naples', tz: 'Europe/Rome', lat: 40.85, lng: 14.26 },
-    to_place: { city: 'Rome', tz: 'Europe/Rome', lat: 41.9, lng: 12.5 },
+    to_place: { city: 'Rome', tz: 'Europe/Rome', lat: 41.9, lng: 12.5, country: 'IT' },
   };
 
   it('keeps transfer bullets concrete without live data', () => {
     const bullets = build(DRIVE, null);
-    expect(bullets.length).toBeGreaterThanOrEqual(3);
+    expect(bullets.length).toBeGreaterThanOrEqual(2);
     expect(bullets[0].text).toContain('home.brief.transferTimingApprox');
     // never "Naples → Rome at 5:00 PM": that whole line is the card
     expect(bullets[0].text).not.toContain('Naples');
     expect(bullets.map((b) => b.text).join(' ')).not.toContain('5:00 PM');
   });
 
-  it('states the timezone delta and the traveller’s own clock', () => {
+  it('states the timezone ONCE, named with its abbreviation and country', () => {
     const bullets = build(DRIVE, null);
-    expect(ids(bullets)).toContain('tz');
-    expect(ids(bullets)).toContain('yourtime');
+    // ONE tz line: the zone (abbr + country, like the item cards) plus the delta.
+    // The separate "on your own clock" line is gone — it repeated the same fact.
+    expect(ids(bullets).filter((id) => id === 'tz')).toHaveLength(1);
+    expect(ids(bullets)).not.toContain('yourtime');
+    const tz = bullets.find((b) => b.id === 'tz');
+    expect(tz.text).toContain('CET-IT');
+    expect(tz.text).toContain('home.brief.tz');
   });
 
   it('states travel time from the resolved origin for a stay', () => {
@@ -232,7 +237,7 @@ describe('buildBriefBullets — other families', () => {
     const ACTIVITY = { id: 'a1', type: 'activity', title: 'Dinner', start_datetime: '2026-11-13T20:00:00Z' };
     const bullets = build(ACTIVITY, { family: 'stay', origin: { source: 'none' }, destination: { label: '' } });
     expect(ids(bullets)).toContain('noOrigin');
-    expect(bullets.length).toBeGreaterThanOrEqual(3);
+    expect(bullets.length).toBeGreaterThanOrEqual(2);
   });
 });
 
