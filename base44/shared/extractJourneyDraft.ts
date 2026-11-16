@@ -17,19 +17,59 @@ function normalizeDateTime(v: unknown) {
   return new Date(ms).toISOString();
 }
 
+// A flight number is a carrier designator plus 1-4 digits (AA1684, G31256,
+// LA8113). A record locator / reservation code (LLMJYV, 2I6VPC) is NOT one, and
+// must never reach confirmation_number: the flight API is searched with that
+// value, and no carrier recognises a PNR as a flight. Pure digits are kept as
+// they are — there the carrier is missing from the source, not the number.
+const CARRIER_FLIGHT_NUMBER = /^[A-Z0-9]{2}\d{1,4}[A-Z]?$/;
+const BARE_FLIGHT_DIGITS = /^\d{1,4}$/;
+
+export function looksLikeFlightNumber(value: unknown) {
+  const code = typeof value === 'string' ? value.trim().toUpperCase().replace(/\s+/g, '') : '';
+  if (!code) return false;
+  return BARE_FLIGHT_DIGITS.test(code) || CARRIER_FLIGHT_NUMBER.test(code);
+}
+
+// The reservation code belongs to the traveler's personal notes — the only
+// place they read it — appended once, next to whatever else was extracted.
+function withBookingReference(notes: string, code: string) {
+  if (!code) return notes;
+  if (notes.toUpperCase().includes(code.toUpperCase())) return notes;
+  const line = `Booking reference: ${code}`;
+  return notes ? `${notes}\n${line}` : line;
+}
+
 export function normalizeDraft(raw: any, fallbackTitle = '') {
-  const title = typeof raw?.title === 'string' ? raw.title.trim() : '';
-  const confirmation = typeof raw?.confirmation_number === 'string' ? raw.confirmation_number.trim() : '';
-  const bookingReference = typeof raw?.booking_reference === 'string' ? raw.booking_reference.trim() : '';
+  const type = normalizeType(raw?.type);
+  let title = typeof raw?.title === 'string' ? raw.title.trim() : '';
+  let confirmation = typeof raw?.confirmation_number === 'string' ? raw.confirmation_number.trim() : '';
+  let bookingReference = typeof raw?.booking_reference === 'string' ? raw.booking_reference.trim() : '';
   const airline = typeof raw?.airline === 'string' ? raw.airline.trim() : '';
-  const notes = typeof raw?.notes === 'string' ? raw.notes.trim() : '';
+  let notes = typeof raw?.notes === 'string' ? raw.notes.trim() : '';
+
+  // Flights only: a reservation code typed into the flight-number field is
+  // moved to the booking reference and into the personal notes.
+  let movedCode = '';
+  if (type === 'flight' && confirmation && !looksLikeFlightNumber(confirmation)) {
+    movedCode = confirmation;
+    if (!bookingReference) bookingReference = movedCode;
+    confirmation = '';
+    // A title built from the PNR ("Flight LLMJYV — American Airlines") would
+    // keep the wrong code on the card, so it falls back to the message subject.
+    if (title && title.toUpperCase().includes(movedCode.toUpperCase())) title = '';
+  }
+  if (type === 'flight' && bookingReference) notes = withBookingReference(notes, bookingReference);
   const locationFrom = typeof raw?.location_from === 'string' ? raw.location_from.trim() : '';
   const locationTo = typeof raw?.location_to === 'string' ? raw.location_to.trim() : '';
   const locationName = typeof raw?.location_name === 'string' ? raw.location_name.trim() : '';
 
+  // A flight is never named after its reservation code: only non-flight items
+  // fall back to the booking reference for their title.
+  const titleFallback = type === 'flight' ? '' : bookingReference;
   return {
-    type: normalizeType(raw?.type),
-    title: title || confirmation || bookingReference || fallbackTitle || 'Imported reservation',
+    type,
+    title: title || confirmation || titleFallback || fallbackTitle || 'Imported reservation',
     start_datetime: normalizeDateTime(raw?.start_datetime),
     end_datetime: normalizeDateTime(raw?.end_datetime),
     location_from: locationFrom,
@@ -75,7 +115,10 @@ export async function extractJourneyDrafts(base44: any, content: string, fallbac
     '- title: a short, specific name for the segment as a traveler would say it. Use the hotel\'s name for a stay, the flight number and airline for a flight, the venue or tour name for an activity. Never return a generic title like "Hotel Stay", "Flight" or "Imported reservation".',
     'Only include a field when it is clearly stated in the content; leave it empty when unknown. Never invent data.',
     'Datetimes must be "YYYY-MM-DDTHH:MM" in 24-hour local time as written in the content, with no timezone suffix. If only a date is known, use "YYYY-MM-DDT00:00".',
-    'For a flight: type "flight", location_from = origin airport or city, location_to = destination airport or city, confirmation_number = the flight number (e.g. BA208), airline = operating airline.',
+    'For a flight: type "flight", location_from = origin airport or city, location_to = destination airport or city, airline = operating airline.',
+    'confirmation_number for a flight is ONLY the flight number: the 2-character airline code plus 1-4 digits (e.g. AA1684, G31256, LA8113). Never put a reservation code, record locator, PNR or booking code (6 mixed letters and digits such as LLMJYV or 2I6VPC) in confirmation_number, and never append a date, airport, seat or cabin to it. If the content shows only a reservation code and no flight number, leave confirmation_number empty.',
+    'booking_reference = the reservation code / record locator / PNR exactly as printed (e.g. LLMJYV), whenever the content shows that code is a reservation reference rather than a flight number.',
+    'notes: the booking details a traveler needs at the airport and nowhere else: repeat the reservation code as "Booking reference: X", plus ticket number, seat, cabin class, terminal, gate and passenger names when present. Never copy marketing or promotional wording into notes.',
     'For a hotel: type "hotel", location_name = hotel name, start_datetime = check-in, end_datetime = check-out.',
     'For a train: type "train". For a car rental or drive: type "car". For an activity, tour or event: type "activity".',
     'If the content holds a single booking, return a single entry.',
@@ -110,7 +153,10 @@ export async function extractJourneyDraft(base44: any, text: string, fallbackTit
     'Only include a field when it is clearly stated in the content; leave it empty when unknown. Never invent data.',
     'title: a short, specific name for the segment as a traveler would say it. Use the hotel\'s name for a stay, the flight number and airline for a flight, the venue or tour name for an activity. Never return a generic title like "Hotel Stay", "Flight" or "Imported reservation".',
     'Datetimes must be "YYYY-MM-DDTHH:MM" in 24-hour local time as written in the content, with no timezone suffix. If only a date is known, use "YYYY-MM-DDT00:00".',
-    'For a flight: type "flight", location_from = origin airport or city, location_to = destination airport or city, confirmation_number = the flight number (e.g. BA208), airline = operating airline.',
+    'For a flight: type "flight", location_from = origin airport or city, location_to = destination airport or city, airline = operating airline.',
+    'confirmation_number for a flight is ONLY the flight number: the 2-character airline code plus 1-4 digits (e.g. AA1684, G31256, LA8113). Never put a reservation code, record locator, PNR or booking code (6 mixed letters and digits such as LLMJYV or 2I6VPC) in confirmation_number, and never append a date, airport, seat or cabin to it. If the content shows only a reservation code and no flight number, leave confirmation_number empty.',
+    'booking_reference = the reservation code / record locator / PNR exactly as printed (e.g. LLMJYV), whenever the content shows that code is a reservation reference rather than a flight number.',
+    'notes: the booking details a traveler needs at the airport and nowhere else: repeat the reservation code as "Booking reference: X", plus ticket number, seat, cabin class, terminal, gate and passenger names when present. Never copy marketing or promotional wording into notes.',
     'For a hotel: type "hotel", location_name = hotel name, start_datetime = check-in, end_datetime = check-out.',
     'For a train: type "train". For a car rental or drive: type "car". For an activity, tour or event: type "activity".',
     'Return JSON only, matching the schema.',

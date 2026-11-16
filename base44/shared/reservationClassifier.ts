@@ -446,19 +446,28 @@ function extractAirline(raw: string) {
 
 const REFERENCE_NOISE = new Set([
   'CODE', 'NUMBER', 'CONFIRMATION', 'RESERVA', 'BOOKING', 'LOCATOR', 'CODES',
-  'NUMBER:', 'REFERENCE', 'RESERVATION', 'CONFIRMED',
+  'NUMBER:', 'REFERENCE', 'RESERVATION', 'CONFIRMED', 'EMAIL', 'PLEASE',
+  'YOUR', 'FLIGHT', 'TRIP', 'ORDER', 'DETAILS',
 ]);
 
-// A booking code must read like a code: 4-14 chars, at least one digit, and not
-// the label word itself ("Confirmation code: HSC-88421" → HSC-88421, not CODE).
+// A booking code must read like a code and never like the label itself
+// ("Confirmation code: HSC-88421" → HSC-88421, not CODE).
+//
+// Airline record locators are usually SIX LETTERS (LLMJYV, CBDTQI, EJIAZB), so a
+// digits-only rule silently lost the reservation code on most flight mails — and
+// the code then surfaced in the flight-number field instead. Letters-only codes
+// are therefore accepted when they are 5-8 characters and were written in
+// capitals in the source, which keeps an ordinary word standing next to the
+// label ("Confirmation email for…" → EMAIL) out.
 function extractReference(raw: string) {
   const pattern = /\b(?:record\s+locator|booking\s+reference|reservation\s+(?:code|number)|confirmation\s+(?:code|number)|confirmation|order\s+(?:code|number|id)|pnr|localizador|c[oó]digo\s+de\s+reserva|c[oó]digo\s+do\s+pedido|refer[eê]ncia\s+da\s+reserva)\b[^A-Za-z0-9]{0,16}([A-Z0-9][A-Z0-9-]{3,14})\b/gi;
   let m: RegExpExecArray | null;
   while ((m = pattern.exec(raw))) {
-    const candidate = m[1].toUpperCase().replace(/-+$/, '');
+    const written = m[1];
+    const candidate = written.toUpperCase().replace(/-+$/, '');
     if (REFERENCE_NOISE.has(candidate)) continue;
-    if (!/\d/.test(candidate)) continue;
-    return candidate;
+    if (/\d/.test(candidate)) return candidate;
+    if (written === candidate && candidate.length >= 5 && candidate.length <= 8) return candidate;
   }
   return '';
 }
@@ -487,13 +496,21 @@ function extractAmount(raw: string): { amount: number | null; currency: string }
   return { amount: null, currency: '' };
 }
 
-function extractFlightNumber(raw: string, subjectRaw: string) {
+// Returns ONLY a carrier designator plus digits. The reservation reference is
+// rejected explicitly: the flight API is searched with this value, so a PNR
+// here would silently disable every live flight lookup.
+function extractFlightNumber(raw: string, subjectRaw: string, reference = '') {
+  const reject = reference.trim().toUpperCase();
+  const accept = (value: string) => {
+    const code = value.replace(/\s+/g, '').toUpperCase();
+    return code && code !== reject ? code : '';
+  };
   const labelled = raw.match(
     /\b(?:flight|voo|flt|vuelo)\b[^A-Za-z0-9]{0,12}([A-Za-z0-9]{2})\s?(\d{1,4})\b/i,
   );
-  if (labelled) return `${labelled[1].toUpperCase()}${labelled[2]}`;
+  if (labelled) return accept(`${labelled[1].toUpperCase()}${labelled[2]}`);
   const bare = subjectRaw.match(/\b([A-Z]{2}\s?\d{1,4})\b/);
-  if (bare) return bare[1].replace(/\s+/g, '').toUpperCase();
+  if (bare) return accept(bare[1]);
   return '';
 }
 
@@ -675,7 +692,7 @@ export function classifyReservation(input: { subject?: string; text?: string }):
     const departure = pickDateNear(datetimes, labelIndex(ctx.all, DEPART_ARRIVE));
     const arrivalLabel = labelIndex(ctx.all, /\b(arrival|arrives|chegada|chega|desembarque)\b/);
     const arrival = arrivalLabel >= 0 ? pickDateNear(datetimes, arrivalLabel) : (datetimes[1]?.value || '');
-    const flightNumber = extractFlightNumber(raw, subjectRaw);
+    const flightNumber = extractFlightNumber(raw, subjectRaw, fields.pnr);
     const airline = extractAirline(raw);
     fields.from = pair.from;
     fields.to = pair.to;
