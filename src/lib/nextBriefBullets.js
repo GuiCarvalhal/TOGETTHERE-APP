@@ -205,6 +205,21 @@ function tzBullet({ tz, iso, country, t, now }) {
   };
 }
 
+// Where the route is measured FROM, named only when that is genuinely new: the
+// previous segment ("prior") or home ("home"). A segment's own origin repeats
+// the route line the card already prints, so it stays silent.
+function routeOriginLabel(live) {
+  const source = text(live?.origin?.source);
+  if (source !== 'prior' && source !== 'home') return '';
+  return text(live?.origin?.label);
+}
+
+// " from Hotel Fasano" — appended right after the distance/time it belongs to.
+function originSuffix(live, t) {
+  const label = routeOriginLabel(live);
+  return label ? t('home.brief.originSuffix', { origin: label }) : '';
+}
+
 // How much worse the live ETA is than the free-flow duration: the "delta".
 function trafficDelta(live, t) {
   const withTraffic = num(live?.route?.durationInTrafficSeconds);
@@ -242,6 +257,9 @@ function flightBullets({ item, live, unit, t, now }) {
   const depMs = revised ? revised.getTime() : schedMs;
   const depIso = depMs ? new Date(depMs).toISOString() : item.start_datetime || '';
   const delta = trafficDelta(live, t);
+  // Where the ground plan was measured from — printed next to the distance and
+  // ETA, because after the trip starts that is a hotel or an airport, not home.
+  const origin = originSuffix(live, t);
 
   const primary = [];
 
@@ -291,7 +309,7 @@ function flightBullets({ item, live, unit, t, now }) {
       icon: 'ground',
       text: t(key, {
         leaveBy: timeIn(leaveIso, depTz), abbr: abbrIn(leaveIso, depTz),
-        duration: durLabel(trafficSec, t), distance, delta,
+        duration: durLabel(trafficSec, t), distance, delta, origin,
       }),
     });
   } else {
@@ -300,7 +318,7 @@ function flightBullets({ item, live, unit, t, now }) {
       primary.push({
         id: 'ground',
         icon: 'ground',
-        text: t('home.brief.flightLeaveApprox', { distance: distLabel(approx, unit) }),
+        text: t('home.brief.flightLeaveApprox', { distance: distLabel(approx, unit), origin }),
       });
     } else if (depMs) {
       const cutoffIso = new Date(depMs - AIRPORT_BUFFER_MIN * 60000).toISOString();
@@ -363,6 +381,9 @@ function transferBullets({ item, live, unit, t, now }) {
   const meters = num(live?.route?.distanceMeters);
   const hasTraffic = !!num(live?.route?.durationInTrafficSeconds);
   const delta = trafficDelta(live, t);
+  // Only when the ride has no start point of its own and the route was measured
+  // from the previous segment instead.
+  const origin = originSuffix(live, t);
 
   const primary = [];
   if (trafficSec && startMs) {
@@ -376,7 +397,7 @@ function transferBullets({ item, live, unit, t, now }) {
       icon: 'timing',
       text: t(key, {
         leaveBy: timeIn(leaveIso, tz), abbr: abbrIn(leaveIso, tz),
-        duration: durLabel(trafficSec, t), distance, delta,
+        duration: durLabel(trafficSec, t), distance, delta, origin,
       }),
     });
   } else {
@@ -390,7 +411,7 @@ function transferBullets({ item, live, unit, t, now }) {
       primary.push({
         id: 'timing',
         icon: 'timing',
-        text: t('home.brief.transferTimingApprox', { distance: distLabel(approx, unit) }),
+        text: t('home.brief.transferTimingApprox', { distance: distLabel(approx, unit), origin }),
       });
     }
   }
@@ -418,7 +439,7 @@ function stayBullets({ item, live, unit, t, now }) {
   const startTz = text(item.place?.tz) || text(item.to_place?.tz);
   const startIso = item.start_datetime || '';
   const startMs = startIso ? new Date(startIso).getTime() : null;
-  const originLabel = text(live?.origin?.label) || '';
+  const originLabel = routeOriginLabel(live);
   const trafficSec = num(live?.route?.durationInTrafficSeconds) ?? num(live?.route?.durationSeconds);
   const meters = num(live?.route?.distanceMeters);
   const delta = trafficDelta(live, t);

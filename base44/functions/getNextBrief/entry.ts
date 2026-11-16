@@ -12,8 +12,10 @@ import { loungeForAirline } from '../../shared/airlineLounges.ts';
 // hour the traveller actually gets there, and the airline's own lounge.
 //
 // Origin resolution, in order:
-//   1. the latest stay-type segment that ended before this one (a transfer does
-//      not leave you anywhere, so flights/rides are not origins);
+//   1. the latest segment that ended before this one and leaves the traveller
+//      somewhere (a flight or train at its arrival airport, a stay at its
+//      venue) — once the trip has started the route is measured from where the
+//      traveller actually is, never from home;
 //   2. else the user's HOME from their profile;
 //   3. else the segment's own origin (reported as such, so the UI can say it);
 //   4. else nothing — the caller then asks for a home city instead of guessing
@@ -21,7 +23,6 @@ import { loungeForAirline } from '../../shared/airlineLounges.ts';
 // Every external source is independent: one failing source degrades to the
 // deterministic item data, never to an error or a blank card.
 
-const STAY_TYPES = ['hotel', 'activity', 'main_event', 'other'];
 const TRANSFER_TYPES = ['car', 'train', 'cruise'];
 
 const text = (v) => (typeof v === 'string' ? v.trim() : '');
@@ -45,6 +46,21 @@ function settlePlace(item) {
 function placeLabel(place) {
   if (!place) return '';
   return text(place.city) || text(place.name) || text(place.address);
+}
+
+// Is the traveller on this segment? The segment's creator always is; a segment
+// with no attendee list is a shared stay/activity that belongs to the whole
+// trip; a segment that lists attendees must actually name this user, so another
+// member's separate flight never becomes the origin of this route.
+function includesTraveller(item, user) {
+  const myKeys = new Set([user?.id, user?.email].filter(Boolean).map((v) => String(v).toLowerCase()));
+  const ownerKey = String(item?.owner_id || '').trim().toLowerCase();
+  if (ownerKey && myKeys.has(ownerKey)) return true;
+  const attendees = (Array.isArray(item?.attendee_user_ids) ? item.attendee_user_ids : [])
+    .map((v) => String(v || '').trim().toLowerCase())
+    .filter(Boolean);
+  if (!attendees.length) return true;
+  return attendees.some((v) => myKeys.has(v));
 }
 
 // Calendar date of an instant in the airport's own timezone (the flight feed is
@@ -97,11 +113,18 @@ export default async function (req) {
       .filter({ gathering_id: gatheringId }).catch(() => []);
     const startMs = item.start_datetime ? new Date(item.start_datetime).getTime() : Date.now();
 
+    // Where the traveller was just before this segment: the LATEST earlier item
+    // that leaves them somewhere — a flight/train/cruise at its arrival point, a
+    // stay at its venue. Any type counts, because after the first leg home is no
+    // longer where they are.
     const priorStay = (siblings || [])
-      .filter((s) => s.id !== item.id && s.is_deleted !== true && STAY_TYPES.includes(s.type))
+      .filter((s) => s.id !== item.id && s.is_deleted !== true)
+      .filter((s) => includesTraveller(s, user))
       .filter((s) => {
         const end = s.end_datetime || s.start_datetime;
-        return end && new Date(end).getTime() <= startMs && !!settlePlace(s);
+        const place = settlePlace(s);
+        if (!end || new Date(end).getTime() > startMs || !place) return false;
+        return !!coordString(place) || !!text(place.address) || !!text(place.name);
       })
       .sort((a, b) => new Date(b.end_datetime || b.start_datetime) - new Date(a.end_datetime || a.start_datetime))[0] || null;
 
@@ -123,27 +146,41 @@ export default async function (req) {
     let originAddress = '';
     let originLabel = '';
     let originTz = '';
+    // The place the origin actually describes, so the caller can report the
+    // same point the route was measured from.
+    let originPlace = null;
 
-    if (family === 'transfer') {
+    const itemOriginAddress = coordString(item.from_place) || text(item.from_place?.address) || text(item.location_from);
+    const itemOriginLabel = placeLabel(item.from_place) || text(item.location_from);
+
+    if (family === 'transfer' && itemOriginAddress) {
       // A ride/train/cruise starts where the segment starts; that IS the origin.
-      originAddress = coordString(item.from_place) || text(item.from_place?.address) || text(item.location_from);
+      originPlace = item.from_place || null;
+      originAddress = itemOriginAddress;
       originSource = 'item_origin';
-      originLabel = placeLabel(item.from_place) || text(item.location_from);
+      originLabel = itemOriginLabel;
       originTz = text(item.from_place?.tz);
     } else if (priorPlace) {
+      originPlace = priorPlace;
       originAddress = coordString(priorPlace) || text(priorPlace.address);
       originSource = 'prior';
-      originLabel = placeLabel(priorPlace);
+      // The venue the traveller is coming from (hotel, airport, station), not
+      // just its city: that is what makes the origin worth printing. Long
+      // airport names are shortened back to their city so the tip stays short.
+      const venue = text(priorPlace.name);
+      originLabel = venue && venue.length <= 40 ? venue : placeLabel(priorPlace);
       originTz = text(priorPlace.tz);
     } else if (homePlace || homeLabel) {
+      originPlace = homePlace;
       originAddress = coordString(homePlace) || homeLabel;
       originSource = 'home';
       originLabel = homeLabel || placeLabel(homePlace);
       originTz = text(homePlace?.tz);
-    } else if (coordString(item.from_place) || text(item.location_from)) {
-      originAddress = coordString(item.from_place) || text(item.location_from);
+    } else if (itemOriginAddress) {
+      originPlace = item.from_place || null;
+      originAddress = itemOriginAddress;
       originSource = 'item_origin';
-      originLabel = placeLabel(item.from_place) || text(item.location_from);
+      originLabel = itemOriginLabel;
       originTz = text(item.from_place?.tz);
     }
     if (!originTz) originTz = text(item.from_place?.tz) || text(item.place?.tz) || '';
@@ -205,7 +242,7 @@ export default async function (req) {
         source: originSource,
         label: originLabel,
         tz: originTz,
-        point: pointOf(priorPlace) || pointOf(homePlace) || pointOf(item.from_place) || null,
+        point: pointOf(originPlace) || pointOf(item.from_place) || null,
       },
       destination: {
         label: placeLabel(targetPlace) || text(item.location_to) || text(item.location_name),

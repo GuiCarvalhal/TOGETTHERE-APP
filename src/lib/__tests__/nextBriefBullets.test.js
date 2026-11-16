@@ -109,8 +109,8 @@ describe('buildBriefBullets — deterministic fallback', () => {
     const ground = bullets.find((b) => b.id === 'ground');
     expect(ground.text).toContain('home.brief.flightLeaveApprox');
     expect(ground.text).toMatch(/distance=\d/);
-    // the origin city is already on the card's route line
-    expect(ground.text).not.toContain('origin=');
+    // the bullet says where the distance was measured from
+    expect(ground.text).toContain('originSuffix|origin=Miami');
   });
 });
 
@@ -147,7 +147,7 @@ describe('buildBriefBullets — live flight data', () => {
     expect(status.text).toContain('time=1:55 PM');
   });
 
-  it('computes a leave-by time with the traffic delta and no origin repeat', () => {
+  it('computes a leave-by time with the traffic delta and the origin', () => {
     const bullets = build(FLIGHT_ITEM, live);
     const ground = bullets.find((b) => b.id === 'ground');
     expect(ground.text).toContain('home.brief.flightLeave');
@@ -157,7 +157,7 @@ describe('buildBriefBullets — live flight data', () => {
     // 41 min in traffic vs 32 min free-flow = +9 min
     expect(ground.text).toContain('home.brief.trafficDelta');
     expect(ground.text).toContain('minutes=9');
-    expect(ground.text).not.toContain('origin=');
+    expect(ground.text).toContain('originSuffix|origin=Miami');
   });
 
   it('adds weather, lounge and operational cutoffs, capped at five', () => {
