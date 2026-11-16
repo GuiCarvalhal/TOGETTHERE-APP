@@ -79,9 +79,7 @@ export default function NextItemCaixa({ next, people = [], loading = false, tota
         to={`/gathering/${next.gatheringId}/journey/${item.id}`}
       />
 
-      <div className="px-0.5">
-        <NextBriefCard next={next} />
-      </div>
+      <NextBriefCard next={next} />
     </div>
   );
 }

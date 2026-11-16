@@ -65,9 +65,12 @@ export default function NextBriefCard({ next }) {
   if (!bullets.length) return null;
 
   // Rendered INSIDE Home's NEXT module, under the featured card: the tips carry
-  // no chrome of their own — just a hairline divider and the bullet list.
+  // no chrome of their own — just a hairline divider and the bullet list. The
+  // band bleeds to the box edges (cancelling the box padding) so the tips sit on
+  // the box's own surface, continuous with it, instead of reading as a separate
+  // block floating inside the card.
   return (
-    <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
+    <div className="-mx-3.5 sm:-mx-4 -mb-3.5 sm:-mb-4 mt-3 rounded-b-[1.25rem] bg-card border-t border-ink-charcoal/10 px-3.5 sm:px-4 pt-3 pb-3.5 sm:pb-4">
       <ul className="space-y-1.5">
         {bullets.map((bullet) => {
           const Icon = ICONS[bullet.icon] || Sparkles;

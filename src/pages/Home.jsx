@@ -259,7 +259,7 @@ export default function Home() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-6 space-y-4">
         <NextItemCaixa
           next={nextUpcoming}
-          people={nextUpcoming ? previews[nextUpcoming.gatheringId] || [] : []}
+          people={nextUpcoming?.participants || []}
           loading={loading}
           totalCount={gatherings.length}
         />

@@ -160,7 +160,7 @@ export default function GatheringsCaixa({
                 <div
                   key={g.id}
                   data-card
-                  className="w-[258px] min-w-[258px] sm:w-[300px] shrink-0 snap-start"
+                  className="w-[258px] min-w-[258px] sm:w-[300px] shrink-0 snap-start flex"
                 >
                   <GatheringCard
                     gathering={g}
@@ -202,7 +202,7 @@ export default function GatheringsCaixa({
 
       {/* 4 — gatherings summary */}
       {!loading && summary.length > 0 && (
-        <div className="border-t border-ink-charcoal/10 px-4 sm:px-5 py-3">
+        <div className="bg-card border-t border-ink-charcoal/10 px-4 sm:px-5 py-3">
           <ul className="space-y-1.5">
             {summary.map((b) => {
               const Icon = b.icon;

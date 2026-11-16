@@ -19,13 +19,18 @@ import { useI18n } from '@/lib/i18n';
 //   - No Main Event: "start – end · (N days)" with bold duration
 // The Star lives in the metadata row, NOT next to the gathering name.
 // See GatheringMetaLine for the full structure and truncation rules.
-export default function GatheringCard({ gathering, dateLabel, meta, role, people, to }) {
+export default function GatheringCard({ gathering, dateLabel, meta, role, people = [], to }) {
   const { t } = useI18n();
   const g = gathering;
+  // Two avatar groups: everyone who takes part (owner, admin, member) stays
+  // together on the left; viewers are a separate, more muted group set apart to
+  // their right — near the right side but never flush with the card edge.
+  const members = people.filter((p) => p.role !== 'viewer');
+  const viewers = people.filter((p) => p.role === 'viewer');
   return (
     <Link
       to={to}
-      className="group relative block rounded-2xl overflow-hidden h-[155px] border border-ink-charcoal/15 hover:-translate-y-1 transition-transform duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
+      className="group relative flex flex-col w-full rounded-2xl overflow-hidden min-h-[155px] border border-ink-charcoal/15 hover:-translate-y-1 transition-transform duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
       style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.12)' }}
     >
       {g.cover_image ? (
@@ -36,7 +41,7 @@ export default function GatheringCard({ gathering, dateLabel, meta, role, people
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-br from-ink-scrim/90 via-ink-scrim/55 to-ink-scrim/25" />
-      <div className="relative h-full p-4 flex flex-col justify-between">
+      <div className="relative flex-1 p-4 flex flex-col justify-between">
         <div className="flex items-start justify-between gap-2">
           {dateLabel && <span className="text-white/90 text-xs font-semibold">{dateLabel}</span>}
           {role && (
@@ -51,7 +56,15 @@ export default function GatheringCard({ gathering, dateLabel, meta, role, people
             <GatheringMetaLine meta={meta} />
           </div>
           <div className="flex items-center mt-2.5">
-            <AvatarStack people={people} max={4} size="xs" />
+            <AvatarStack people={members} max={4} size="xs" />
+            {viewers.length > 0 && (
+              <div className="flex items-center gap-1.5 ml-auto mr-4 pl-2">
+                <span aria-hidden="true" className="h-4 w-px bg-white/30" />
+                <div className="opacity-80">
+                  <AvatarStack people={viewers} max={2} size="xs" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
