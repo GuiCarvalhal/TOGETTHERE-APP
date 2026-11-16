@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import StickyBar from '@/components/tt/StickyBar';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
+import { goBack } from '@/lib/goBack';
 
 // Standard account-area action bar: pinned directly under the app header
 // (StickyBar's shared offset), orange Back on the left and an optional
@@ -18,8 +19,8 @@ export default function AccountAreaBar({ children }) {
       <Button
         variant="default"
         size="icon"
-        onClick={() => navigate('/account')}
-        aria-label={t('account.account')}
+        onClick={() => goBack(navigate, '/account')}
+        aria-label={t('common.back')}
         className="shrink-0"
       >
         <ArrowLeft />

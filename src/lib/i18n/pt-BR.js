@@ -1325,6 +1325,8 @@ export const ptBR = {
 
   detailActionBar: {
     backToJourney: 'Voltar ao roteiro',
+    backToPrevious: 'Voltar',
+    openGathering: 'Abrir encontro',
     edit: 'Editar',
     delete: 'Excluir',
   },

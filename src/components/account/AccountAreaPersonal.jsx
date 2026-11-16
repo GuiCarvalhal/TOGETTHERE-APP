@@ -9,6 +9,7 @@ import { UserRound } from 'lucide-react';
 import AccountAreaHeader from '@/components/account/AccountAreaHeader';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n';
+import { goBack } from '@/lib/goBack';
 
 // Personal info area of the account flow. Reads and writes ONLY the signed-in
 // user's own global profile (getProfile / updateMe through OwnProfileEdit), with
@@ -52,7 +53,7 @@ export default function AccountAreaPersonal() {
   return (
     <>
       <ProfileActionBar
-        onBack={() => navigate('/account')}
+        onBack={() => goBack(navigate, '/account')}
         isOwner
         editing={editing}
         onEdit={() => setEditing(true)}

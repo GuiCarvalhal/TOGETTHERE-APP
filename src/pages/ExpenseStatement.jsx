@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useI18n } from '@/lib/i18n';
+import { goBack } from '@/lib/goBack';
 import { isParticipant } from '@/lib/gatheringHelpers';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,7 +75,7 @@ export default function ExpenseStatement() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
-        <button onClick={() => navigate(-1)} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground"><ChevronLeft className="w-5 h-5" /></button>
+        <button onClick={() => goBack(navigate, `/gathering/${id}/expenses`)} aria-label={t('common.back')} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground"><ChevronLeft className="w-5 h-5" /></button>
         <h1 className="font-display text-xl font-bold text-foreground">{t('expenseStatement.statement')}</h1>
       </div>
 

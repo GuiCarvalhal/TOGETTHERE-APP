@@ -5,12 +5,13 @@ import { buildBadgeState } from '@/lib/achievements/badges';
 import { countryName, flagEmoji } from '@/lib/passport';
 import { useI18n } from '@/lib/i18n';
 
-// Footer of the profile box: the latest stamps and awards as an overlapping
-// avatar strip (same language as the member avatars), with a +N chip when there
-// are more than fit. Everything is derived from the passport + achievements
+// Footer of the profile box: two independent lists side by side — the latest
+// stamps on the left, the awards on the right — each under its own section
+// title. Stamps and awards are different collections: they are never merged
+// into one strip. Everything is derived from the passport + achievements
 // payload the box already loaded.
 const SEEN_KEY = 'tt-pa-seen-v1';
-const MAX_CIRCLES = 4;
+const MAX_PER_COLUMN = 3;
 
 function readSeen() {
   try {
@@ -26,6 +27,41 @@ function readSeen() {
 
 function writeSeen(value) {
   try { localStorage.setItem(SEEN_KEY, JSON.stringify(value)); } catch { /* ignore */ }
+}
+
+function Token({ item }) {
+  return (
+    <span
+      title={item.title}
+      className="grid place-items-center w-9 h-9 rounded-full ring-2 ring-card bg-cream-pale border border-ink-charcoal/20 text-terra-deep shrink-0"
+    >
+      {item.glyph}
+    </span>
+  );
+}
+
+function Extra({ count }) {
+  if (count <= 0) return null;
+  return (
+    <span className="grid place-items-center w-9 h-9 rounded-full ring-2 ring-card bg-cream-pale border border-ink-charcoal/15 text-[0.625rem] font-semibold text-ink-deep shrink-0">
+      +{count}
+    </span>
+  );
+}
+
+function Column({ title, meta, items, total }) {
+  return (
+    <div className="min-w-0 px-4 sm:px-5 py-3.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="tt-label text-ink-deep/40 truncate">{title}</p>
+        <p className="text-[0.625rem] font-semibold text-ink-deep/55 shrink-0">{meta}</p>
+      </div>
+      <div className="flex items-center -space-x-2 mt-2.5 min-w-0">
+        {items.map((item) => <Token key={item.key} item={item} />)}
+        <Extra count={total - items.length} />
+      </div>
+    </div>
+  );
 }
 
 export default function PassportAwardsSummary({ data }) {
@@ -86,47 +122,31 @@ export default function PassportAwardsSummary({ data }) {
       };
     });
 
-  const shown = [...stampItems.slice(0, 3), ...awardItems.slice(0, 2)].slice(0, MAX_CIRCLES);
-  const extra = visited.length + state.unlocked.length - shown.length;
-
   return (
     <Link
       to="/account/passport-awards"
       aria-label={t('passportAwards.open')}
-      className="block border-t border-ink-charcoal/10 px-4 sm:px-5 py-3.5 transition-colors hover:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="block border-t border-ink-charcoal/10 transition-colors hover:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 px-4 sm:px-5 pt-3.5">
         <p className="tt-label text-ink-deep/40">{t('passportAwards.label')}</p>
         {celebrating && <Sparkles className="w-3.5 h-3.5 text-terra-deep" />}
         <ChevronRight className="w-4 h-4 text-ink-deep/30 ml-auto shrink-0" />
       </div>
 
-      <div className="flex items-center justify-between gap-3 mt-2.5">
-        <div className="flex items-center -space-x-2 min-w-0">
-          {shown.map((item) => (
-            <span
-              key={item.key}
-              title={item.title}
-              className="grid place-items-center w-9 h-9 rounded-full ring-2 ring-card bg-cream-pale border border-ink-charcoal/20 text-terra-deep shrink-0"
-            >
-              {item.glyph}
-            </span>
-          ))}
-          {extra > 0 && (
-            <span className="grid place-items-center w-9 h-9 rounded-full ring-2 ring-card bg-cream-pale border border-ink-charcoal/15 text-[0.625rem] font-semibold text-ink-deep shrink-0">
-              +{extra}
-            </span>
-          )}
-        </div>
-
-        <div className="text-right min-w-0">
-          <p className="text-xs font-semibold text-ink-deep truncate">
-            {t('passportAwards.countries', { count: stamps })}
-          </p>
-          <p className="text-[0.625rem] text-ink-deep/55 truncate">
-            {t('passportAwards.awardsProgress', { unlocked: awards, total: state.total })}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 divide-x divide-ink-charcoal/10">
+        <Column
+          title={t('passportAwards.tabPassport')}
+          meta={t('passportAwards.countries', { count: stamps })}
+          items={stampItems.slice(0, MAX_PER_COLUMN)}
+          total={stampItems.length}
+        />
+        <Column
+          title={t('passportAwards.tabAwards')}
+          meta={`${awards}/${state.total}`}
+          items={awardItems.slice(0, MAX_PER_COLUMN)}
+          total={awardItems.length}
+        />
       </div>
     </Link>
   );

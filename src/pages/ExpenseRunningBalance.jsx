@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useI18n } from '@/lib/i18n';
+import { goBack } from '@/lib/goBack';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import AvatarStack from '@/components/tt/AvatarStack';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
@@ -44,7 +45,7 @@ export default function ExpenseRunningBalance() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
-        <button onClick={() => navigate(-1)} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground"><ChevronLeft className="w-5 h-5" /></button>
+        <button onClick={() => goBack(navigate, `/gathering/${id}/expenses`)} aria-label={t('common.back')} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground"><ChevronLeft className="w-5 h-5" /></button>
         <h1 className="font-display text-xl font-bold text-foreground">{t('expenseBalance.runningBalance')}</h1>
         <div className="ml-auto"><CurrencySelect value={baseCurrency} onChange={changeBaseCurrency} options={currencyOptions} triggerClass="w-44 h-9" /></div>
       </div>

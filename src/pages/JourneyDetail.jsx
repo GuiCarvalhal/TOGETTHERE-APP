@@ -142,6 +142,10 @@ export default function JourneyDetail() {
     else setEditing(true);
   };
 
+  // Straight to this item's gathering: Back only retraces the history, which is
+  // not always the gathering's journey (e.g. arriving from Home's up-next card).
+  const openGathering = () => navigate(`/gathering/${gatheringId}/journey`);
+
   const back = () => {
     // Return to the previous page when there's browser history (e.g. coming
     // from Home's "Up next" card or the Journey list). Fall back to the
@@ -153,7 +157,7 @@ export default function JourneyDetail() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <DetailActionBar onBack={back} />
+        <DetailActionBar onBack={back} onOpenGathering={openGathering} />
         <div className="tt-card-hairline p-4 space-y-4">
           <Skeleton className="h-12 w-12 rounded-xl" />
           <Skeleton className="h-7 w-2/3" tone="cream" />
@@ -169,7 +173,7 @@ export default function JourneyDetail() {
   if (error || !item) {
     return (
       <div className="space-y-4">
-        <DetailActionBar onBack={back} />
+        <DetailActionBar onBack={back} onOpenGathering={openGathering} />
         <div className="tt-card-hairline p-10 text-center max-w-md mx-auto">
           <Compass className="w-10 h-10 text-terra mx-auto mb-4" />
           <p className="font-display text-2xl mb-2 text-ink-deep">{t('journeyDetail.segmentNotFound')}</p>
@@ -200,6 +204,7 @@ export default function JourneyDetail() {
     <div>
       <DetailActionBar
         onBack={back}
+        onOpenGathering={openGathering}
         canEdit={canEdit}
         canDelete={canDelete}
         onEdit={onEdit}

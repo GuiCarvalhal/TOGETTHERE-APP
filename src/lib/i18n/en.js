@@ -1340,6 +1340,8 @@ export const en = {
 
   detailActionBar: {
     backToJourney: 'Back to journey',
+    backToPrevious: 'Back',
+    openGathering: 'Open gathering',
     edit: 'Edit',
     delete: 'Delete',
   },

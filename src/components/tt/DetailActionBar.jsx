@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Route, Trash2, Loader2 } from 'lucide-react';
 import StickyBar from '@/components/tt/StickyBar';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
@@ -12,14 +12,23 @@ import { useI18n } from '@/lib/i18n';
 //  - Edit: Pencil + "Edit" label, secondary (neutral filled).
 //  - Delete: icon-only trash, destructive (solid red) — compact sticky bar
 //    exception. Keeps its confirmation dialog (caller's onDelete).
-export default function DetailActionBar({ onBack, canEdit, canDelete, onEdit, onDelete, deleting, actions, backDisabled }) {
+export default function DetailActionBar({ onBack, onOpenGathering, canEdit, canDelete, onEdit, onDelete, deleting, actions, backDisabled }) {
   const { t } = useI18n();
   const showActions = actions || canEdit || canDelete;
   return (
     <StickyBar>
-      <Button variant="default" size="icon" onClick={onBack} disabled={backDisabled} aria-label={t('detailActionBar.backToJourney')} className="shrink-0">
+      <Button variant="default" size="icon" onClick={onBack} disabled={backDisabled} aria-label={t('detailActionBar.backToPrevious')} className="shrink-0">
         <ArrowLeft />
       </Button>
+
+      {/* Straight to the gathering this item belongs to — Back only retraces the
+          history, which is not always the gathering's journey. */}
+      {onOpenGathering && (
+        <Button variant="secondary" size="sm" onClick={onOpenGathering} aria-label={t('detailActionBar.openGathering')} className="shrink-0">
+          <Route />
+          <span className="hidden sm:inline">{t('detailActionBar.openGathering')}</span>
+        </Button>
+      )}
 
       {showActions && (
         <div className="ml-auto flex items-center gap-2 shrink-0">

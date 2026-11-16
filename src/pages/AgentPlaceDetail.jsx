@@ -10,6 +10,7 @@ import Skeleton from '@/components/tt/Skeleton';
 import SegmentMap from '@/components/journey/SegmentMap';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useAgentPlacePhoto } from '@/lib/useAgentPlacePhoto';
+import { goBack } from '@/lib/goBack';
 import { ArrowLeft, Plus, Check, Star, MapPin, Clock, Phone, Globe } from 'lucide-react';
 
 // Google Places price-level enum -> display label.
@@ -92,7 +93,7 @@ export default function AgentPlaceDetail() {
     return () => { active = false; };
   }, [gatheringId, place?.name]);
 
-  const back = () => navigate(-1);
+  const back = () => goBack(navigate, `/gathering/${gatheringId}/agent`);
 
   if (!place) {
     return (
