@@ -95,18 +95,31 @@ export default async function (req) {
         .map((g: any) => [g.id, { id: g.id, name: g.name || '', date: dayOf(g.start_date) }]),
     );
 
-    // Segments the user is personally on. When the segment has an attendee list,
-    // that list decides: someone else's side trip stamps nothing for them. When
-    // it has none (segments migrated in from the previous app), the segment is
-    // the group's — but only if it carries no real app user as its owner, so a
-    // member's own segment still never stamps anyone else.
+    // Segments the user is personally on. A stamp comes from an ITEM, never from
+    // mere gathering membership: a companion's own flight stamps nothing for
+    // anyone else on the same gathering.
+    //   1. the segment's creator is on it — either as a user id or, on rows
+    //      migrated/imported from the previous app, as an e-mail; both forms are
+    //      compared lowercased. Matching only the id used to treat every other
+    //      member's segment as the whole group's, which is how a companion's
+    //      Dublin flight got stamped on someone who flew from Miami;
+    //   2. otherwise the user must be in attendee_user_ids (ids and e-mails both);
+    //   3. never from gathering membership alone: being on the trip's roster is
+    //      not being on its segments. owner_user_id is deliberately unused — it
+    //      holds the GATHERING's owner, not the segment's.
     const isRealUserId = (v: any) => /^[0-9a-f]{24}$/i.test(String(v || ''));
+    const myKeys = new Set([String(user.id || ''), email].filter(Boolean));
+    const ownerKeyOf = (item: any) => String(item.owner_id || '').trim().toLowerCase();
+    const countryCodesOf = (item: any) =>
+      [countryOf(item.place), countryOf(item.from_place), countryOf(item.to_place)].filter(Boolean);
     const isOnItem = (item: any) => {
-      const attendees = Array.isArray(item.attendee_user_ids) ? item.attendee_user_ids : [];
-      if (attendees.length) return attendees.includes(user.id);
-      const owner = String(item.owner_id || '');
-      if (!owner) return true;
-      return owner === user.id || !isRealUserId(owner);
+      // The segment's creator always travels on it.
+      if (myKeys.has(ownerKeyOf(item))) return true;
+      // Legacy rows sometimes store the owner as an e-mail, and attendee lists
+      // mix user ids with e-mails — both forms are compared, lowercased.
+      return (Array.isArray(item.attendee_user_ids) ? item.attendee_user_ids : [])
+        .map((v: any) => String(v || '').trim().toLowerCase())
+        .some((v: string) => v && myKeys.has(v));
     };
 
     // ── Who was there, per gathering ────────────────────────────────────
@@ -178,9 +191,7 @@ export default async function (req) {
         : [...(companionIdsByTrip.get(item.gathering_id) || [])];
 
       const day = dayOf(item.start_datetime) || dayOf(item.end_datetime);
-      const codes = new Set(
-        [countryOf(item.place), countryOf(item.from_place), countryOf(item.to_place)].filter(Boolean),
-      );
+      const codes = new Set(countryCodesOf(item));
       for (const code of codes) {
         const entry: any = stamped.get(code) || { code, firstVisit: '', trips: new Map(), companions: new Set(), manual: false };
         if (day && (!entry.firstVisit || day < entry.firstVisit)) entry.firstVisit = day;
