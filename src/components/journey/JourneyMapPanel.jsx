@@ -1,7 +1,7 @@
 import React from 'react';
-import { MapPin, Loader2, WifiOff } from 'lucide-react';
+import { MapPin, Loader2, WifiOff, ExternalLink } from 'lucide-react';
 import JourneyRouteMap from '@/components/journey/JourneyRouteMap';
-import { itemWaypoints } from '@/lib/journeyMap';
+import { itemWaypoints, googleMapsRouteUrl } from '@/lib/journeyMap';
 import { useConnectivity } from '@/lib/useConnectivity';
 import { useI18n } from '@/lib/i18n';
 
@@ -35,6 +35,8 @@ export default function JourneyMapPanel({
   const mappableCount = items.filter((it) => itemWaypoints(it).length > 0).length;
   const unmappedCount = items.length - mappableCount;
   const hasAnything = mappableCount > 0 || suggestions.length > 0 || suggestionsPending > 0 || itemsPending > 0;
+  // Hand-off to Google Maps with exactly the stops this map draws.
+  const mapsUrl = googleMapsRouteUrl(items);
 
   // Consolidated into one compact strip instead of stacked paragraphs.
   const notes = [];
@@ -67,8 +69,9 @@ export default function JourneyMapPanel({
             heightClass={heightClass}
             highlightItemId={highlightItemId}
           />
-          {notes.length > 0 && (
-            <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-ink-charcoal/10 px-3.5 py-2">
+          {(notes.length > 0 || mapsUrl) && (
+            <div className="shrink-0 flex items-center justify-between gap-3 border-t border-ink-charcoal/10 px-3.5 py-2">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
               {notes.map((n) => (
                 <p key={n.key} className="text-[11px] text-ink-deep/55 flex items-center gap-1">
                   {n.spin
@@ -79,6 +82,18 @@ export default function JourneyMapPanel({
                   {n.text}
                 </p>
               ))}
+              </div>
+              {mapsUrl && (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-terra-deep hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                  {t('journey.openInGoogleMaps')}
+                </a>
+              )}
             </div>
           )}
         </>

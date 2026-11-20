@@ -12,6 +12,7 @@ import JourneyCard from '@/components/tt/cards/JourneyCard';
 import JourneyDayHeader from '@/components/journey/JourneyDayHeader';
 import JourneyLegRow from '@/components/journey/JourneyLegRow';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import FullscreenMapLayer from '@/components/journey/FullscreenMapLayer';
 import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
 import { useDeviceLayout } from '@/hooks/useDeviceLayout';
@@ -63,6 +64,10 @@ export default function GatheringJourney() {
   // route map (never a zoom/fit change — the overview stays put). Phones and
   // portrait tablets have no hover, so it stays null there.
   const [hoverId, setHoverId] = useState(null);
+  // Route map expanded to the whole content area: the app header and the page
+  // toolbar stay in place, the map fills everything below them (over the
+  // floating bottom tab bar). Same toolbar button collapses it.
+  const [mapFull, setMapFull] = useState(false);
   const layout = useDeviceLayout();
   const isDesktop = layout === 'desktop';
   // Measured height of the pinned toolbar, so the desktop map layer pins with
@@ -432,8 +437,9 @@ export default function GatheringJourney() {
   // pinned route-map layer with hover highlight; map OFF -> one row per item
   // (card 1/3 + extension 2/3 sharing the row height, aligned 1:1).
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={isDesktop ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} onRefreshRoutes={refreshRoutes} refreshingRoutes={routesLoading} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
-      {isDesktop && effectiveMapOpen ? (
+    <>
+    <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={(v) => { setMapOpen(v); if (!v) setMapFull(false); }} showMapToggle={!isViewer} showMapFullToggle={!isViewer && effectiveMapOpen} mapFull={mapFull} onToggleMapFull={() => setMapFull((v) => !v)} showImagesToggle={!isViewer} mapRow={(isDesktop || mapFull) ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} onRefreshRoutes={refreshRoutes} refreshingRoutes={routesLoading} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+      {mapFull ? null : isDesktop && effectiveMapOpen ? (
         // Map ON. The card list stays a single column on the left and the map
         // becomes the right 2/3 panel, pinned under the measured toolbar with no
         // scroll of its own; only the card column scrolls. Hovering a card
@@ -491,5 +497,17 @@ export default function GatheringJourney() {
         emptyLabel={t('recentlyDeleted.journeyEmpty')}
       />
     </PageToolbar>
+
+    <FullscreenMapLayer
+      open={mapFull}
+      items={filteredMapItems}
+      gatheringId={gatheringId}
+      itemsPending={itemCoordsPending}
+      routeLegs={mapRoutes}
+      routesLoading={routesLoading}
+      routesStale={routesStale}
+      highlightItemId={hoverId}
+    />
+    </>
   );
 }

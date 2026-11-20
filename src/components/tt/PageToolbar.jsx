@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image as ImageIcon, ImageOff, Plus, Map, BarChart3, RefreshCw } from 'lucide-react';
+import { Image as ImageIcon, ImageOff, Plus, Map, BarChart3, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import StickyBar from '@/components/tt/StickyBar';
 import ScopeSwitcher from '@/components/tt/ScopeSwitcher';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ import { useI18n } from '@/lib/i18n';
 // `switcher` (optional): replaces the default ScopeSwitcher on the left — used
 // by the Members page for its Summary/Details toggle, and by the Journey page
 // for the viewer's member-avatar filter (replaces Mine/Group).
-export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, graphOpen, setGraphOpen, showGraphToggle = false, graphRow = null, onAdd, canAdd, addLabel = 'item', action, filterRow, hideBar = false, switcher, onRefreshRoutes, refreshingRoutes = false, children }) {
+export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, graphOpen, setGraphOpen, showGraphToggle = false, graphRow = null, onAdd, canAdd, addLabel = 'item', action, filterRow, hideBar = false, switcher, onRefreshRoutes, refreshingRoutes = false, mapFull = false, onToggleMapFull, showMapFullToggle = false, children }) {
   const { t } = useI18n();
   if (hideBar) {
     return <div className="mt-5">{children}</div>;
@@ -69,6 +69,21 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
               className={mapOpen ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
             >
               <Map />
+            </Button>
+          )}
+          {/* Journey only: expand the open route map to the whole content area
+              (same button collapses it again). */}
+          {showMapFullToggle && (
+            <Button
+              variant={mapFull ? 'default' : 'outline'}
+              size="sm"
+              onClick={onToggleMapFull}
+              aria-pressed={mapFull}
+              aria-label={mapFull ? t('toolbar.exitFullscreenMap') : t('toolbar.fullscreenMap')}
+              title={mapFull ? t('toolbar.exitFullscreenMap') : t('toolbar.fullscreenMap')}
+              className={mapFull ? 'bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}
+            >
+              {mapFull ? <Minimize2 /> : <Maximize2 />}
             </Button>
           )}
           {showGraphToggle && (

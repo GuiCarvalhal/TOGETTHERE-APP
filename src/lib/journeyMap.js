@@ -153,3 +153,42 @@ export function suggestionRouteNumbers(suggestions) {
   });
   return numbers;
 }
+
+// Ordered, de-duplicated stops of a journey (chronological, one point per
+// mapped place) — the sequence the route map draws, reused for the Google Maps
+// hand-off so both describe the exact same trip.
+export function journeyStops(items) {
+  const sorted = [...(items || [])].sort(
+    (a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0)
+  );
+  const stops = [];
+  sorted.forEach((it) => {
+    itemWaypoints(it).forEach((p) => {
+      const last = stops[stops.length - 1];
+      if (last && Math.abs(last.lat - p.lat) < 1e-6 && Math.abs(last.lng - p.lng) < 1e-6) return;
+      stops.push({ lat: p.lat, lng: p.lng });
+    });
+  });
+  return stops;
+}
+
+// Google's documented maximum for the Maps URLs directions hand-off.
+const MAPS_MAX_WAYPOINTS = 9;
+
+// Deep link that opens the journey's stops in Google Maps with the route
+// already traced, so the trip can be explored there. Returns null when there is
+// nothing to route (fewer than two distinct stops).
+export function googleMapsRouteUrl(items) {
+  const stops = journeyStops(items);
+  if (stops.length < 2) return null;
+  const at = (p) => `${p.lat},${p.lng}`;
+  const params = new URLSearchParams({
+    api: '1',
+    origin: at(stops[0]),
+    destination: at(stops[stops.length - 1]),
+    travelmode: 'driving',
+  });
+  const middle = stops.slice(1, -1).slice(0, MAPS_MAX_WAYPOINTS);
+  if (middle.length > 0) params.set('waypoints', middle.map(at).join('|'));
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
