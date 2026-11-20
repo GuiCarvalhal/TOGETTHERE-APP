@@ -82,7 +82,7 @@ export default function FinancialTransactionList({
 
       {loading ? (
         <div className="space-y-2">
-          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
         </div>
       ) : !visible.length ? (
         <div className="tt-card p-6 text-center">
@@ -96,60 +96,83 @@ export default function FinancialTransactionList({
             const gatheringName = gatheringNames?.[tx.gathering_suggestion_id] || '';
             const canCreate = !isCredit && tx.review_status !== 'linked' && tx.review_status !== 'ignored';
             return (
-              <div key={tx.id} className="tt-card-flat p-3 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ink-deep truncate">{tx.merchant || tx.description}</p>
-                    <p className="text-[11px] text-ink-deep/55 truncate">
-                      {fmt.formatDate(tx.date)} ···· {tx.account_mask}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
+              <div key={tx.id} className="tt-card-flat px-3 py-2 flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-ink-deep truncate">{tx.merchant || tx.description}</p>
+                  <p className="text-[11px] text-ink-deep/55 truncate">
+                    {fmt.formatDate(tx.date)} ···· {tx.account_mask} · {t(`expenseCategories.${tx.category_suggestion || 'other'}`)}
+                    {gatheringName ? ` · ${gatheringName}` : ''}
+                  </p>
+                </div>
+
+                <div className="shrink-0 flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-1.5">
+                    {tx.status === 'pending' && (
+                      <span className="tt-stamp border-terra/30 text-terra-deep bg-terra/10 px-1.5 py-0 text-[0.5625rem]">
+                        {t('finance.pendingChip')}
+                      </span>
+                    )}
+                    {isCredit && (
+                      <span className="tt-stamp border-emerald-600/35 text-emerald-700 bg-emerald-500/10 px-1.5 py-0 text-[0.5625rem]" title={t('finance.refundHint')}>
+                        {t('finance.refundChip')}
+                      </span>
+                    )}
                     <p className={`text-sm font-bold ${isCredit ? 'text-emerald-600' : 'text-ink-deep'}`}>
                       {isCredit ? '+' : '−'}{fmt.formatCurrency(tx.amount, tx.currency)}
                     </p>
-                    {tx.status === 'pending' && (
-                      <span className="tt-stamp border-terra/30 text-terra-deep bg-terra/10">{t('finance.pendingChip')}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {canCreate && (
+                      <Button
+                        size="sm"
+                        className="h-7 w-7 px-0"
+                        onClick={() => onCreateExpense(tx)}
+                        disabled={busyId === tx.id}
+                        title={t('finance.createExpense')}
+                        aria-label={t('finance.createExpense')}
+                      >
+                        <Receipt />
+                      </Button>
+                    )}
+                    {tx.review_status === 'linked' ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 px-0"
+                        onClick={() => act(tx.id, 'reset')}
+                        disabled={busyId === tx.id}
+                        title={t('finance.unlink')}
+                        aria-label={t('finance.unlink')}
+                      >
+                        {busyId === tx.id ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+                      </Button>
+                    ) : tx.review_status === 'ignored' ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 w-7 px-0"
+                        onClick={() => act(tx.id, 'reset')}
+                        disabled={busyId === tx.id}
+                        title={t('finance.restore')}
+                        aria-label={t('finance.restore')}
+                      >
+                        {busyId === tx.id ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 px-0"
+                        onClick={() => act(tx.id, 'ignore')}
+                        disabled={busyId === tx.id}
+                        title={t('finance.ignore')}
+                        aria-label={t('finance.ignore')}
+                      >
+                        {busyId === tx.id ? <Loader2 className="animate-spin" /> : <Ban />}
+                      </Button>
                     )}
                   </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {isCredit && (
-                    <span className="tt-stamp border-emerald-600/35 text-emerald-700 bg-emerald-500/10" title={t('finance.refundHint')}>
-                      {t('finance.refundChip')}
-                    </span>
-                  )}
-                  <span className="tt-stamp border-ink-charcoal/25 text-ink-deep/70">
-                    {t(`expenseCategories.${tx.category_suggestion || 'other'}`)}
-                  </span>
-                  {gatheringName && (
-                    <span className="tt-stamp border-terra/30 text-terra-deep">{gatheringName}</span>
-                  )}
-                  <span className="tt-stamp border-ink-charcoal/25 text-ink-deep/60">
-                    {t(`finance.review_${tx.review_status}`)}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {canCreate && (
-                    <Button size="sm" onClick={() => onCreateExpense(tx)} disabled={busyId === tx.id}>
-                      <Receipt /> {t('finance.createExpense')}
-                    </Button>
-                  )}
-                  {tx.review_status === 'linked' ? (
-                    <Button size="sm" variant="ghost" onClick={() => act(tx.id, 'reset')} disabled={busyId === tx.id}>
-                      {busyId === tx.id ? <Loader2 className="animate-spin" /> : <RotateCcw />} {t('finance.unlink')}
-                    </Button>
-                  ) : tx.review_status === 'ignored' ? (
-                    <Button size="sm" variant="secondary" onClick={() => act(tx.id, 'reset')} disabled={busyId === tx.id}>
-                      {busyId === tx.id ? <Loader2 className="animate-spin" /> : <RotateCcw />} {t('finance.restore')}
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="ghost" onClick={() => act(tx.id, 'ignore')} disabled={busyId === tx.id}>
-                      {busyId === tx.id ? <Loader2 className="animate-spin" /> : <Ban />} {t('finance.ignore')}
-                    </Button>
-                  )}
                 </div>
               </div>
             );
