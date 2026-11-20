@@ -27,7 +27,7 @@ export default function MemberDetailsCard({ member, family, isSelf, gatheringId,
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
-      className={`rounded-2xl border border-ink-charcoal/15 bg-card p-3 tt-shadow-float cursor-pointer hover:border-terra/30 transition-colors ${member.role === 'viewer' ? 'border-dashed' : ''}`}
+      className={`rounded-2xl border border-ink-charcoal/15 bg-card p-3 cursor-pointer hover:border-terra/30 transition-colors ${member.role === 'viewer' ? 'border-dashed' : ''}`}
     >
       <div className="flex items-center gap-3">
         <MemberAvatar member={member} size="sm" />

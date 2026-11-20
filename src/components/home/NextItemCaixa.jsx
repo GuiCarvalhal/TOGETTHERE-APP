@@ -3,8 +3,10 @@ import { format, differenceInCalendarDays } from 'date-fns';
 import JourneyCard from '@/components/tt/cards/JourneyCard';
 import NextBriefCard from '@/components/home/NextBriefCard';
 import HeroSkeleton from '@/components/home/HeroSkeleton';
+import SegmentMap from '@/components/journey/SegmentMap';
 import { journeyIcon } from '@/lib/journeyIcons';
 import { JOURNEY_TYPES } from '@/lib/gatheringHelpers';
+import { useDeviceLayout } from '@/hooks/useDeviceLayout';
 import { useI18n } from '@/lib/i18n';
 
 const TYPE_COLOR = Object.fromEntries(JOURNEY_TYPES.map((x) => [x.key, x.color]));
@@ -25,8 +27,15 @@ function timeLeft(ms, t) {
 // line, the featured segment card and the Next brief attached to it. That brief
 // keeps its own dedupe/intelligence behaviour (NextBriefCard); this box only
 // frames it. It knows nothing about the gatherings carousel below it.
+//
+// ONE box, two arrangements of the same content (the same split the Journey page
+// uses): on a desktop-width window the featured card sits on the left at its
+// standard height and the context panel (map + brief) sits on the right, inside
+// the same box; on phones and portrait tablets everything stays stacked in one
+// column, and the map is not even mounted, so nothing extra is fetched there.
 export default function NextItemCaixa({ next, people = [], loading = false, totalCount = 0 }) {
   const { t } = useI18n();
+  const desktop = useDeviceLayout() === 'desktop';
   const now = new Date();
   const item = next?.item;
 
@@ -58,6 +67,8 @@ export default function NextItemCaixa({ next, people = [], loading = false, tota
         ? t('home.tomorrow')
         : t('home.inDays', { count: days });
 
+  const mapQuery = item.location_name || item.location_to || item.location_from || item.title || '';
+
   return (
     <div className="tt-card-hairline p-3.5 sm:p-4">
       <p className="text-sm font-bold tracking-wide flex flex-wrap items-center gap-x-2 px-0.5 mb-3 min-w-0">
@@ -68,18 +79,34 @@ export default function NextItemCaixa({ next, people = [], loading = false, tota
         {absDate && <span className="text-ink-deep/75">{absDate}</span>}
       </p>
 
-      <JourneyCard
-        item={item}
-        leg={item.type === 'hotel' ? 'check-in' : undefined}
-        typeColor={TYPE_COLOR[item.type] || TYPE_COLOR.other}
-        icon={journeyIcon(item.type)}
-        participants={people}
-        showImages
-        embedded
-        to={`/gathering/${next.gatheringId}/journey/${item.id}`}
-      />
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-4 lg:items-start">
+        <div className="min-w-0">
+          <JourneyCard
+            item={item}
+            leg={item.type === 'hotel' ? 'check-in' : undefined}
+            typeColor={TYPE_COLOR[item.type] || TYPE_COLOR.other}
+            icon={journeyIcon(item.type)}
+            participants={people}
+            showImages
+            embedded
+            to={`/gathering/${next.gatheringId}/journey/${item.id}`}
+          />
+        </div>
 
-      <NextBriefCard next={next} />
+        <div className="mt-3 lg:mt-0 space-y-3 min-w-0">
+          {desktop && mapQuery && (
+            <SegmentMap
+              origin={item.from_place}
+              destination={item.to_place}
+              point={item.place}
+              query={mapQuery}
+              isFlight={item.type === 'flight'}
+              heightClass="h-40"
+            />
+          )}
+          <NextBriefCard next={next} />
+        </div>
+      </div>
     </div>
   );
 }

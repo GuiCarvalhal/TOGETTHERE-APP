@@ -53,7 +53,7 @@ function AgentSkeleton() {
       <Skeleton className="h-20 w-full" />
       <div className="space-y-3">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl border border-ink-charcoal/15 bg-card p-3 space-y-2 tt-shadow-float">
+          <div key={i} className="rounded-2xl border border-ink-charcoal/15 bg-card p-3 space-y-2">
             <div className="flex gap-2"><Skeleton className="h-4 w-16" tone="cream" /><Skeleton className="h-4 w-10" tone="cream" /></div>
             <Skeleton className="h-4 w-2/3" tone="cream" />
             <Skeleton className="h-3 w-full" tone="cream" />

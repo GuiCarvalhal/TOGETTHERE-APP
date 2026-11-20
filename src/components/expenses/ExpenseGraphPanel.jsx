@@ -88,7 +88,7 @@ function PieChartMini({ data, colors, currency, fmt, t }) {
                 const d = payload[0].payload;
                 const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
                 return (
-                  <div className="rounded-lg border border-ink-charcoal/15 bg-card px-2.5 py-1.5 shadow-md text-xs">
+                  <div className="rounded-lg border border-ink-charcoal/15 bg-card px-2.5 py-1.5 text-xs">
                     <p className="font-semibold text-ink-deep">{d.name}</p>
                     <p className="text-ink-deep/60">{fmt.formatCurrency(d.value, currency)}</p>
                     <p className="text-ink-deep/45">{t('expenseGraph.pctOfTotal', { pct })}</p>

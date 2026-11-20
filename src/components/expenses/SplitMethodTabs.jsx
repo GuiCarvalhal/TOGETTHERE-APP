@@ -18,7 +18,7 @@ export default function SplitMethodTabs({ value, onChange }) {
             key={m.key}
             type="button"
             onClick={() => onChange(m.key)}
-            className={`flex-1 min-h-[44px] px-2 rounded-full text-xs font-semibold transition-colors ${active ? 'bg-terra text-cream shadow-sm' : 'text-ink-deep/60 hover:text-ink-deep'}`}
+            className={`flex-1 min-h-[44px] px-2 rounded-full text-xs font-semibold transition-colors ${active ? 'bg-terra text-cream' : 'text-ink-deep/60 hover:text-ink-deep'}`}
           >
             {m.label}
           </button>

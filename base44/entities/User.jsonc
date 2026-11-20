@@ -67,6 +67,24 @@
         "km"
       ],
       "description": "Preferred distance unit for the distances shown in the Journey timeline. Set from System Preferences via updateMe; when absent the default derives from the app language (English \u2192 mi, Portuguese \u2192 km). Durations are unaffected."
+    },
+    "home_layout": {
+      "type": "object",
+      "description": "Home customization: which boxes Home shows and in what order. { order: string[], hidden: string[] } where each key is one of next | gatherings | profile | imports. Set from System Preferences via updateMe; when absent (or partial) Home resolves the shipped default order with everything visible.",
+      "properties": {
+        "order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hidden": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

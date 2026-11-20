@@ -76,7 +76,7 @@ export default function NotificationSettings({ onesignal }) {
           {granted && <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-terra ring-2 ring-ink" />}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0 rounded-[1.25rem] border border-ink-charcoal/15 bg-popover text-popover-foreground tt-shadow-float">
+      <PopoverContent align="end" className="w-80 p-0 rounded-[1.25rem] border border-ink-charcoal/15 bg-popover text-popover-foreground">
         <div className="px-4 pt-4 pb-2 border-b border-ink-charcoal/10">
           <p className="font-display text-lg font-bold text-ink-deep">Notifications</p>
         </div>

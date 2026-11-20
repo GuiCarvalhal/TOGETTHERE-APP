@@ -17,7 +17,7 @@ export default function MemberRow({ member, gatheringId, isSelf, onOpen }) {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
-      className={`flex items-center gap-3 rounded-2xl border border-ink-charcoal/15 bg-card p-3 tt-shadow-float cursor-pointer hover:border-terra/30 transition-colors ${member.role === 'viewer' ? 'border-dashed' : ''}`}
+      className={`flex items-center gap-3 rounded-2xl border border-ink-charcoal/15 bg-card p-3 cursor-pointer hover:border-terra/30 transition-colors ${member.role === 'viewer' ? 'border-dashed' : ''}`}
     >
       <MemberAvatar member={member} size="sm" />
       <div className="min-w-0 flex-1">

@@ -121,7 +121,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSave
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">
             <MemberAvatar member={{ photo: form.photo, full_name: form.full_name }} size="xl" />
-            <label className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-terra text-cream flex items-center justify-center cursor-pointer shadow-md hover:bg-terra-deep transition-colors">
+            <label className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-terra text-cream flex items-center justify-center cursor-pointer hover:bg-terra-deep transition-colors">
               <Camera className="w-3.5 h-3.5" />
               <input type="file" accept="image/*" className="hidden" onChange={onPhotoChange} />
             </label>

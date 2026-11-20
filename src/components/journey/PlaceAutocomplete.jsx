@@ -127,7 +127,7 @@ export default function PlaceAutocomplete({ value, onText, onSelect, placeholder
       />
       {loading && <Loader2 className="w-3.5 h-3.5 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-ink-deep/40 pointer-events-none" />}
       {open && predictions.length > 0 && (
-        <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-xl border border-ink-charcoal/20 bg-card shadow-lg">
+        <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-xl border border-ink-charcoal/20 bg-card">
           {predictions.map((p, i) => (
             <button
               type="button"
@@ -146,7 +146,7 @@ export default function PlaceAutocomplete({ value, onText, onSelect, placeholder
         </div>
       )}
       {open && !loading && text.trim().length >= 2 && predictions.length === 0 && (
-        <div className="absolute z-50 left-0 right-0 mt-1 rounded-xl border border-ink-charcoal/20 bg-card shadow-lg px-3 py-2 text-xs text-ink-deep/60 flex items-center gap-1.5">
+        <div className="absolute z-50 left-0 right-0 mt-1 rounded-xl border border-ink-charcoal/20 bg-card px-3 py-2 text-xs text-ink-deep/60 flex items-center gap-1.5">
           <CornerDownLeft className="w-3.5 h-3.5 text-ink-deep/40" />
           No matches — keep “{text.trim()}” as typed.
         </div>

@@ -101,7 +101,7 @@ export default function PhotoCropEditor({ file, onConfirm, onCancel }) {
           ref={canvasRef}
           width={CANVAS_SIZE}
           height={CANVAS_SIZE}
-          className="w-[240px] h-[240px] rounded-full border-4 border-cream-pale shadow-lg"
+          className="w-[240px] h-[240px] rounded-full border-4 border-cream-pale"
         />
       </div>
 

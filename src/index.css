@@ -276,9 +276,10 @@
 
 @layer components {
   /* Editorial bento card — works in both themes via tokens */
+  /* Editorial bento card — FLAT. Depth is the hairline border plus the spacing
+     around it; there is no drop shadow anywhere in the app. */
   .tt-card {
     @apply bg-card text-card-foreground rounded-[1.25rem] border border-ink-charcoal/15;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   }
 
   /* Same cream card surface, NO drop shadow: separation comes from the hairline
@@ -334,9 +335,6 @@
   /* Neutral palette: softer elevation and a slightly tighter display rhythm.
      Kept in the utilities layer so they can override the component shadows
      (.tt-card, .tt-shadow-*) defined earlier in the cascade. */
-  .neutral .tt-card { box-shadow: 0 1px 2px hsl(var(--ink-scrim) / 0.06); }
-  .neutral .tt-shadow-float { box-shadow: 0 8px 22px hsl(var(--ink-scrim) / 0.1); }
-  .neutral .tt-shadow-soft { box-shadow: 0 4px 12px hsl(var(--ink-scrim) / 0.08); }
   .neutral .font-display { letter-spacing: -0.012em; }
 
   .font-display {
@@ -345,11 +343,11 @@
   }
   .tt-no-scrollbar::-webkit-scrollbar { display: none; }
   .tt-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  .tt-shadow-float {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-  }
+  /* Depth tokens are kept as names (surfaces reference them) but carry no
+     shadow: the flat system draws depth with borders and spacing only. */
+  .tt-shadow-float,
   .tt-shadow-soft {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+    box-shadow: none;
   }
   .tt-text-balance {
     text-wrap: balance;
@@ -385,4 +383,24 @@
   .tt-fab-safe { bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
   .tt-fab-over-tab { bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
   .tt-drawer-pb { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
+}
+
+/* ── FLAT SURFACE SYSTEM ──────────────────────────────────────────────────────
+   TOGETTHERE is flat: hierarchy comes from hairlines, borders and spacing,
+   never from a blur. This is the single guard that makes that true app-wide —
+   every Tailwind shadow utility (including the ones baked into the shadcn
+   primitives: dialogs, sheets, popovers, menus, toasts) resolves to nothing, so
+   no surface can reintroduce a shadow by accident.
+   It zeroes the `--tw-shadow` variable rather than `box-shadow` itself, because
+   the ring utilities are painted with the same property: overriding the whole
+   box-shadow would also erase every focus ring. Declared outside @layer so it
+   always wins over the generated utilities. */
+.shadow,
+.shadow-sm,
+.shadow-md,
+.shadow-lg,
+.shadow-xl,
+.shadow-2xl,
+.shadow-inner {
+  --tw-shadow: 0 0 #0000 !important;
 }

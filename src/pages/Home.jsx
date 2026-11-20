@@ -17,35 +17,15 @@ import { describeImportFailure } from '@/lib/importErrors';
 import { setInboxCount as publishInboxBadge } from '@/lib/inboxBadge';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from '@/components/ui/use-toast';
-
 // Shell of the last successful Home payload. A return visit paints the trips
 // immediately from here while the fresh payload loads behind it — the network is
 // still the source of truth, the cache only removes the empty first frame.
 // Inbox cards and counters are deliberately NOT cached: a resolved import must
-// never reappear, and those are cheap to wait for.
-const SHELL_KEY = 'tt-home-shell-v1';
-const SHELL_TTL = 2 * 60 * 1000;
-
-function readShellCache(userId) {
-  if (!userId) return null;
-  try {
-    const raw = sessionStorage.getItem(SHELL_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || parsed.userId !== userId) return null;
-    if (Date.now() - parsed.at > SHELL_TTL) return null;
-    return parsed.data;
-  } catch {
-    return null;
-  }
-}
-
-function writeShellCache(userId, data) {
-  if (!userId) return;
-  try {
-    sessionStorage.setItem(SHELL_KEY, JSON.stringify({ at: Date.now(), userId, data }));
-  } catch { /* ignore */ }
-}
+// never reappear, and those are cheap to wait for. Deleting or restoring a
+// segment invalidates it (see lib/homeShellCache), so a deleted segment can never
+// be painted back as NOW from a stale shell.
+import { readHomeShell, writeHomeShell } from '@/lib/homeShellCache';
+import { normalizeHomeLayout } from '@/lib/homeLayout';
 
 export default function Home() {
   const { t, fmt } = useI18n();
@@ -104,7 +84,7 @@ export default function Home() {
       setDeletedGatherings(data.deletedGatherings || []);
       setHasInbox((data.inboxConnections || []).length > 0);
       setLoadError(false);
-      writeShellCache(data.userId || user?.id, {
+      writeHomeShell(data.userId || user?.id, {
         gatherings: data.gatherings || [],
         memberships: data.memberships || [],
         previews: data.previews || {},
@@ -127,7 +107,7 @@ export default function Home() {
   // above replace it. Synchronous, so it lands in the same frame as the mount.
   useEffect(() => {
     if (hydratedRef.current) return;
-    const shell = readShellCache(user?.id);
+    const shell = readHomeShell(user?.id);
     if (!shell) return;
     hydratedRef.current = true;
     setGatherings(shell.gatherings || []);
@@ -234,6 +214,70 @@ export default function Home() {
     }
   }
 
+  // ── Home layout (per-user) ────────────────────────────────────────────────
+  // The boxes keep their own behaviour; this map only decides where each one is
+  // drawn. normalizeHomeLayout always returns a complete layout, so a user with
+  // no preference (or a legacy/partial one) gets the shipped defaults.
+  const layout = normalizeHomeLayout(user?.home_layout);
+  const HOME_BOXES = {
+    next: (
+      <NextItemCaixa
+        next={nextUpcoming}
+        people={nextUpcoming?.participants || []}
+        loading={loading}
+        totalCount={gatherings.length}
+      />
+    ),
+    gatherings: (
+      <GatheringsCaixa
+        loading={loading}
+        loadError={loadError}
+        onRetry={() => load()}
+        upcoming={upcomingAnnotated}
+        past={pastAnnotated}
+        filter={filter}
+        onFilterChange={setFilter}
+        roleOf={roleOf}
+        previews={previews}
+        totalCount={gatherings.length}
+        onNew={() => navigate('/gathering/new')}
+      />
+    ),
+    profile: (
+      <div className="max-w-md lg:max-w-3xl">
+        <ProfileCaixa user={user} hasInbox={hasInbox} />
+      </div>
+    ),
+    imports: pendingImports.length > 0 ? (
+      <div className="tt-card p-4 sm:p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Inbox className="w-4 h-4 text-terra-coral" />
+          <h3 className="font-display text-lg font-bold text-ink-deep">{t('home.pendingImportsTitle')}</h3>
+        </div>
+        <p className="text-sm text-ink-deep/65">{t('home.pendingImportsBody')}</p>
+        <div className="space-y-3">
+          {pendingImports.map((it) => {
+            const choice = importChoiceById[it.id];
+            return (
+              <PendingImportCard
+                key={it.id}
+                item={it}
+                gatherings={gatherings}
+                selectedId={gatherings.some((g) => g.id === choice) ? choice : ''}
+                onSelect={(v) => setImportChoiceById((cur) => ({ ...cur, [it.id]: v }))}
+                onRefresh={() => load({ silent: true })}
+                onCreateNew={() => setCreateForImportId(it.id)}
+                onConfirm={() => resolveImport(it.id, 'create')}
+                onDiscard={() => resolveImport(it.id, 'discard')}
+                busy={resolvingImportId === it.id}
+              />
+            );
+          })}
+        </div>
+      </div>
+    ) : null,
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Universal header */}
@@ -251,33 +295,15 @@ export default function Home() {
         </section>
       )}
 
-      {/* Two separate boxes, never merged:
-          BOX A — the current/next ITEM intelligence box (NOW/NEXT line, featured
-                  segment, Next brief). Its intelligence/dedupe behaviour is
-                  untouched by the trip list below it.
-          BOX B — the dedicated gatherings box (header + New, Upcoming/Past
-                  switch, carousel, short summary). */}
+      {/* The user's own order, minus the boxes they hid. Each box keeps its
+          behaviour; only its position and presence come from the preference.
+          The recovery row is not a box — it stays last and always available. */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-6 space-y-4">
-        <NextItemCaixa
-          next={nextUpcoming}
-          people={nextUpcoming?.participants || []}
-          loading={loading}
-          totalCount={gatherings.length}
-        />
-
-        <GatheringsCaixa
-          loading={loading}
-          loadError={loadError}
-          onRetry={() => load()}
-          upcoming={upcomingAnnotated}
-          past={pastAnnotated}
-          filter={filter}
-          onFilterChange={setFilter}
-          roleOf={roleOf}
-          previews={previews}
-          totalCount={gatherings.length}
-          onNew={() => navigate('/gathering/new')}
-        />
+        {layout.order
+          .filter((key) => !layout.hidden.includes(key))
+          .map((key) => (HOME_BOXES[key]
+            ? <React.Fragment key={key}>{HOME_BOXES[key]}</React.Fragment>
+            : null))}
 
         <RecentlyDeletedRow
           count={deletedGatherings.length}
@@ -286,49 +312,10 @@ export default function Home() {
         />
       </section>
 
-      {/* Profile caixa — identity, the steps still to fill in, and the latest
-          passport/awards, all on one surface. */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
-        <div className="sm:max-w-md">
-          <ProfileCaixa user={user} hasInbox={hasInbox} />
-        </div>
-      </section>
-
       {/* Install prompt ??? sits above the gatherings list; hidden when running as an installed app */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
         <InstallBanner />
       </section>
-
-      {pendingImports.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-6">
-          <div className="tt-card p-4 sm:p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Inbox className="w-4 h-4 text-terra-coral" />
-              <h3 className="font-display text-lg font-bold text-ink-deep">{t('home.pendingImportsTitle')}</h3>
-            </div>
-            <p className="text-sm text-ink-deep/65">{t('home.pendingImportsBody')}</p>
-            <div className="space-y-3">
-              {pendingImports.map((it) => {
-                const choice = importChoiceById[it.id];
-                return (
-                  <PendingImportCard
-                    key={it.id}
-                    item={it}
-                    gatherings={gatherings}
-                    selectedId={gatherings.some((g) => g.id === choice) ? choice : ''}
-                    onSelect={(v) => setImportChoiceById((cur) => ({ ...cur, [it.id]: v }))}
-                    onRefresh={() => load({ silent: true })}
-                    onCreateNew={() => setCreateForImportId(it.id)}
-                    onConfirm={() => resolveImport(it.id, 'create')}
-                    onDiscard={() => resolveImport(it.id, 'discard')}
-                    busy={resolvingImportId === it.id}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
 
       <NewGatheringSheet
         open={!!createForImportId}

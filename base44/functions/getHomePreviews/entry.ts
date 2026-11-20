@@ -151,11 +151,16 @@ export default async function(req) {
 
     for (const gid of activeGids) {
       const overlaidMs = membersByGathering[gid] || [];
-      const its = itemsByGatheringRaw[gid] || [];
+      // ONE filtered list feeds BOTH the date-range projection below AND the
+      // featured NOW/NEXT selection: a soft-deleted segment must never be offered
+      // as the thing happening now, so the flag is applied here, once, before
+      // anything reads these items. (It used to be applied only to the
+      // projection, which left the featured pick reading the raw rows.)
+      const its = (itemsByGatheringRaw[gid] || []).filter((it) => it.is_deleted !== true);
       previews[gid] = overlaidMs
         .map((m) => ({ full_name: m.full_name, photo: m.photo, role: m.role }))
         .slice(0, 8);
-      itemsByGathering[gid] = its.filter((it) => it.is_deleted !== true).map((it) => ({
+      itemsByGathering[gid] = its.map((it) => ({
         type: it.type || null,
         start_datetime: it.start_datetime || null,
         end_datetime: it.end_datetime || null,

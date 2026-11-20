@@ -80,7 +80,7 @@ export default function NextBriefCard({ next }) {
   // the box's own surface, continuous with it, instead of reading as a separate
   // block floating inside the card.
   return (
-    <div className="-mx-3.5 sm:-mx-4 -mb-3.5 sm:-mb-4 mt-3 rounded-b-[1.25rem] bg-card border-t border-ink-charcoal/10 px-3.5 sm:px-4 pt-3 pb-3.5 sm:pb-4">
+    <div className="-mx-3.5 sm:-mx-4 -mb-3.5 sm:-mb-4 mt-3 rounded-b-[1.25rem] bg-card border-t border-ink-charcoal/10 px-3.5 sm:px-4 pt-3 pb-3.5 sm:pb-4 lg:mx-0 lg:mb-0 lg:rounded-xl lg:border lg:px-3 lg:py-3">
       <ul className="space-y-1.5">
         {bullets.map((bullet) => {
           const Icon = ICONS[bullet.icon] || Sparkles;

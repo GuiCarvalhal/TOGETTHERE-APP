@@ -46,7 +46,7 @@ export default function ExpenseTimelineCard({ exp, payer, splits, members, canEd
       {/* Left rail column: category medallion only */}
       <div className="w-12 shrink-0 flex flex-col items-center pt-2.5">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center relative z-10 ring-2 ring-background shadow-sm"
+          className="w-10 h-10 rounded-full flex items-center justify-center relative z-10 ring-2 ring-background"
           style={{ backgroundColor: catColor }}
         >
           <CatIcon className="w-5 h-5 text-white" strokeWidth={2} />

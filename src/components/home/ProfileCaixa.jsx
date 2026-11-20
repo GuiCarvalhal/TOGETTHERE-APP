@@ -5,9 +5,10 @@ import PassportAwardsSummary from '@/components/home/PassportAwardsSummary';
 import { loadPassportAwards, peekPassportAwards } from '@/lib/passportAwardsSummary';
 import { useI18n } from '@/lib/i18n';
 
-// The profile box reads as one surface: who you are on top, the steps that still
-// need doing in the middle (circles), and the latest passport/awards on the
-// bottom. Counts live in the gatherings box, so they are not repeated here.
+// The profile box reads as one surface: who you are on top (name and address
+// first, the avatar on the right), then the steps that still need doing and the
+// latest passport/awards — stacked on phones, side by side on desktop. Counts
+// live in the gatherings box, so they are not repeated here.
 //
 // The name shown is the profile name, never the mailbox: the platform seeds
 // full_name with the email local part for some accounts, so a value that equals
@@ -51,24 +52,26 @@ export default function ProfileCaixa({ user, hasInbox = false }) {
 
   return (
     <section className="tt-card-hairline overflow-hidden flex flex-col">
+      {/* Identity first, avatar on the right: the name and the address are the
+          information, the picture is the marker. */}
       <div className="flex items-center gap-3 p-4 sm:p-5">
-        <MemberAvatar member={user} size="lg" />
-        <div className="min-w-0">
-          <p className="tt-label text-ink-deep/40">{t('home.profileCaixaLabel')}</p>
-          <p className="font-display text-lg font-bold text-ink-deep leading-tight truncate">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold uppercase tracking-wide text-terra-coral">{t('home.profileCaixaLabel')}</p>
+          <p className="font-display text-xl font-bold text-ink-deep leading-tight truncate mt-0.5">
             {displayNameOf(user, t('account.member'))}
           </p>
           {user?.email ? (
             <p className="text-xs text-ink-deep/50 truncate mt-0.5">{user.email}</p>
           ) : null}
         </div>
+        <MemberAvatar member={user} size="lg" className="shrink-0" />
       </div>
 
-      <div className="px-3 sm:px-4 pb-4">
-        <ProfileTopicStrip user={user} bucketCount={bucketCount} hasInbox={hasInbox} />
-      </div>
-
-      <div className="mt-auto">
+      {/* Steps and Passport/Awards: one row on desktop, two blocks on phones. */}
+      <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-ink-charcoal/10 border-t border-ink-charcoal/10">
+        <div className="px-3 sm:px-4 py-3.5 min-w-0">
+          <ProfileTopicStrip user={user} bucketCount={bucketCount} hasInbox={hasInbox} />
+        </div>
         <PassportAwardsSummary data={awards} />
       </div>
     </section>

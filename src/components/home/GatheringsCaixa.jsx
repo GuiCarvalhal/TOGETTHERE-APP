@@ -88,18 +88,16 @@ export default function GatheringsCaixa({
 
   return (
     <section className="tt-card-hairline overflow-hidden">
-      {/* 1 — header + New action, inside the box */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 pt-4 pb-3">
-        <p className="tt-label text-terra-coral min-w-0 truncate">{t('home.yourGatherings')}</p>
-        <Button onClick={onNew} size="sm" className="shrink-0">
-          <Plus /> {t('home.new')}
-        </Button>
-      </div>
-
-      {/* 2 — Upcoming / Past switch */}
-      <div className="px-4 sm:px-5 pb-2.5">
+      {/* 1 — ONE header row: title, Upcoming/Past switch, New action. The switch
+          sits beside the title instead of on its own band, which removes a full
+          row of height from the box. The title uses the same scale as the
+          NOW/NEXT line above it so the two boxes read as one system. */}
+      <div className="flex items-center gap-2 px-4 sm:px-5 pt-3.5 pb-2.5">
+        <p className="text-sm font-bold uppercase tracking-wide text-terra-coral min-w-0 truncate">
+          {t('home.yourGatherings')}
+        </p>
         <div
-          className="inline-flex rounded-full bg-foreground/5 p-1 border border-foreground/10"
+          className="ml-auto shrink-0 inline-flex rounded-full bg-foreground/5 p-0.5 border border-foreground/10"
           role="group"
           aria-label={t('home.yourGatherings')}
         >
@@ -114,13 +112,19 @@ export default function GatheringsCaixa({
                 type="button"
                 onClick={() => onFilterChange(o.key)}
                 aria-pressed={active}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`px-2.5 py-1 rounded-full text-[0.6875rem] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 {o.label}
               </button>
             );
           })}
         </div>
+        {/* Phone width: the icon alone keeps the whole header on ONE row; the
+            label returns as soon as there is room for it. */}
+        <Button onClick={onNew} size="sm" className="shrink-0 px-2.5 sm:px-3" aria-label={t('home.new')}>
+          <Plus />
+          <span className="hidden sm:inline">{t('home.new')}</span>
+        </Button>
       </div>
 
       {/* 3 — carousel */}
@@ -183,7 +187,7 @@ export default function GatheringsCaixa({
                 type="button"
                 onClick={() => scrollStrip(-1)}
                 aria-label={t('home.scrollPrev')}
-                className="hidden [@media(hover:hover)]:flex absolute left-1.5 top-[calc(50%-8px)] -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep shadow-md hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="hidden [@media(hover:hover)]:flex absolute left-1.5 top-[calc(50%-8px)] -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -191,7 +195,7 @@ export default function GatheringsCaixa({
                 type="button"
                 onClick={() => scrollStrip(1)}
                 aria-label={t('home.scrollNext')}
-                className="hidden [@media(hover:hover)]:flex absolute right-1.5 top-[calc(50%-8px)] -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep shadow-md hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="hidden [@media(hover:hover)]:flex absolute right-1.5 top-[calc(50%-8px)] -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-card/95 border border-ink-charcoal/25 text-ink-deep hover:bg-cream-pale transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

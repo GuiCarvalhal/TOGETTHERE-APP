@@ -4,6 +4,7 @@ import SettingsRow from '@/components/tt/SettingsRow';
 import AccountAreaBar from '@/components/account/AccountAreaBar';
 import AccountAreaHeader from '@/components/account/AccountAreaHeader';
 import AccountPreferences from '@/components/account/AccountPreferences';
+import HomeLayoutSettings from '@/components/account/HomeLayoutSettings';
 import AccountNotifications from '@/components/account/AccountNotifications';
 import { useI18n } from '@/lib/i18n';
 
@@ -22,6 +23,7 @@ export default function AccountAreaPreferences() {
       />
       <div className="space-y-3">
         <AccountPreferences />
+        <HomeLayoutSettings />
         <AccountNotifications />
         <div className="tt-card p-1.5 sm:p-2">
           <SettingsRow

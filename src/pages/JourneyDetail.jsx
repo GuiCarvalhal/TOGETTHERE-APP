@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import JourneyItemForm from '@/components/journey/JourneyItemForm';
 import { useToast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
+import { invalidateHomeShell } from '@/lib/homeShellCache';
 import { Plane, Car, Train, Hotel, Compass, Ship, MapPin, Clock, ArrowRightLeft, Loader2, Pencil, Trash2 } from 'lucide-react';
 import MoveSegmentSheet from '@/components/journey/MoveSegmentSheet';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
@@ -95,6 +96,8 @@ export default function JourneyDetail() {
       const res = await base44.functions.invoke('restoreJourneyItem', { gathering_id: gatheringId, item_id: itemId });
       const data = res?.data || res;
       if (data?.error) throw { message: data.error };
+      // The segment can be featured as NOW again: drop Home's cached shell.
+      invalidateHomeShell();
       window.dispatchEvent(new Event('tt-journey-restored'));
       toast({ title: t('recentlyDeleted.restored'), description: t('recentlyDeleted.restoredDesc', { title }) });
     } catch (e) {
@@ -110,6 +113,9 @@ export default function JourneyDetail() {
       const res = await base44.functions.invoke('deleteJourneyItem', { gathering_id: gatheringId, item_id: itemId });
       const data = res?.data || res;
       if (data?.error) throw { message: data.error };
+      // Home's cached shell can still hold this segment as its NOW card: drop it
+      // so returning Home never paints a deleted item before the fresh payload.
+      invalidateHomeShell();
       const title = item?.title || t('journeyTypes.other');
       // Soft delete + immediate Undo (10s window) — separate from the
       // "Recently deleted" list, which keeps the same item restorable for 30

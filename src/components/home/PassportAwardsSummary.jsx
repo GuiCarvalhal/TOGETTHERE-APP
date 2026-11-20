@@ -49,9 +49,9 @@ function Extra({ count }) {
   );
 }
 
-function Column({ title, meta, items, total }) {
+function Column({ title, meta, items, total, className = '' }) {
   return (
-    <div className="min-w-0 px-4 sm:px-5 py-3.5">
+    <div className={`min-w-0 px-3 sm:px-4 py-3.5 ${className}`}>
       <div className="flex items-baseline justify-between gap-2">
         <p className="tt-label text-ink-deep/40 truncate">{title}</p>
         <p className="text-[0.625rem] font-semibold text-ink-deep/55 shrink-0">{meta}</p>
@@ -126,13 +126,13 @@ export default function PassportAwardsSummary({ data }) {
     <Link
       to="/account/passport-awards"
       aria-label={t('passportAwards.open')}
-      className="block border-t border-ink-charcoal/10 transition-colors hover:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="relative block border-t lg:border-t-0 border-ink-charcoal/10 transition-colors hover:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div className="flex items-center gap-1.5 px-4 sm:px-5 pt-3.5">
-        <p className="tt-label text-ink-deep/40">{t('passportAwards.label')}</p>
-        {celebrating && <Sparkles className="w-3.5 h-3.5 text-terra-deep" />}
-        <ChevronRight className="w-4 h-4 text-ink-deep/30 ml-auto shrink-0" />
-      </div>
+      {/* No title of its own: the two column headers already say what this is,
+          so the extra "Passport & awards" line only repeated them. The chevron
+          is the affordance that the whole block opens the area. */}
+      <ChevronRight className="absolute right-3.5 top-3.5 w-4 h-4 text-ink-deep/30 shrink-0" aria-hidden="true" />
+      {celebrating && <Sparkles className="absolute right-9 top-3.5 w-3.5 h-3.5 text-terra-deep" aria-hidden="true" />}
 
       <div className="grid grid-cols-2 divide-x divide-ink-charcoal/10">
         <Column
@@ -146,6 +146,7 @@ export default function PassportAwardsSummary({ data }) {
           meta={`${awards}/${state.total}`}
           items={awardItems.slice(0, MAX_PER_COLUMN)}
           total={awardItems.length}
+          className="pr-8"
         />
       </div>
     </Link>

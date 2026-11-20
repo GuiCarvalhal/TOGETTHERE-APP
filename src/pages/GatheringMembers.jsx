@@ -26,7 +26,7 @@ function MembersSkeleton() {
   return (
     <div className="space-y-3">
       {[0, 1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex items-center gap-3 rounded-2xl border border-ink-charcoal/15 bg-card p-3 tt-shadow-float">
+        <div key={i} className="flex items-center gap-3 rounded-2xl border border-ink-charcoal/15 bg-card p-3">
           <Skeleton className="w-9 h-9 rounded-full" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-3.5 w-1/3" tone="cream" />

@@ -79,7 +79,7 @@ export default function AddSegmentPage() {
                 onClick={() => pickType(jt.key)}
                 className="tt-card p-4 flex flex-col items-center gap-2.5 hover:scale-[1.02] active:scale-[0.98] transition-transform"
               >
-                <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: `var(--tt-item-icon, ${jt.color})` }}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: `var(--tt-item-icon, ${jt.color})` }}>
                   <Icon className="w-6 h-6 text-white" strokeWidth={2} />
                 </div>
                 <span className="text-xs font-semibold text-ink-deep text-center leading-tight">{t('journeyTypes.' + jt.key)}</span>

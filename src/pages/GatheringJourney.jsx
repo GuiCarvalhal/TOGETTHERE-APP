@@ -12,6 +12,7 @@ import JourneyCard from '@/components/tt/cards/JourneyCard';
 import JourneyDayHeader from '@/components/journey/JourneyDayHeader';
 import JourneyLegRow from '@/components/journey/JourneyLegRow';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
+import { invalidateHomeShell } from '@/lib/homeShellCache';
 import FullscreenMapLayer from '@/components/journey/FullscreenMapLayer';
 import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
@@ -142,6 +143,9 @@ export default function GatheringJourney() {
       const res = await base44.functions.invoke('restoreJourneyItem', { gathering_id: gatheringId, item_id: it.id });
       const data = res?.data || res;
       if (data?.error) throw { message: data.error };
+      // A restored segment can become Home's NOW again: drop the cached shell so
+      // Home repaints from a fresh payload instead of a stale one.
+      invalidateHomeShell();
       await Promise.all([deleted.reload(), load(true)]);
       toast({ title: t('recentlyDeleted.restored'), description: t('recentlyDeleted.restoredDesc', { title: it.title }) });
     } catch (e) {

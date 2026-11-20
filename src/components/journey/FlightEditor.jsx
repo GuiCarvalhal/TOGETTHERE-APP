@@ -228,7 +228,7 @@ export default function FlightEditor({ form, setForm, setStartTouched, setEndTou
                   key={m}
                   type="button"
                   onClick={() => { setMode(m); setResults([]); setError(null); setResolveWarning(null); }}
-                  className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition ${mode === m ? 'bg-card text-ink-deep shadow-sm' : 'text-ink-deep/55'}`}
+                  className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition ${mode === m ? 'bg-card text-ink-deep' : 'text-ink-deep/55'}`}
                 >
                   {m === 'number' ? t('flightEditor.byNumber') : t('flightEditor.byRoute')}
                 </button>
