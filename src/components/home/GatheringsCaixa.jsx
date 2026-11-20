@@ -146,7 +146,7 @@ export default function GatheringsCaixa({
           {loading ? (
             <div className="flex gap-3 px-4 sm:px-5 pb-4 overflow-hidden">
               {[0, 1].map((i) => (
-                <Skeleton key={i} className="h-[155px] w-[258px] min-w-[258px] shrink-0" tone="cream" />
+                <Skeleton key={i} className="h-[172px] w-[86%] max-w-[360px] shrink-0" tone="cream" />
               ))}
             </div>
           ) : cards.length === 0 ? (
@@ -160,7 +160,7 @@ export default function GatheringsCaixa({
                 <div
                   key={g.id}
                   data-card
-                  className="w-[258px] min-w-[258px] sm:w-[300px] shrink-0 snap-start flex"
+                  className="w-[86%] max-w-[360px] h-[172px] shrink-0 snap-start flex"
                 >
                   <GatheringCard
                     gathering={g}

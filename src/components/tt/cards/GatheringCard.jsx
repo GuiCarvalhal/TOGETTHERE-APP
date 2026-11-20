@@ -30,7 +30,7 @@ export default function GatheringCard({ gathering, dateLabel, meta, role, people
   return (
     <Link
       to={to}
-      className="group relative flex flex-col w-full rounded-2xl overflow-hidden min-h-[155px] border border-ink-charcoal/15 hover:-translate-y-1 transition-transform duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
+      className="group relative flex flex-col w-full h-full rounded-2xl overflow-hidden border border-ink-charcoal/15 hover:-translate-y-1 transition-transform duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
       style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.12)' }}
     >
       {g.cover_image ? (
