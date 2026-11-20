@@ -26,7 +26,16 @@ import { listUserConnections, maybeSyncInboxInBackground, sanitizeConnection } f
 const CONTAINER_TYPES = new Set(['hotel', 'cruise', 'car']);
 // A container only steps aside for something starting within this window, so a
 // 10-day cruise is not displaced by an excursion five days away.
+// Nothing hands over the instant it ends either: END_GRACE_MS keeps the finished
+// segment on the card for a while, so a late landing never jumps Home straight
+// to a segment that is days away.
 const CONTAINER_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
+// How long the featured segment keeps the card AFTER its scheduled end. Without
+// this the card flips the minute the end time passes: a flight that lands 20
+// minutes late (or is still taxiing/deplaning) hands Home over to a segment that
+// is days away. Flights get the longer window because they routinely run behind
+// schedule; everything else keeps a shorter hold.
+const END_GRACE_MS = { flight: 2 * 60 * 60 * 1000, default: 60 * 60 * 1000 };
 
 function pickFeatured(ongoing, nextUpcoming, nowMs) {
   if (!ongoing) return nextUpcoming;
@@ -163,8 +172,11 @@ export default async function(req) {
         const startMs = new Date(it.start_datetime).getTime();
         const endMs = it.end_datetime ? new Date(it.end_datetime).getTime() : null;
         // An item with NO end date stops being "ongoing" at the end of its start
-        // day, so a past activity can never be featured indefinitely.
-        const isOngoing = startMs <= nowMs && (endMs !== null ? endMs >= nowMs : startMs >= startOfTodayMs);
+        // day, so a past activity can never be featured indefinitely. An item
+        // WITH an end holds the card for END_GRACE_MS past it, so a late landing
+        // never flips Home to a segment days ahead.
+        const graceMs = it.type === 'flight' ? END_GRACE_MS.flight : END_GRACE_MS.default;
+        const isOngoing = startMs <= nowMs && (endMs !== null ? endMs + graceMs >= nowMs : startMs >= startOfTodayMs);
         // Nothing from the past: either happening now, or starting today onwards.
         if (!isOngoing && startMs < startOfTodayMs) continue;
         if (isOngoing) {
