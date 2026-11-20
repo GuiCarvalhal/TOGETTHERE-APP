@@ -65,7 +65,15 @@ export function mapRouteLegs(items) {
     if (previous) legs.push(makeMapLeg(previous.point, wps[0], 'drive', previous.itemId, it.id));
     previous = { point: wps[wps.length - 1], itemId: it.id };
   });
-  return legs.filter(Boolean);
+  const built = legs.filter(Boolean);
+  // A flown pair is drawn as ONE straight line. When a ground leg lands on the
+  // exact same point-to-point pair (two records describing one flight, one of
+  // them not typed as a flight), it would trace the road route over that
+  // straight line — so the flight pair wins and the duplicate ground leg is
+  // dropped. Derived from the legs themselves, so a refresh can never bring it
+  // back.
+  const flightPairs = new Set(built.filter((l) => l.kind === 'flight').map((l) => l.key));
+  return built.filter((l) => !(l.kind === 'drive' && flightPairs.has(l.key)));
 }
 
 function makeMapLeg(from, to, kind, fromItemId, toItemId) {

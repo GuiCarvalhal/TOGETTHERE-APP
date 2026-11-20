@@ -67,10 +67,15 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, route
   // mapRouteLegs). Decoding is memoised on the leg keys and on the geometry
   // actually received, so hover/polling re-renders never decode or fetch again.
   const legs = mapRouteLegs(items);
-  const legsFp = legs.map((l) => l.key).join('|');
-  const routesFp = legs.map((l) => (l.kind === 'drive' ? (routeLegs[l.key]?.polyline || '').length : 0)).join('|');
+  // A pair flown in this journey is ALWAYS the straight great-circle line: any
+  // road geometry cached under the same pair is ignored for rendering, so a
+  // refresh or a recompute can never redraw a road on a flight.
+  const flightPairs = new Set(legs.filter((l) => l.kind === 'flight').map((l) => l.key));
+  const legsFp = legs.map((l) => `${l.kind}:${l.key}`).join('|');
+  const routesFp = legs.map((l) => (l.kind === 'drive' && !flightPairs.has(l.key) ? (routeLegs[l.key]?.polyline || '').length : 0)).join('|');
   const legGeometry = useMemo(() => legs.map((l) => {
-    const decoded = l.kind === 'drive' ? decodePolyline(routeLegs[l.key]?.polyline) : [];
+    const straight = l.kind === 'flight' || flightPairs.has(l.key);
+    const decoded = straight ? [] : decodePolyline(routeLegs[l.key]?.polyline);
     return {
       kind: l.kind,
       fromItemId: l.fromItemId,
