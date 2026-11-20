@@ -36,11 +36,23 @@ const CONTAINER_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
 // is days away. Flights get the longer window because they routinely run behind
 // schedule; everything else keeps a shorter hold.
 const END_GRACE_MS = { flight: 2 * 60 * 60 * 1000, default: 60 * 60 * 1000 };
+// While a finished segment is still holding the card, anything starting within
+// this window takes it over: the hold exists so a segment does not vanish the
+// second it ends, never so it can hide something about to begin. Something
+// further out leaves the hold alone, which is what stops the card from jumping
+// to a segment days away.
+const GRACE_HANDOVER_MS = 2 * 60 * 60 * 1000;
 
 function pickFeatured(ongoing, nextUpcoming, nowMs) {
   if (!ongoing) return nextUpcoming;
   if (!nextUpcoming) return ongoing;
-  if (!CONTAINER_TYPES.has(ongoing.item.type)) return ongoing;
+  const isContainer = CONTAINER_TYPES.has(ongoing.item.type);
+  // Already ended, still inside its hold window (see END_GRACE_MS).
+  const inHold = ongoing.endMs !== null && nowMs > ongoing.endMs;
+  // A segment that is still running keeps the card, unless it is only running
+  // on its hold window.
+  if (!isContainer && !inHold) return ongoing;
+  if (inHold) return nextUpcoming.startMs - nowMs <= GRACE_HANDOVER_MS ? nextUpcoming : ongoing;
   const startsSoon = nextUpcoming.startMs - nowMs <= CONTAINER_LOOKAHEAD_MS;
   const insideWindow = ongoing.endMs !== null && nextUpcoming.startMs <= ongoing.endMs;
   // The container keeps the card only while it is the more recent thing: a stay
