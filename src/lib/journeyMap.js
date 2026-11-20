@@ -39,6 +39,54 @@ export function itemWaypoints(item) {
   return [];
 }
 
+// The legs the route map draws, one per consecutive PAIR of waypoints, in
+// chronological order. Two kinds:
+//  - 'flight': a flight's own origin → destination. Always a straight
+//    point-to-point line (the great-circle geodesic), never a road.
+//  - 'drive' : every other pair — a transfer between two segments, or the
+//    ground leg of a car/train/cruise. These follow the real driving route
+//    Google returns for the same two endpoints (the same request that measures
+//    the leg), with the straight line as the fallback while it loads, when it
+//    is unavailable, or offline.
+// The key is the routable pair itself, so identical legs are requested once and
+// an unchanged leg is never re-measured.
+export function mapRouteLegs(items) {
+  const sorted = [...(items || [])].sort(
+    (a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0)
+  );
+  const legs = [];
+  let previous = null; // { point, itemId } — the arrival point of the last mapped item
+  sorted.forEach((it) => {
+    const wps = itemWaypoints(it);
+    if (wps.length === 0) return;
+    if (wps.length > 1) {
+      legs.push(makeMapLeg(wps[0], wps[wps.length - 1], it.type === 'flight' ? 'flight' : 'drive', it.id, it.id));
+    }
+    if (previous) legs.push(makeMapLeg(previous.point, wps[0], 'drive', previous.itemId, it.id));
+    previous = { point: wps[wps.length - 1], itemId: it.id };
+  });
+  return legs.filter(Boolean);
+}
+
+function makeMapLeg(from, to, kind, fromItemId, toItemId) {
+  if (!from || !to) return null;
+  const sameLat = Math.abs(from.lat - to.lat) < 1e-6;
+  const sameLng = Math.abs(from.lng - to.lng) < 1e-6;
+  if (sameLat && sameLng) return null; // no travel between two identical points
+  const origin = `${from.lat},${from.lng}`;
+  const destination = `${to.lat},${to.lng}`;
+  return {
+    key: `${origin}|${destination}`,
+    origin,
+    destination,
+    from: { lat: from.lat, lng: from.lng },
+    to: { lat: to.lat, lng: to.lng },
+    kind,
+    fromItemId,
+    toItemId,
+  };
+}
+
 // The user ids that "belong to" an item for per-person route coloring: the
 // opt-in attendee_user_ids, or — when no one opted in — the item creator.
 // Same rule as the journey list's participant resolver (attendees, never the

@@ -22,6 +22,9 @@ export async function fetchDrivingRoute(key, origin, destination) {
     durationSeconds: typeof leg.duration?.value === 'number' ? leg.duration.value : null,
     durationInTraffic: leg.duration_in_traffic?.text || '',
     durationInTrafficSeconds: typeof leg.duration_in_traffic?.value === 'number' ? leg.duration_in_traffic.value : null,
+    // Encoded overview geometry of the same route, so a caller that draws the
+    // leg (the Journey map) does not have to ask Google a second time for it.
+    polyline: data.routes[0].overview_polyline?.points || '',
     startAddress: leg.start_address || '',
     endAddress: leg.end_address || '',
     mapsUrl,

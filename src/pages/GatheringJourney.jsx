@@ -16,9 +16,9 @@ import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
 import { useDeviceLayout } from '@/hooks/useDeviceLayout';
 import { useStickyBarHeight, deskTopOffset, deskPanelHeight } from '@/hooks/useStickyBarHeight';
-import useJourneyLegDistances from '@/hooks/useJourneyLegDistances';
+import useJourneyRoutes from '@/hooks/useJourneyRoutes';
 import { legKey } from '@/lib/journeyDistance';
-import { itemRouteNumbers } from '@/lib/journeyMap';
+import { itemRouteNumbers, mapRouteLegs } from '@/lib/journeyMap';
 import { useJourneyItemCoords, augmentItemsWithCoords } from '@/lib/useJourneyItemCoords';
 import { useOfflineJourneyCache } from '@/lib/useOfflineSync';
 import PageToolbar from '@/components/tt/PageToolbar';
@@ -204,11 +204,20 @@ export default function GatheringJourney() {
     }
   });
   entries.sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
-  // Driving distance + duration for each leg between CONSECUTIVE segments,
-  // built from the same entries above (each carrying its dayKey), fetched in one
-  // batch, non-blocking. Rendered between the cards — not as a day aggregate.
-  // See useJourneyLegDistances / journeyDistance.
-  const { legs: legStates } = useJourneyLegDistances(entries);
+  // Driving distance + duration for each leg between CONSECUTIVE segments, plus
+  // the road geometry the route map draws. Both come from ONE Directions
+  // request, session-cached per leg: the rows read their own leg from it and the
+  // map reads the same response's shape — never a second call. Adding, deleting,
+  // reordering or moving one segment only asks Google about the legs that
+  // changed; the toolbar's Refresh re-measures everything on purpose.
+  const mapLegs = mapRouteLegs(filteredMapItems);
+  const {
+    legStates,
+    routes: mapRoutes,
+    loading: routesLoading,
+    stale: routesStale,
+    refresh: refreshRoutes,
+  } = useJourneyRoutes({ entries, mapLegs, mapEnabled: effectiveMapOpen });
   const byDay = {};
   entries.forEach((e) => {
     const k = dayKey(e.at, tzMap[e.item.id]);
@@ -248,6 +257,9 @@ export default function GatheringJourney() {
       items={filteredMapItems}
       gatheringId={gatheringId}
       itemsPending={itemCoordsPending}
+      routeLegs={mapRoutes}
+      routesLoading={routesLoading}
+      routesStale={routesStale}
     />
   );
   if (loading) return (
@@ -350,6 +362,7 @@ export default function GatheringJourney() {
                       {i > 0 && (
                         <JourneyLegRow
                           leg={legStates[legKey(day, i - 1)]}
+                          stale={routesStale}
                           fromLabel={byDay[day][i - 1]?.item?.title || ''}
                           toLabel={entry.item?.title || ''}
                           className={pairRight ? 'col-span-3' : undefined}
@@ -419,7 +432,7 @@ export default function GatheringJourney() {
   // pinned route-map layer with hover highlight; map OFF -> one row per item
   // (card 1/3 + extension 2/3 sharing the row height, aligned 1:1).
   return (
-    <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={isDesktop ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
+    <PageToolbar scope={scope} setScope={setScope} images={effectiveImages} setImages={setImages} mapOpen={effectiveMapOpen} setMapOpen={setMapOpen} showMapToggle={!isViewer} showImagesToggle={!isViewer} mapRow={isDesktop ? null : mapRow} onAdd={() => navigate(`/gathering/${gatheringId}/journey/new`)} canAdd={canAdd} switcher={viewerSwitcher} onRefreshRoutes={refreshRoutes} refreshingRoutes={routesLoading} filterRow={<FilterChips options={TYPE_FILTER_OPTIONS} value={typeFilter} onChange={setTypeFilter} />}>
       {isDesktop && effectiveMapOpen ? (
         // Map ON. The card list stays a single column on the left and the map
         // becomes the right 2/3 panel, pinned under the measured toolbar with no
@@ -446,6 +459,9 @@ export default function GatheringJourney() {
               items={filteredMapItems}
               gatheringId={gatheringId}
               itemsPending={itemCoordsPending}
+              routeLegs={mapRoutes}
+              routesLoading={routesLoading}
+              routesStale={routesStale}
               highlightItemId={hoverId}
               className="h-full"
               heightClass="flex-1 min-h-0"

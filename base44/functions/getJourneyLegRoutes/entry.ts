@@ -47,6 +47,9 @@ export default async function(req) {
           durationSeconds: s.value.durationSeconds,
           distance: s.value.distance,
           duration: s.value.duration,
+          // Encoded route geometry for the SAME request: the map draws this leg
+          // from it, so the shape and the numbers always come from one call.
+          polyline: s.value.polyline || '',
         };
       }
       return { ok: false, reason: 'no_route' };

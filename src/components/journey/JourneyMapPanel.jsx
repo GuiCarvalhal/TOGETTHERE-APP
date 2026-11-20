@@ -1,7 +1,9 @@
 import React from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, WifiOff } from 'lucide-react';
 import JourneyRouteMap from '@/components/journey/JourneyRouteMap';
 import { itemWaypoints } from '@/lib/journeyMap';
+import { useConnectivity } from '@/lib/useConnectivity';
+import { useI18n } from '@/lib/i18n';
 
 // The route-map surface. ONE panel, ONE border: the map sits flush inside it and
 // a single hairline footer strip carries the quiet "locating / unmapped" notes.
@@ -18,11 +20,18 @@ import { itemWaypoints } from '@/lib/journeyMap';
 //
 // Optional `suggestions` (Agent page): resolved suggested-place markers layered
 // on top of the journey base map. The Journey page passes no suggestions.
+// Optional `routeLegs` (Journey page): the resolved driving geometry per leg,
+// keyed by its routable pair — passed straight through to the map. The Agent
+// page passes none, so its map keeps straight lines and makes no Directions
+// call of its own.
 export default function JourneyMapPanel({
   items, gatheringId,
   suggestions = [], suggestionsWithoutCoords = 0, suggestionsPending = 0, itemsPending = 0,
   heightClass, highlightItemId = null, className = '', style,
+  routeLegs = {}, routesLoading = false, routesStale = false,
 }) {
+  const { t } = useI18n();
+  const { offline } = useConnectivity();
   const mappableCount = items.filter((it) => itemWaypoints(it).length > 0).length;
   const unmappedCount = items.length - mappableCount;
   const hasAnything = mappableCount > 0 || suggestions.length > 0 || suggestionsPending > 0 || itemsPending > 0;
@@ -31,6 +40,11 @@ export default function JourneyMapPanel({
   const notes = [];
   if (itemsPending > 0) notes.push({ key: 'items', spin: true, text: `Locating ${itemsPending} segment${itemsPending === 1 ? '' : 's'}…` });
   if (itemsPending === 0 && unmappedCount > 0) notes.push({ key: 'unmapped', text: `${unmappedCount} segment${unmappedCount === 1 ? '' : 's'} without a mapped location` });
+  // Routes/times come from Google and are session-cached: say so when they are
+  // being re-measured, and when what is on screen may no longer be current.
+  if (routesLoading) notes.push({ key: 'routes', spin: true, text: t('journey.routesUpdating') });
+  if (offline) notes.push({ key: 'offline', offline: true, text: t('journey.routesOffline') });
+  else if (routesStale) notes.push({ key: 'stale', offline: true, text: t('journey.routesStale') });
   if (suggestionsPending > 0) notes.push({ key: 'sugg', spin: true, text: `Locating ${suggestionsPending} suggestion${suggestionsPending === 1 ? '' : 's'}…` });
   if (suggestionsPending === 0 && suggestionsWithoutCoords > 0) notes.push({ key: 'suggMissing', text: `${suggestionsWithoutCoords} suggestion${suggestionsWithoutCoords === 1 ? '' : 's'} without a location` });
 
@@ -49,6 +63,7 @@ export default function JourneyMapPanel({
             items={items}
             gatheringId={gatheringId}
             suggestions={suggestions}
+            routeLegs={routeLegs}
             heightClass={heightClass}
             highlightItemId={highlightItemId}
           />
@@ -58,7 +73,9 @@ export default function JourneyMapPanel({
                 <p key={n.key} className="text-[11px] text-ink-deep/55 flex items-center gap-1">
                   {n.spin
                     ? <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
-                    : <MapPin className="w-3 h-3 shrink-0" />}
+                    : n.offline
+                      ? <WifiOff className="w-3 h-3 shrink-0" />
+                      : <MapPin className="w-3 h-3 shrink-0" />}
                   {n.text}
                 </p>
               ))}

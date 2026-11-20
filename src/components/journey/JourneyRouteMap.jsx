@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { loadMapsApi } from '@/lib/loadMapsApi';
 import { itemStartTz, itemStartCountry } from '@/lib/useItemPlace';
 import { formatFullDateTz, formatTimeTz } from '@/lib/formatPlaceTime';
-import { itemWaypoints, itemRouteNumbers, placeLabel, suggestionRouteNumbers, suggestionKey } from '@/lib/journeyMap';
+import { itemWaypoints, itemRouteNumbers, placeLabel, suggestionRouteNumbers, suggestionKey, mapRouteLegs } from '@/lib/journeyMap';
+import { decodePolyline } from '@/lib/googlePolyline';
 import { MapPin, Loader2 } from 'lucide-react';
 import { OVERLAY_VIEWPORT_CLASS } from '@/lib/overlayViewport';
 
@@ -36,7 +37,7 @@ function escapeHtml(s) {
 // `bare` (JourneyMapPanel): the map draws no border/rounding of its own because
 // the panel already owns the single surface — so the map's edges ARE the panel's
 // edges and there is never a double hairline or an inset gutter.
-export default function JourneyRouteMap({ items, gatheringId, suggestions, heightClass = OVERLAY_VIEWPORT_CLASS, highlightItemId = null, bare = false }) {
+export default function JourneyRouteMap({ items, gatheringId, suggestions, routeLegs = {}, heightClass = OVERLAY_VIEWPORT_CLASS, highlightItemId = null, bare = false }) {
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'fallback'
@@ -60,6 +61,27 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
     wps.forEach((w, i) => waypoints.push({ ...w, item: it, number: base + i }));
   });
 
+  // Route geometry, one line per consecutive PAIR of waypoints: a flight keeps
+  // the straight great-circle line, every other leg follows the driving route
+  // the same Directions request already returned for that pair (see
+  // mapRouteLegs). Decoding is memoised on the leg keys and on the geometry
+  // actually received, so hover/polling re-renders never decode or fetch again.
+  const legs = mapRouteLegs(items);
+  const legsFp = legs.map((l) => l.key).join('|');
+  const routesFp = legs.map((l) => (l.kind === 'drive' ? (routeLegs[l.key]?.polyline || '').length : 0)).join('|');
+  const legGeometry = useMemo(() => legs.map((l) => {
+    const decoded = l.kind === 'drive' ? decodePolyline(routeLegs[l.key]?.polyline) : [];
+    return {
+      kind: l.kind,
+      fromItemId: l.fromItemId,
+      toItemId: l.toItemId,
+      path: decoded.length >= 2 ? decoded : [l.from, l.to],
+    };
+  }), [legsFp, routesFp]);
+  const geometryRef = useRef(legGeometry);
+  geometryRef.current = legGeometry;
+  const drawRoutesRef = useRef(null);
+
   // Stable fingerprints so the map re-renders only when the pinned set or
   // suggestions actually change (not on every polling refresh).
   const mapFingerprint = items.map((i) => {
@@ -75,6 +97,7 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
     let cancelled = false;
     const overlays = [];
     let infoWindow = null;
+    let legLines = [];
     (async () => {
       try {
         const res = await base44.functions.invoke('getMapsConfig', {});
@@ -162,15 +185,28 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
           overlays.push(marker);
         });
 
-        // Single route polyline through every confirmed waypoint, in order.
-        // Lighter in agent mode so the numbered suggestions stay the focus.
-        const path = waypoints.map((w) => ({ lat: w.lat, lng: w.lng }));
-        if (path.length >= 2) {
-          overlays.push(new maps.Polyline({
-            path, map, geodesic: true, strokeColor: TERRA,
-            strokeOpacity: agentMode ? 0.5 : 0.85, strokeWeight: agentMode ? 2 : 3,
-          }));
-        }
+        // One line per consecutive pair of waypoints (previously a single
+        // straight line through all of them). Flights stay a straight geodesic;
+        // every other leg is drawn on the road geometry resolved for it, and
+        // falls back to the straight line while that route loads, is
+        // unavailable, or the app is offline. Lighter in agent mode so the
+        // numbered suggestions stay the focus.
+        const drawRoutes = (geo) => {
+          legLines.forEach((line) => { try { line.setMap(null); } catch { /* ignore */ } });
+          legLines = (geo || [])
+            .filter((g) => g.path.length >= 2)
+            .map((g) => new maps.Polyline({
+              path: g.path,
+              map,
+              geodesic: g.kind === 'flight',
+              strokeColor: TERRA,
+              strokeOpacity: agentMode ? 0.5 : 0.85,
+              strokeWeight: agentMode ? 2 : 3,
+              zIndex: 1,
+            }));
+        };
+        drawRoutesRef.current = drawRoutes;
+        drawRoutes(geometryRef.current);
 
         // Suggested places — numbered indigo-circle pins, never part of the
         // route. Numbers come from the shared suggestionRouteNumbers source
@@ -221,10 +257,17 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
             } catch { /* ignore */ }
           });
           if (hotPolyline) { try { hotPolyline.setMap(null); } catch { /* ignore */ } hotPolyline = null; }
-          const pts = id ? (positionsByItem.get(id) || []) : [];
-          if (pts.length >= 2) {
+          // Prefer the item's OWN resolved leg (the road shape it is drawn on)
+          // so the highlight traces the route instead of cutting across it, and
+          // fall back to the straight line between its pins.
+          const own = id ? (geometryRef.current || []).filter((g) => g.fromItemId === id && g.toItemId === id) : [];
+          const ownPath = own.flatMap((g) => g.path);
+          const hotPath = ownPath.length >= 2 ? ownPath : (id ? (positionsByItem.get(id) || []) : []);
+          if (hotPath.length >= 2) {
             hotPolyline = new maps.Polyline({
-              path: pts, map, geodesic: true, strokeColor: TERRA, strokeOpacity: 1, strokeWeight: 6, zIndex: 800,
+              path: hotPath, map,
+              geodesic: own.length === 0 || own.every((g) => g.kind === 'flight'),
+              strokeColor: TERRA, strokeOpacity: 1, strokeWeight: 6, zIndex: 800,
             });
             overlays.push(hotPolyline);
           }
@@ -240,11 +283,20 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
     return () => {
       cancelled = true;
       highlightRef.current = null;
+      drawRoutesRef.current = null;
+      legLines.forEach((line) => { try { line.setMap(null); } catch { /* ignore */ } });
+      legLines = [];
       overlays.forEach((o) => { try { o.setMap(null); } catch { /* ignore */ } });
       if (infoWindow) { try { infoWindow.close(); } catch { /* ignore */ } }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapFingerprint, suggFingerprint, gatheringId, navigate]);
+
+  // Resolved routes arrive after the map is built: redraw the lines in place
+  // (pins, camera and bounds untouched) instead of rebuilding the whole map.
+  useEffect(() => {
+    if (drawRoutesRef.current) drawRoutesRef.current(legGeometry);
+  }, [legGeometry]);
 
   // Hover highlight only — never re-fits, re-centers or zooms the map.
   useEffect(() => {

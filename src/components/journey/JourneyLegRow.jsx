@@ -17,7 +17,9 @@ import { useDistanceUnit } from '@/lib/distanceUnit';
 // what the leg carries: "lat,lng" when coordinates exist, else the address or
 // place name). Renders nothing when an endpoint is missing or the two items sit
 // in the same place — there is no travel to describe.
-export default function JourneyLegRow({ leg, fromLabel = '', toLabel = '', className = '' }) {
+// `stale` (offline, or a failed re-measure): the numbers come from the session
+// cache, so they are marked approximate instead of pretending to be current.
+export default function JourneyLegRow({ leg, fromLabel = '', toLabel = '', stale = false, className = '' }) {
   const { t } = useI18n();
   const { unit } = useDistanceUnit();
   if (!leg || !leg.origin || !leg.destination) return null;
@@ -27,8 +29,9 @@ export default function JourneyLegRow({ leg, fromLabel = '', toLabel = '', class
   if (!leg.state) return null;
 
   const measured = leg.state === 'ok';
+  const approx = measured && stale ? '~' : '';
   const label = measured
-    ? `${formatDistanceMeters(leg.distanceMeters, unit)} · ${formatDurationSeconds(leg.durationSeconds)}`
+    ? `${approx}${formatDistanceMeters(leg.distanceMeters, unit)} · ${formatDurationSeconds(leg.durationSeconds)}`
     : t('journey.legRoute');
 
   const mapsUrl = 'https://www.google.com/maps/dir/?api=1'
@@ -41,6 +44,7 @@ export default function JourneyLegRow({ leg, fromLabel = '', toLabel = '', class
       href={mapsUrl}
       target="_blank"
       rel="noopener noreferrer"
+      title={measured && stale ? t('journey.routesStale') : undefined}
       aria-label={t('journey.legRouteAria', {
         from: fromLabel || leg.origin,
         to: toLabel || leg.destination,

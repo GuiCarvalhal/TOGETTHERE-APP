@@ -1,5 +1,5 @@
 // Pure helpers for the per-day distance & duration summary. No React, no API
-// calls — fed to useJourneyLegDistances (fetch) and the unit tests (fixtures).
+// calls — fed to useJourneyRoutes (fetch) and the unit tests (fixtures).
 // Reuses the same place/coordinate shape as journeyMap.js (from_place /
 // to_place / place with lat,lng) so the legs read the same stored data the
 // route map and cards already use.
