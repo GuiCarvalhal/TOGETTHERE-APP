@@ -50,7 +50,40 @@ export function itemWaypoints(item) {
 //    is unavailable, or offline.
 // The key is the routable pair itself, so identical legs are requested once and
 // an unchanged leg is never re-measured.
-export function mapRouteLegs(items) {
+//
+// ── Flown-corridor suppression ──────────────────────────────────────────────
+// A ground leg must never be drawn over a corridor that is already flown, and
+// its cached road geometry must never be decoded. Records describing the SAME
+// corridor do not carry byte-identical coordinates: they differ in decimals, in
+// city-vs-airport resolution, and sometimes in direction — which is exactly why
+// the previous exact `origin|destination` string match missed them.
+//
+// The pair identity used for suppression is therefore coordinate TOLERANCE, not
+// a raw string: two legs are the same corridor when each endpoint lies within
+// CORRIDOR_TOLERANCE_DEG of the other's, in EITHER direction (undirected, so a
+// reversed duplicate also matches). 0.1° ≈ 11 km absorbs airport-vs-city drift
+// and float noise while staying far below the distance between two genuinely
+// different stops, so a real ground transfer (hotel ↔ airport, two stops inside
+// one city) is never swallowed.
+//
+// Quantized bucket keys are deliberately NOT the decision: two points a few
+// hundred metres apart can fall either side of a bucket boundary, which would
+// reintroduce the same "sometimes it misses" behaviour this fixes. The exact
+// `key` below is still what the route cache is keyed by — suppression only
+// decides whether the leg exists at all.
+export const CORRIDOR_TOLERANCE_DEG = 0.1;
+
+const nearPoint = (a, b, tol) => !!a && !!b
+  && Math.abs(a.lat - b.lat) <= tol && Math.abs(a.lng - b.lng) <= tol;
+
+// Same corridor in either direction (directional AND undirected identity).
+export function isSameCorridor(a, b, tol = CORRIDOR_TOLERANCE_DEG) {
+  if (!a || !b) return false;
+  return (nearPoint(a.from, b.from, tol) && nearPoint(a.to, b.to, tol))
+    || (nearPoint(a.from, b.to, tol) && nearPoint(a.to, b.from, tol));
+}
+
+export function mapRouteLegs(items, tolerance = CORRIDOR_TOLERANCE_DEG) {
   const sorted = [...(items || [])].sort(
     (a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0)
   );
@@ -66,14 +99,16 @@ export function mapRouteLegs(items) {
     previous = { point: wps[wps.length - 1], itemId: it.id };
   });
   const built = legs.filter(Boolean);
-  // A flown pair is drawn as ONE straight line. When a ground leg lands on the
-  // exact same point-to-point pair (two records describing one flight, one of
-  // them not typed as a flight), it would trace the road route over that
-  // straight line — so the flight pair wins and the duplicate ground leg is
-  // dropped. Derived from the legs themselves, so a refresh can never bring it
-  // back.
-  const flightPairs = new Set(built.filter((l) => l.kind === 'flight').map((l) => l.key));
-  return built.filter((l) => !(l.kind === 'drive' && flightPairs.has(l.key)));
+  // A flown corridor is drawn as ONE straight line. Any ground leg that lands on
+  // the SAME corridor — same two endpoints within tolerance, in either direction
+  // — would trace a road over that straight line, so the flight wins and the
+  // ground leg is dropped here, before any road geometry is requested, cached or
+  // decoded. Derived from the legs themselves, so a refresh can never bring it
+  // back. Non-flight legs are otherwise untouched.
+  const flown = built.filter((l) => l.kind === 'flight');
+  if (flown.length === 0) return built;
+  return built.filter((l) => l.kind === 'flight'
+    || !flown.some((f) => isSameCorridor(l, f, tolerance)));
 }
 
 function makeMapLeg(from, to, kind, fromItemId, toItemId) {

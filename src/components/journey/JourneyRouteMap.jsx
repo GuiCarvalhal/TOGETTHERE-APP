@@ -66,16 +66,17 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, route
   // the same Directions request already returned for that pair (see
   // mapRouteLegs). Decoding is memoised on the leg keys and on the geometry
   // actually received, so hover/polling re-renders never decode or fetch again.
+  // ONE source of truth for which legs exist and which may carry a road shape:
+  // mapRouteLegs has already dropped every ground leg overlapping a flown
+  // corridor (coordinate tolerance, either direction), so a drive leg here is a
+  // genuine ground transfer. A flight is ALWAYS the straight great-circle line
+  // and only a drive leg ever decodes a cached road polyline — a suppressed leg
+  // is not in this list, so its cached geometry can never be decoded or drawn.
   const legs = mapRouteLegs(items);
-  // A pair flown in this journey is ALWAYS the straight great-circle line: any
-  // road geometry cached under the same pair is ignored for rendering, so a
-  // refresh or a recompute can never redraw a road on a flight.
-  const flightPairs = new Set(legs.filter((l) => l.kind === 'flight').map((l) => l.key));
   const legsFp = legs.map((l) => `${l.kind}:${l.key}`).join('|');
-  const routesFp = legs.map((l) => (l.kind === 'drive' && !flightPairs.has(l.key) ? (routeLegs[l.key]?.polyline || '').length : 0)).join('|');
+  const routesFp = legs.map((l) => (l.kind === 'drive' ? (routeLegs[l.key]?.polyline || '').length : 0)).join('|');
   const legGeometry = useMemo(() => legs.map((l) => {
-    const straight = l.kind === 'flight' || flightPairs.has(l.key);
-    const decoded = straight ? [] : decodePolyline(routeLegs[l.key]?.polyline);
+    const decoded = l.kind === 'drive' ? decodePolyline(routeLegs[l.key]?.polyline) : [];
     return {
       kind: l.kind,
       fromItemId: l.fromItemId,
