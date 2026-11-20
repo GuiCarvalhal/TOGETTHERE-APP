@@ -44,21 +44,31 @@ export default function NextBriefCard({ next }) {
     // Live enrichment is the most expensive call on Home (flight status, traffic,
     // weather). It is deferred to the first idle moment: the deterministic bullets
     // are already on screen by then, so nothing waits for it.
-    const run = () => base44.functions.invoke('getNextBrief', { gathering_id: gatheringId, item_id: itemId })
+    const fetchLive = () => base44.functions.invoke('getNextBrief', { gathering_id: gatheringId, item_id: itemId })
       .then((res) => {
         const data = res?.data;
         if (alive && data && !data.error) setLive(data);
       })
       .catch(() => {});
     const idle = typeof window.requestIdleCallback === 'function'
-      ? window.requestIdleCallback(run, { timeout: 1500 })
-      : window.setTimeout(run, 400);
+      ? window.requestIdleCallback(fetchLive, { timeout: 1500 })
+      : window.setTimeout(fetchLive, 400);
+
+    // A gate gets assigned or moved while the card sits on screen, so a flight is
+    // re-checked every five minutes and whenever the tab comes back into view.
+    const isFlight = item?.type === 'flight';
+    const timer = isFlight ? window.setInterval(fetchLive, 5 * 60 * 1000) : null;
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchLive(); };
+    if (isFlight) document.addEventListener('visibilitychange', onVisible);
+
     return () => {
       alive = false;
       if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle);
       else clearTimeout(idle);
+      if (timer) window.clearInterval(timer);
+      if (isFlight) document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [itemId, gatheringId]);
+  }, [itemId, gatheringId, item?.type]);
 
   if (!item) return null;
   const bullets = buildBriefBullets({ item, live, unit, t });

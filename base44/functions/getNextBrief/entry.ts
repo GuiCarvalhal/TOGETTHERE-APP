@@ -76,11 +76,27 @@ function localDate(iso, timeZone) {
   }
 }
 
-// Try each candidate designator in order and keep the first real match.
-async function liveFlight(key, codes, date) {
-  for (const code of codes) {
-    const found = await fetchFlightLiveByNumber(key, code, date).catch(() => null);
-    if (found) return found;
+// The provider files a flight under the UTC calendar date of its departure (the
+// AA1684 leaving at 23:53 local is filed under the next UTC day), which is also
+// the date the item detail's status card queries. The airport-local date stays
+// as a fallback, so a provider that files by local day still resolves.
+function flightDates(item, originTz) {
+  const utc = text(item.start_datetime).slice(0, 10);
+  const local = localDate(item.start_datetime, originTz);
+  return [...new Set([utc, local].filter(Boolean))];
+}
+
+// Try each candidate designator (and, for each, the candidate dates) and keep
+// the first real match. Capped, so a miss cannot chain into many paced calls.
+async function lookupLiveFlight(key, codes, dates) {
+  let attempts = 0;
+  for (const date of dates) {
+    for (const code of codes) {
+      if (attempts >= 3) return null;
+      attempts += 1;
+      const found = await fetchFlightLiveByNumber(key, code, date).catch(() => null);
+      if (found) return found;
+    }
   }
   return null;
 }
@@ -218,7 +234,7 @@ export default async function (req) {
     const [routeRes, flightRes, weatherRes] = await Promise.allSettled([
       wantsRoute ? fetchDrivingRoute(mapsKey, originAddress, destinationAddress) : Promise.resolve(null),
       wantsFlight
-        ? liveFlight(rapidKey, flightCodes, localDate(item.start_datetime, originTz))
+        ? lookupLiveFlight(rapidKey, flightCodes, flightDates(item, originTz))
         : Promise.resolve(null),
       weatherPoint && weatherInstant
         ? fetchWeatherAt(weatherPoint.lat, weatherPoint.lng, weatherInstant)

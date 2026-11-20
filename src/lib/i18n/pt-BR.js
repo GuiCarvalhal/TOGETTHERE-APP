@@ -233,6 +233,8 @@ export const ptBR = {
       // Somente informação nova: o card acima já mostra rota e horários.
       flightOnTimeGate: 'No horário · portão {gate} · terminal {terminal}',
       flightGateNoTerminal: 'No horário · portão {gate}',
+      flightGateWithTerminal: 'Portão {gate} · terminal {terminal}',
+      flightGate: 'Portão {gate}',
       flightScheduled: 'No horário · portão divulgado ~2h antes da partida',
       flightGatePending: 'Portão e terminal são divulgados ~2h antes da partida',
       flightDelayed: 'Atrasado {minutes} min · parte {time} ({abbr})',

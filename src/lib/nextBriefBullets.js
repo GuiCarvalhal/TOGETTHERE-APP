@@ -262,6 +262,8 @@ function flightBullets({ item, live, unit, t, now }) {
   const origin = originSuffix(live, t);
 
   const primary = [];
+  // Whether the status line already carries the gate, so it is never repeated.
+  let gateInStatus = false;
 
   // 1. Live status — only facts the card cannot know. No clock time is repeated:
   // an unchanged departure is not news, a delayed one is (new time).
@@ -283,6 +285,7 @@ function flightBullets({ item, live, unit, t, now }) {
         icon: 'status',
         text: t(terminal ? 'home.brief.flightOnTimeGate' : 'home.brief.flightGateNoTerminal', { gate, terminal }),
       });
+      gateInStatus = true;
     } else if (status) {
       primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightScheduled') });
     } else {
@@ -292,6 +295,16 @@ function flightBullets({ item, live, unit, t, now }) {
       // rather than going silent about it.
       primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightGatePending') });
     }
+  }
+
+  // A known gate is the most useful line on this card, so it is never dropped
+  // just because the status line had to spend itself on a delay.
+  if (gate && !gateInStatus) {
+    primary.push({
+      id: 'gate',
+      icon: 'status',
+      text: t(terminal ? 'home.brief.flightGateWithTerminal' : 'home.brief.flightGate', { gate, terminal }),
+    });
   }
 
   // 2. Ground plan: the minute to leave by, from live traffic + airport buffer.

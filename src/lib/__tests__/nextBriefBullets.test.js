@@ -160,10 +160,15 @@ describe('buildBriefBullets — live flight data', () => {
     expect(ground.text).toContain('originSuffix|origin=Miami');
   });
 
-  it('adds weather, lounge and operational cutoffs, capped at five', () => {
+  it('adds the gate, weather and operational cutoffs, capped at five', () => {
     const bullets = build(FLIGHT_ITEM, live);
     expect(bullets).toHaveLength(5);
-    expect(ids(bullets).slice(0, 4)).toEqual(['status', 'ground', 'weather', 'lounge']);
+    // A delayed flight still prints its known gate, so the gate line keeps its
+    // place right after the status and the lounge is what falls off the cap.
+    expect(ids(bullets).slice(0, 3)).toEqual(['status', 'gate', 'ground']);
+    const gate = bullets.find((b) => b.id === 'gate');
+    expect(gate.text).toContain('gate=D12');
+    expect(gate.text).toContain('terminal=D');
     const weather = bullets.find((b) => b.id === 'weather');
     expect(weather.text).toContain('temp=52°F');
     expect(weather.text).toContain('condition=overcast');
@@ -175,6 +180,18 @@ describe('buildBriefBullets — live flight data', () => {
   it('uses Celsius for metric users', () => {
     const bullets = build(FLIGHT_ITEM, live, 'km');
     expect(bullets.find((b) => b.id === 'weather').text).toContain('temp=11°C');
+  });
+
+  it('prints a known gate on an on-time flight, without repeating it', () => {
+    const onTime = {
+      ...live,
+      flight: { ...live.flight, status: 'Expected', departure: { ...live.flight.departure, revised: '' } },
+    };
+    const bullets = build(FLIGHT_ITEM, onTime);
+    const status = bullets.find((b) => b.id === 'status');
+    expect(status.text).toContain('home.brief.flightOnTimeGate');
+    expect(status.text).toContain('gate=D12');
+    expect(ids(bullets)).not.toContain('gate');
   });
 
   it('reports a cancellation instead of a departure time', () => {

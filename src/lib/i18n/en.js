@@ -246,6 +246,8 @@ export const en = {
       // departure/arrival clock times, so no template may repeat them.
       flightOnTimeGate: 'On time · gate {gate} · terminal {terminal}',
       flightGateNoTerminal: 'On time · gate {gate}',
+      flightGateWithTerminal: 'Gate {gate} · terminal {terminal}',
+      flightGate: 'Gate {gate}',
       flightScheduled: 'On time · gate posts about 2h before departure',
       // No live feed for this flight (e.g. the segment stores the airline's
       // booking code instead of a flight number): say when the gate appears
