@@ -5,7 +5,7 @@ import { Image } from '@/components/ui/image';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import {
   formatTimeOnly, formatTimeWithCountry, formatTimeAbbrAlpha3, formatDateTz,
-  formatDuration, isAllDayItem, journeyMeta, tzAbbrAt,
+  formatDuration, isAllDayItem, journeyMeta, tzLabel,
 } from '@/lib/formatPlaceTime';
 import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } from '@/lib/useItemPlace';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
@@ -58,10 +58,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const allDay = !isStayLeg && isAllDayItem(item, startTz);
   const startTime = allDay ? '' : formatTimeOnly(item.start_datetime, startTz);
   const endTime = (allDay || !item.end_datetime) ? '' : formatTimeOnly(item.end_datetime, endTz);
-  // Flight cards render line 3 as "10:00 AM EDT-USA → 4:00 PM EDT-CAN"
-  // (DST-aware abbreviation + ISO alpha-3 country), all from stored data. Other
-  // types keep the alpha-2 format (EDT - US) so the detail page and non-flight
-  // cards are unchanged.
+  // Line 3 renders "10:00 AM EDT-USA → 4:00 PM EDT-CAN" for every type: the
+  // DST-aware abbreviation plus the ISO alpha-3 country, all from stored data.
   const startCc3 = isFlight ? (item.from_place?.country_alpha3 || alpha2ToAlpha3(item.from_place?.country) || '') : startCc;
   const endCc3 = isFlight ? (item.to_place?.country_alpha3 || alpha2ToAlpha3(item.to_place?.country) || '') : endCc;
   const startFull = allDay ? '' : (isFlight ? formatTimeAbbrAlpha3(item.start_datetime, startTz, startCc3) : formatTimeWithCountry(item.start_datetime, startTz, startCc));
@@ -87,7 +85,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
 
   // Rail time block uses the primary instant's wall clock + abbreviation.
   const railTime = leg === 'check-out' ? endTime : startTime;
-  const railAbbr = primaryIso ? tzAbbrAt(primaryIso, primaryTz) : '';
+  const primaryCc = leg === 'check-out' ? endCc : startCc;
+  const railAbbr = primaryIso ? tzLabel(primaryIso, primaryTz, primaryCc) : '';
 
   // Only a card that leads somewhere is presented as clickable; an inbox card
   // with no destination must not advertise a chevron and a pointer cursor.
@@ -132,7 +131,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
         ) : railTime ? (
           <div className={`mt-1.5 text-center leading-tight ${railBg} px-1.5 rounded relative z-10`}>
             <p className="text-xs font-bold text-foreground whitespace-nowrap">{railTime}</p>
-            {railAbbr && <p className="text-[0.625rem] text-foreground/45 mt-0.5">{railAbbr}</p>}
+            {railAbbr && <p className="text-[0.625rem] text-foreground/45 mt-0.5 whitespace-nowrap">{railAbbr}</p>}
           </div>
         ) : null}
         {routeNumber != null && (

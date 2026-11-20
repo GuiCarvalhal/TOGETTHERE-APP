@@ -6,6 +6,8 @@
 // formatDateOnly / formatDayHeader, which parse the calendar date directly so it
 // never shifts across timezones and need no abbreviation.
 
+import { alpha2ToAlpha3 } from './isoCountries';
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // Deterministic timezone abbreviation for an IANA tz at a given instant.
@@ -71,6 +73,18 @@ function gmtOffset(timeZone, instant) {
   } catch { return ''; }
 }
 
+// "PST-USA" — the app's ONE timezone label: the DST-aware abbreviation plus the
+// ISO alpha-3 country code of the place. An alpha-2 code (what the place
+// resolver stores) is converted, an alpha-3 passes through, and an unknown
+// country leaves the bare abbreviation.
+export function tzLabel(iso, timeZone, countryCode) {
+  const abbr = tzAbbrAt(iso, timeZone);
+  if (!abbr) return '';
+  const raw = String(countryCode || '').trim().toUpperCase();
+  const alpha3 = raw.length === 3 ? raw : alpha2ToAlpha3(raw);
+  return alpha3 ? `${abbr}-${alpha3}` : abbr;
+}
+
 // "4:00 AM" — wall clock only (no abbreviation), in the place's local tz.
 export function formatTimeOnly(iso, timeZone) {
   if (!iso || !timeZone) return '';
@@ -79,28 +93,26 @@ export function formatTimeOnly(iso, timeZone) {
   } catch { return ''; }
 }
 
-// "4:00 AM EDT - US" — wall clock + abbreviation + ISO country code, matching
-// the requested format. Without a country code: "4:00 AM EDT". Without an
-// abbreviation: the bare wall clock. The country code comes from the place
-// resolver (geocoded address_components country short_name, or a tz fallback).
+// "4:00 AM EDT-USA" — wall clock + the app's timezone label. An alpha-2 country
+// code from the place resolver is converted to alpha-3; without a country:
+// "4:00 AM EDT"; without an abbreviation: the bare wall clock.
 export function formatTimeWithCountry(iso, timeZone, countryCode) {
   if (!iso || !timeZone) return '';
   const time = formatTimeOnly(iso, timeZone);
-  const abbr = tzAbbrAt(iso, timeZone);
   if (!time) return '';
-  if (!abbr) return time;
-  return countryCode ? `${time} ${abbr} - ${countryCode}` : `${time} ${abbr}`;
+  const label = tzLabel(iso, timeZone, countryCode);
+  return label ? `${time} ${label}` : time;
 }
 
-// "11:15 PM (CEST)" — time only, in the place's local tz with its real
-// abbreviation. Returns '' while the tz is unknown (loading) so we never show a
-// guessed offset or fake UTC; the time appears once the IANA tz resolves.
-export function formatTimeTz(iso, timeZone) {
+// "11:15 PM (CEST-ITA)" — time only, in the place's local tz with the app's
+// timezone label. Returns '' while the tz is unknown (loading) so we never show
+// a guessed offset or fake UTC; the time appears once the IANA tz resolves.
+export function formatTimeTz(iso, timeZone, countryCode) {
   if (!iso || !timeZone) return '';
   try {
     const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(iso));
-    const abbr = tzAbbrAt(iso, timeZone);
-    return abbr ? `${time} (${abbr})` : time;
+    const label = tzLabel(iso, timeZone, countryCode);
+    return label ? `${time} (${label})` : time;
   } catch { return ''; }
 }
 
@@ -128,10 +140,10 @@ export function formatDateTz(iso, timeZone) {
   } catch { return ''; }
 }
 
-// "Jun 27 · 11:15 PM (CEST)" — compact date + time.
-export function formatDateTimeTz(iso, timeZone) {
+// "Jun 27 · 11:15 PM (CEST-ITA)" — compact date + time.
+export function formatDateTimeTz(iso, timeZone, countryCode) {
   if (!iso) return '';
-  return `${formatDateTz(iso, timeZone)} · ${formatTimeTz(iso, timeZone)}`;
+  return `${formatDateTz(iso, timeZone)} · ${formatTimeTz(iso, timeZone, countryCode)}`;
 }
 
 // "Friday, June 27" — full date, in the place tz.
@@ -142,10 +154,10 @@ export function formatFullDateTz(iso, timeZone) {
   } catch { return ''; }
 }
 
-// "Friday, June 27 · 11:15 PM (CEST)" — full date + time.
-export function formatFullDateTimeTz(iso, timeZone) {
+// "Friday, June 27 · 11:15 PM (CEST-ITA)" — full date + time.
+export function formatFullDateTimeTz(iso, timeZone, countryCode) {
   if (!iso) return '';
-  return `${formatFullDateTz(iso, timeZone)} · ${formatTimeTz(iso, timeZone)}`;
+  return `${formatFullDateTz(iso, timeZone)} · ${formatTimeTz(iso, timeZone, countryCode)}`;
 }
 
 // "YYYY-MM-DD" — the calendar date of an instant in the place tz (for grouping).
@@ -200,8 +212,8 @@ function fallbackTimeOnly(raw) {
   return m ? `${m[1]}${m[2] ? ` (UTC${m[2]})` : ''}` : '';
 }
 
-// "Sep 14 · 4:45 PM (CEST)" from an AeroDataBox local string + airport IANA tz.
-export function formatOffsetLocal(raw, timeZone) {
+// "Sep 14 · 4:45 PM (CEST-ITA)" from an AeroDataBox local string + airport tz.
+export function formatOffsetLocal(raw, timeZone, countryCode) {
   if (!raw) return '';
   if (!timeZone) return fallbackLocal(raw);
   const instant = parseOffsetInstant(raw);
@@ -209,20 +221,20 @@ export function formatOffsetLocal(raw, timeZone) {
   try {
     const date = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone }).format(instant);
     const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone }).format(instant);
-    const abbr = tzAbbrAt(instant.toISOString(), timeZone);
-    return `${date} · ${time} (${abbr})`;
+    const label = tzLabel(instant.toISOString(), timeZone, countryCode);
+    return label ? `${date} · ${time} (${label})` : `${date} · ${time}`;
   } catch { return fallbackLocal(raw); }
 }
-// "4:45 PM (CEST)" — time only, for the "Sched" sub-line.
-export function formatOffsetTime(raw, timeZone) {
+// "4:45 PM (CEST-ITA)" — time only, for the "Sched" sub-line.
+export function formatOffsetTime(raw, timeZone, countryCode) {
   if (!raw) return '';
   if (!timeZone) return fallbackTimeOnly(raw);
   const instant = parseOffsetInstant(raw);
   if (!instant) return fallbackTimeOnly(raw);
   try {
     const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone }).format(instant);
-    const abbr = tzAbbrAt(instant.toISOString(), timeZone);
-    return abbr ? `${time} (${abbr})` : time;
+    const label = tzLabel(instant.toISOString(), timeZone, countryCode);
+    return label ? `${time} (${label})` : time;
   } catch { return fallbackTimeOnly(raw); }
 }
 

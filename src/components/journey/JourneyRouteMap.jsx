@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { loadMapsApi } from '@/lib/loadMapsApi';
-import { itemStartTz } from '@/lib/useItemPlace';
+import { itemStartTz, itemStartCountry } from '@/lib/useItemPlace';
 import { formatFullDateTz, formatTimeTz } from '@/lib/formatPlaceTime';
 import { itemWaypoints, itemRouteNumbers, placeLabel, suggestionRouteNumbers, suggestionKey } from '@/lib/journeyMap';
 import { MapPin, Loader2 } from 'lucide-react';
@@ -143,7 +143,7 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, heigh
             const it = w.item;
             const tz = itemStartTz(it);
             const dateStr = formatFullDateTz(it.start_datetime, tz) || 'No date set';
-            const timeStr = formatTimeTz(it.start_datetime, tz);
+            const timeStr = formatTimeTz(it.start_datetime, tz, itemStartCountry(it));
             const node = document.createElement('div');
             node.style.maxWidth = '220px';
             node.innerHTML = `

@@ -1,4 +1,4 @@
-import { formatTimeTz, formatTimeOnly, tzAbbrAt } from './formatPlaceTime';
+import { formatTimeOnly, tzLabel } from './formatPlaceTime';
 import { formatDistanceMeters } from './journeyDistance';
 import { alpha2ToAlpha3 } from './isoCountries';
 
@@ -42,12 +42,12 @@ function providerInstant(raw) {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Wall clock only: the timezone is appended exactly once, by the template's
+// "({abbr})" placeholder.
 function timeIn(iso, tz) {
   if (!iso) return '';
-  if (tz) {
-    const formatted = formatTimeTz(iso, tz);
-    if (formatted) return formatted;
-  }
+  const formatted = tz ? formatTimeOnly(iso, tz) : '';
+  if (formatted) return formatted;
   try {
     return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   } catch { return ''; }
@@ -58,9 +58,10 @@ function timeOnly(ms, tz) {
   return timeIn(new Date(ms).toISOString(), tz);
 }
 
-function abbrIn(iso, tz) {
+// "PST-USA" — the abbreviation plus the place's alpha-3 country code.
+function abbrIn(iso, tz, country) {
   if (!iso || !tz) return '';
-  return tzAbbrAt(iso, tz);
+  return tzLabel(iso, tz, country);
 }
 
 function durLabel(seconds, t) {
@@ -194,8 +195,7 @@ function tzBullet({ tz, iso, country, t, now }) {
   if (a === null || b === null) return null;
   const delta = a - b;
   if (delta === 0) return null;
-  const abbr = tzAbbrAt(iso || now.toISOString(), there);
-  const zone = abbr ? (text(country) ? `${abbr}-${text(country)}` : abbr) : '';
+  const zone = tzLabel(iso || now.toISOString(), there, country);
   const amount = minutesLabel(Math.abs(delta), t);
   const deltaText = t(delta > 0 ? 'home.brief.tzAhead' : 'home.brief.tzBehind', { amount });
   return {
@@ -245,6 +245,8 @@ function refBullet(item, t) {
 function flightBullets({ item, live, unit, t, now }) {
   const depTz = text(item.from_place?.tz) || text(live?.origin?.tz);
   const arrTz = text(item.to_place?.tz) || text(live?.destination?.tz);
+  // Alpha-3 country of the departure airport, for the "PST-USA" zone label.
+  const depCountry = text(item.from_place?.country_alpha3) || alpha2ToAlpha3(item.from_place?.country);
   const flight = live?.flight || null;
   const dep = flight?.departure || null;
   const terminal = text(dep?.terminal);
@@ -276,7 +278,7 @@ function flightBullets({ item, live, unit, t, now }) {
         id: 'status',
         icon: 'status',
         text: t('home.brief.flightDelayed', {
-          minutes: delayMin, time: timeIn(depIso, depTz), abbr: abbrIn(depIso, depTz),
+          minutes: delayMin, time: timeIn(depIso, depTz), abbr: abbrIn(depIso, depTz, depCountry),
         }),
       });
     } else if (gate) {
@@ -321,7 +323,7 @@ function flightBullets({ item, live, unit, t, now }) {
       id: 'ground',
       icon: 'ground',
       text: t(key, {
-        leaveBy: timeIn(leaveIso, depTz), abbr: abbrIn(leaveIso, depTz),
+        leaveBy: timeIn(leaveIso, depTz), abbr: abbrIn(leaveIso, depTz, depCountry),
         duration: durLabel(trafficSec, t), distance, delta, origin,
       }),
     });
@@ -339,7 +341,7 @@ function flightBullets({ item, live, unit, t, now }) {
         id: 'ground',
         icon: 'ground',
         text: t('home.brief.flightBeThere', {
-          cutoff: timeIn(cutoffIso, depTz), abbr: abbrIn(cutoffIso, depTz),
+          cutoff: timeIn(cutoffIso, depTz), abbr: abbrIn(cutoffIso, depTz, depCountry),
         }),
       });
     }
@@ -374,7 +376,7 @@ function flightBullets({ item, live, unit, t, now }) {
     extras.push({
       id: 'cutoff',
       icon: 'cutoff',
-      text: t('home.brief.flightCheckIn', { time: timeIn(closeIso, depTz), abbr: abbrIn(closeIso, depTz) }),
+      text: t('home.brief.flightCheckIn', { time: timeIn(closeIso, depTz), abbr: abbrIn(closeIso, depTz, depCountry) }),
     });
   }
   if (terminal && !gate) {
@@ -389,6 +391,8 @@ function flightBullets({ item, live, unit, t, now }) {
 function transferBullets({ item, live, unit, t, now }) {
   const tz = text(item.from_place?.tz) || text(live?.origin?.tz);
   const destTz = text(item.to_place?.tz) || text(live?.destination?.tz);
+  const tzCountry = text(item.from_place?.country_alpha3) || alpha2ToAlpha3(item.from_place?.country)
+    || text(item.to_place?.country_alpha3) || alpha2ToAlpha3(item.to_place?.country);
   const startMs = item.start_datetime ? new Date(item.start_datetime).getTime() : null;
   const trafficSec = num(live?.route?.durationInTrafficSeconds) ?? num(live?.route?.durationSeconds);
   const meters = num(live?.route?.distanceMeters);
@@ -409,7 +413,7 @@ function transferBullets({ item, live, unit, t, now }) {
       id: 'timing',
       icon: 'timing',
       text: t(key, {
-        leaveBy: timeIn(leaveIso, tz), abbr: abbrIn(leaveIso, tz),
+        leaveBy: timeIn(leaveIso, tz), abbr: abbrIn(leaveIso, tz, tzCountry),
         duration: durLabel(trafficSec, t), distance, delta, origin,
       }),
     });
@@ -450,6 +454,8 @@ function transferBullets({ item, live, unit, t, now }) {
 
 function stayBullets({ item, live, unit, t, now }) {
   const startTz = text(item.place?.tz) || text(item.to_place?.tz);
+  const startCountry = text(item.place?.country_alpha3) || alpha2ToAlpha3(item.place?.country)
+    || text(item.to_place?.country_alpha3) || alpha2ToAlpha3(item.to_place?.country);
   const startIso = item.start_datetime || '';
   const startMs = startIso ? new Date(startIso).getTime() : null;
   const originLabel = routeOriginLabel(live);
@@ -466,7 +472,7 @@ function stayBullets({ item, live, unit, t, now }) {
       icon: 'timing',
       text: t(distance ? 'home.brief.stayTravel' : 'home.brief.stayTravelBare', {
         origin: originLabel, duration: durLabel(trafficSec, t), distance, delta,
-        leaveBy: timeIn(leaveIso, startTz), abbr: abbrIn(leaveIso, startTz),
+        leaveBy: timeIn(leaveIso, startTz), abbr: abbrIn(leaveIso, startTz, startCountry),
       }),
     });
   } else {
@@ -484,7 +490,7 @@ function stayBullets({ item, live, unit, t, now }) {
       primary.push({
         id: 'arriveBy',
         icon: 'timing',
-        text: t('home.brief.stayArriveBy', { time: timeIn(arriveIso, startTz), abbr: abbrIn(arriveIso, startTz) }),
+        text: t('home.brief.stayArriveBy', { time: timeIn(arriveIso, startTz), abbr: abbrIn(arriveIso, startTz, startCountry) }),
       });
     }
   }
@@ -507,7 +513,7 @@ function stayBullets({ item, live, unit, t, now }) {
       id: 'checkout',
       icon: 'checkin',
       text: t('home.brief.stayCheckOut', {
-        time: timeIn(item.end_datetime, startTz), abbr: abbrIn(item.end_datetime, startTz),
+        time: timeIn(item.end_datetime, startTz), abbr: abbrIn(item.end_datetime, startTz, startCountry),
       }),
     });
   }

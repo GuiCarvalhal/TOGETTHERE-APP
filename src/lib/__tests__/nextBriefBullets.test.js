@@ -35,8 +35,8 @@ const FLIGHT_ITEM = {
   airline: 'British Airways',
   start_datetime: '2026-11-13T18:10:00Z',
   end_datetime: '2026-11-14T06:40:00Z',
-  from_place: { iata: 'MIA', city: 'Miami', tz: 'America/New_York', lat: 25.79, lng: -80.29 },
-  to_place: { iata: 'LHR', city: 'London', tz: 'Europe/London', lat: 51.47, lng: -0.45 },
+  from_place: { iata: 'MIA', city: 'Miami', tz: 'America/New_York', country: 'US', lat: 25.79, lng: -80.29 },
+  to_place: { iata: 'LHR', city: 'London', tz: 'Europe/London', country: 'GB', lat: 51.47, lng: -0.45 },
 };
 
 describe('briefFamily', () => {
@@ -158,6 +158,14 @@ describe('buildBriefBullets — live flight data', () => {
     expect(ground.text).toContain('home.brief.trafficDelta');
     expect(ground.text).toContain('minutes=9');
     expect(ground.text).toContain('originSuffix|origin=Miami');
+  });
+
+  it('names the zone once, as abbreviation plus country code', () => {
+    const ground = build(FLIGHT_ITEM, live).find((b) => b.id === 'ground');
+    // "PST-USA" style: the abbreviation carries the alpha-3 country code…
+    expect(ground.text).toContain('abbr=EST-USA');
+    // …and the wall clock never carries its own zone, so it cannot double up.
+    expect(ground.text.match(/EST/g)).toHaveLength(1);
   });
 
   it('adds the gate, weather and operational cutoffs, capped at five', () => {

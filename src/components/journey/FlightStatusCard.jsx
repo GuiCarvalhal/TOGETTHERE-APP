@@ -29,7 +29,7 @@ function timeAgo(iso, t) {
   return t('flightStatus.dAgo', { count: Math.floor(h / 24) });
 }
 
-export default function FlightStatusCard({ flightNumber, date, originTimezone, destinationTimezone }) {
+export default function FlightStatusCard({ flightNumber, date, originTimezone, destinationTimezone, originCountry, destinationCountry }) {
   const { t } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,8 +92,8 @@ export default function FlightStatusCard({ flightNumber, date, originTimezone, d
         <div className="tt-ink-panel p-3 min-w-0">
           <p className="font-display text-base font-bold text-ink-deep mb-0.5 truncate">{dep.iata || t('flightStatus.departure')}</p>
           <p className="text-xs text-ink-deep/55 truncate">{dep.airport || dep.iata || '—'}</p>
-          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(dep.actual || dep.revised || dep.scheduled, depTz) || '—'}</p>
-          {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(dep.scheduled, depTz) })}</p>}
+          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(dep.actual || dep.revised || dep.scheduled, depTz, originCountry) || '—'}</p>
+          {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(dep.scheduled, depTz, originCountry) })}</p>}
           {(dep.terminal || dep.gate) && (
             <p className="text-xs font-semibold text-ink-deep mt-1.5">{dep.terminal && t('flightStatus.terminal', { terminal: dep.terminal })}{dep.terminal && dep.gate && ' · '}{dep.gate && t('flightStatus.gate', { gate: dep.gate })}</p>
           )}
@@ -101,8 +101,8 @@ export default function FlightStatusCard({ flightNumber, date, originTimezone, d
         <div className="tt-ink-panel p-3 min-w-0">
           <p className="font-display text-base font-bold text-ink-deep mb-0.5 truncate">{arr.iata || t('flightStatus.arrival')}</p>
           <p className="text-xs text-ink-deep/55 truncate">{arr.airport || arr.iata || '—'}</p>
-          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(arr.actual || arr.revised || arr.scheduled, arrTz) || '—'}</p>
-          {(arr.actual || arr.revised) && arr.scheduled && (arr.actual || arr.revised) !== arr.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(arr.scheduled, arrTz) })}</p>}
+          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(arr.actual || arr.revised || arr.scheduled, arrTz, destinationCountry) || '—'}</p>
+          {(arr.actual || arr.revised) && arr.scheduled && (arr.actual || arr.revised) !== arr.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(arr.scheduled, arrTz, destinationCountry) })}</p>}
           {(arr.terminal || arr.gate) && (
             <p className="text-xs font-semibold text-ink-deep mt-1.5">{arr.terminal && t('flightStatus.terminal', { terminal: arr.terminal })}{arr.terminal && arr.gate && ' · '}{arr.gate && t('flightStatus.gate', { gate: arr.gate })}</p>
           )}
