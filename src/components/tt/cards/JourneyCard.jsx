@@ -27,12 +27,15 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // Stays (hotel) render twice on the timeline via the `leg` prop: a check-in
 // entry at the start and a check-out entry at the end — one underlying record.
 //
-// Card height is content-driven with a min-h floor (131.5px): identical
+// Card height is content-driven with a min-h floor (131.5px by default, and
+// `minHeightClass` lets the desktop Journey timeline raise that floor to the
+// same 10.5rem its companion row uses, so the card keeps ONE height whether the
+// route map is open or closed): identical
 // content box whether Images is ON or OFF (same border + padding), and a
 // reserved min-height participant slot pushed to the bottom via mt-auto so
 // the height never depends on whether avatars are present. On narrow screens
 // where the timing row wraps, the card grows instead of clipping.
-export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber, onSelect, embedded }) {
+export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber, onSelect, embedded, minHeightClass = 'min-h-[131.5px]' }) {
   const navigate = useNavigate();
   const { t } = useI18n();
   // `embedded` drops the card's own surface (border + fill) and the rail's
@@ -109,7 +112,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
 
   return (
     <div
-      className={`flex gap-2 items-stretch ${interactive ? 'cursor-pointer' : ''} rounded-2xl min-h-[131.5px] focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40`}
+      className={`flex gap-2 items-stretch ${interactive ? 'cursor-pointer' : ''} rounded-2xl ${minHeightClass} focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40`}
       role={interactive ? 'link' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onClick={interactive ? open : undefined}

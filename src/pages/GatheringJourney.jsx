@@ -332,6 +332,12 @@ export default function GatheringJourney() {
   // same grid row, so they share that row's height — top and bottom edges line
   // up 1:1 no matter how tall the card's own content gets. No independent
   // left/right lists any more.
+  //
+  // Card height is the SAME in both map states: the desktop card carries the
+  // companion row's 10.5rem floor (map ON has no extension column to stretch
+  // it), and the extension cell is capped at that same height so it can never
+  // push the row taller than the card. Toggling the map therefore never resizes
+  // a card.
   const renderList = (pairRight) => (
     <>
       {filteredItems.length === 0 ? (
@@ -395,11 +401,12 @@ export default function GatheringJourney() {
                           participants={itemParticipants(entry.item, memberById)}
                           showImages={effectiveImages}
                           routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
+                          minHeightClass={isDesktop ? 'min-h-[10.5rem]' : undefined}
                           to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
                         />
                       </div>
                       {pairRight && (
-                        <div className="col-span-2 min-w-0">
+                        <div className="col-span-2 min-w-0 max-h-[10.5rem] overflow-hidden">
                           {/* Every timeline row gets its extension, check-out
                               included. The check-out one is rendered lean inside
                               the card (no duplicated map/date range/people), so
