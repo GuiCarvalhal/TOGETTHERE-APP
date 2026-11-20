@@ -17,6 +17,30 @@ import { listUserConnections, maybeSyncInboxInBackground, sanitizeConnection } f
 //   • Members and JourneyItems are fetched ONCE for all gatherings instead of
 //     once per gathering, and the User display overlay is a single batched read;
 //   • gatherings are read by id instead of pulling a global recent list.
+// ── Which segment Home features ──────────────────────────────────────────────
+// A segment whose duration IS the event (a flight, a dinner, an activity) holds
+// the card for as long as it runs. A CONTAINER segment (a stay, a cruise, a
+// rental) can run for days, and other segments happen inside that window — so
+// once something else is about to start inside it, the card hands over instead
+// of showing the same hotel until check-out.
+const CONTAINER_TYPES = new Set(['hotel', 'cruise', 'car']);
+// A container only steps aside for something starting within this window, so a
+// 10-day cruise is not displaced by an excursion five days away.
+const CONTAINER_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
+
+function pickFeatured(ongoing, nextUpcoming, nowMs) {
+  if (!ongoing) return nextUpcoming;
+  if (!nextUpcoming) return ongoing;
+  if (!CONTAINER_TYPES.has(ongoing.item.type)) return ongoing;
+  const startsSoon = nextUpcoming.startMs - nowMs <= CONTAINER_LOOKAHEAD_MS;
+  const insideWindow = ongoing.endMs !== null && nextUpcoming.startMs <= ongoing.endMs;
+  // The container keeps the card only while it is the more recent thing: a stay
+  // checked into minutes ago outranks a dinner hours out, but something that
+  // starts sooner than the stay started recently takes the card over.
+  const moreRecentThanNext = nowMs - ongoing.startMs < nextUpcoming.startMs - nowMs;
+  return startsSoon && insideWindow && !moreRecentThanNext ? nextUpcoming : ongoing;
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -85,10 +109,11 @@ export default async function(req) {
 
     const previews = {};
     const itemsByGathering = {};
-    // The user's "current" journey item to surface on Home ??? an ONGOING activity
-    // (started, not yet ended) takes priority; otherwise the next UPCOMING one
-    // (start in the future). Participant = item creator (owner_id) or explicit
-    // attendee (attendee_user_ids), matching the Journey page's MINE scope.
+    // The user's "current" journey item to surface on Home: an ONGOING activity
+    // (started, not yet ended) or, when a long stay is not the thing happening
+    // next, the UPCOMING one (start in the future) — see pickFeatured below.
+    // Participant = item creator (owner_id) or explicit attendee
+    // (attendee_user_ids), matching the Journey page's MINE scope.
     // Among ongoing, the one that started most recently wins; among upcoming, the
     // earliest start wins. Participants are the item's actual attendees (or the
     // creator fallback) resolved to minimal member previews so the card avatars
@@ -144,7 +169,10 @@ export default async function(req) {
         if (!isOngoing && startMs < startOfTodayMs) continue;
         if (isOngoing) {
           if (!ongoing || startMs > ongoing.startMs) {
-            ongoing = { item: it, gatheringId: gid, participants: resolveParticipants(it), startMs };
+            // endMs is the window a container segment hands over inside of; an
+            // item without an end keeps the rest of its start day, matching
+            // the isOngoing rule above.
+            ongoing = { item: it, gatheringId: gid, participants: resolveParticipants(it), startMs, endMs: endMs !== null ? endMs : startOfTodayMs + 86400000 };
           }
         } else if (startMs >= nowMs) {
           if (!nextUpcoming || startMs < nextUpcoming.startMs) {
@@ -195,7 +223,7 @@ export default async function(req) {
     // user has any mailbox at all (and its state) without a second round trip.
     const inboxConnections = (connectionsRaw || []).map(sanitizeConnection);
 
-    const chosen = ongoing || nextUpcoming;
+    const chosen = pickFeatured(ongoing, nextUpcoming, nowMs);
     return Response.json({
       gatherings: mine,
       deletedGatherings,
