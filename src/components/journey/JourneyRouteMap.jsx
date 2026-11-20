@@ -63,15 +63,16 @@ export default function JourneyRouteMap({ items, gatheringId, suggestions, route
 
   // Route geometry, one line per consecutive PAIR of waypoints: a flight keeps
   // the straight great-circle line, every other leg follows the driving route
-  // the same Directions request already returned for that pair (see
-  // mapRouteLegs). Decoding is memoised on the leg keys and on the geometry
-  // actually received, so hover/polling re-renders never decode or fetch again.
-  // ONE source of truth for which legs exist and which may carry a road shape:
-  // mapRouteLegs has already dropped every ground leg overlapping a flown
-  // corridor (coordinate tolerance, either direction), so a drive leg here is a
-  // genuine ground transfer. A flight is ALWAYS the straight great-circle line
-  // and only a drive leg ever decodes a cached road polyline — a suppressed leg
-  // is not in this list, so its cached geometry can never be decoded or drawn.
+  // the same Directions request already returned for that pair. Decoding is
+  // memoised on the leg keys and on the geometry actually received, so
+  // hover/polling re-renders never decode or fetch again.
+  //
+  // ONE source of truth: mapRouteLegs has already dropped every ground leg that
+  // is EQUIVALENT to a flown corridor (layered endpoint identity — IATA, then
+  // city+country, then adaptive geography, either direction), so a drive leg
+  // here is a genuine ground transfer. A flight never decodes anything and only
+  // a surviving drive leg ever reads a cached road polyline — a suppressed leg
+  // is not in this list, so its geometry can never be decoded or drawn.
   const legs = mapRouteLegs(items);
   const legsFp = legs.map((l) => `${l.kind}:${l.key}`).join('|');
   const routesFp = legs.map((l) => (l.kind === 'drive' ? (routeLegs[l.key]?.polyline || '').length : 0)).join('|');
