@@ -19,6 +19,7 @@ export default function FullscreenMapLayer({
   routesLoading = false,
   routesStale = false,
   highlightItemId = null,
+  onToggleFullscreen,
 }) {
   const [top, setTop] = useState(0);
 
@@ -26,12 +27,22 @@ export default function FullscreenMapLayer({
   // never flashes over the header for a frame.
   useLayoutEffect(() => {
     if (!open) return undefined;
+    let raf = 0;
+    let frames = 0;
     const measure = () => {
       const bar = document.querySelector('[data-sticky-toolbar]');
-      setTop(bar ? Math.round(bar.getBoundingClientRect().bottom) : 0);
+      const next = bar ? Math.round(bar.getBoundingClientRect().bottom) : 0;
+      setTop((prev) => (prev === next ? prev : next));
+    };
+    // Re-measure across the next frames: opening the layer collapses the page's
+    // cover header, which moves the toolbar — a single reading would leave a gap
+    // (or overlap) above the map.
+    const tick = () => {
+      measure();
+      if (frames++ < 24) raf = requestAnimationFrame(tick);
     };
     measure();
-    const raf = requestAnimationFrame(measure);
+    raf = requestAnimationFrame(tick);
     window.addEventListener('resize', measure);
     window.addEventListener('orientationchange', measure);
     return () => {
@@ -61,6 +72,8 @@ export default function FullscreenMapLayer({
         routesLoading={routesLoading}
         routesStale={routesStale}
         highlightItemId={highlightItemId}
+        fullscreen
+        onToggleFullscreen={onToggleFullscreen}
         className="h-full rounded-none border-0"
         heightClass="flex-1 min-h-0"
       />

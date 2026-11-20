@@ -1,7 +1,7 @@
 import React from 'react';
-import { MapPin, Loader2, WifiOff, ExternalLink } from 'lucide-react';
+import { MapPin, Loader2, WifiOff, Maximize2, Minimize2 } from 'lucide-react';
 import JourneyRouteMap from '@/components/journey/JourneyRouteMap';
-import { itemWaypoints, googleMapsRouteUrl } from '@/lib/journeyMap';
+import { itemWaypoints } from '@/lib/journeyMap';
 import { useConnectivity } from '@/lib/useConnectivity';
 import { useI18n } from '@/lib/i18n';
 
@@ -29,14 +29,13 @@ export default function JourneyMapPanel({
   suggestions = [], suggestionsWithoutCoords = 0, suggestionsPending = 0, itemsPending = 0,
   heightClass, highlightItemId = null, className = '', style,
   routeLegs = {}, routesLoading = false, routesStale = false,
+  fullscreen = false, onToggleFullscreen,
 }) {
   const { t } = useI18n();
   const { offline } = useConnectivity();
   const mappableCount = items.filter((it) => itemWaypoints(it).length > 0).length;
   const unmappedCount = items.length - mappableCount;
   const hasAnything = mappableCount > 0 || suggestions.length > 0 || suggestionsPending > 0 || itemsPending > 0;
-  // Hand-off to Google Maps with exactly the stops this map draws.
-  const mapsUrl = googleMapsRouteUrl(items);
 
   // Consolidated into one compact strip instead of stacked paragraphs.
   const notes = [];
@@ -51,7 +50,7 @@ export default function JourneyMapPanel({
   if (suggestionsPending === 0 && suggestionsWithoutCoords > 0) notes.push({ key: 'suggMissing', text: `${suggestionsWithoutCoords} suggestion${suggestionsWithoutCoords === 1 ? '' : 's'} without a location` });
 
   return (
-    <div className={`flex flex-col overflow-hidden rounded-2xl border border-ink-charcoal/15 bg-card ${className}`} style={style}>
+    <div className={`relative flex flex-col overflow-hidden rounded-2xl border border-ink-charcoal/15 bg-card ${className}`} style={style}>
       {!hasAnything ? (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
           <MapPin className="w-6 h-6 text-terra/40 mb-1.5" />
@@ -60,18 +59,32 @@ export default function JourneyMapPanel({
         </div>
       ) : (
         <>
-          <JourneyRouteMap
-            bare
-            items={items}
-            gatheringId={gatheringId}
-            suggestions={suggestions}
-            routeLegs={routeLegs}
-            heightClass={heightClass}
-            highlightItemId={highlightItemId}
-          />
-          {(notes.length > 0 || mapsUrl) && (
-            <div className="shrink-0 flex items-center justify-between gap-3 border-t border-ink-charcoal/10 px-3.5 py-2">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
+          {/* The map fills the panel; the expand/restore control floats on the
+              map itself (top-right), clear of Leaflet's own top-left controls. */}
+          <div className="relative flex flex-1 flex-col min-h-0">
+            <JourneyRouteMap
+              bare
+              items={items}
+              gatheringId={gatheringId}
+              suggestions={suggestions}
+              routeLegs={routeLegs}
+              heightClass={heightClass}
+              highlightItemId={highlightItemId}
+            />
+            {onToggleFullscreen && (
+              <button
+                type="button"
+                onClick={onToggleFullscreen}
+                aria-label={fullscreen ? t('toolbar.exitFullscreenMap') : t('toolbar.fullscreenMap')}
+                title={fullscreen ? t('toolbar.exitFullscreenMap') : t('toolbar.fullscreenMap')}
+                className="absolute top-2.5 right-2.5 z-[1100] inline-flex items-center justify-center w-9 h-9 rounded-full bg-card text-ink-deep border border-ink-charcoal/20 shadow-[0_2px_10px_rgba(0,0,0,0.18)] hover:bg-cream-pale transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
+              >
+                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+          {notes.length > 0 && (
+            <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-ink-charcoal/10 px-3.5 py-2">
               {notes.map((n) => (
                 <p key={n.key} className="text-[11px] text-ink-deep/55 flex items-center gap-1">
                   {n.spin
@@ -82,18 +95,6 @@ export default function JourneyMapPanel({
                   {n.text}
                 </p>
               ))}
-              </div>
-              {mapsUrl && (
-                <a
-                  href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-terra-deep hover:underline"
-                >
-                  <ExternalLink className="w-3 h-3 shrink-0" />
-                  {t('journey.openInGoogleMaps')}
-                </a>
-              )}
             </div>
           )}
         </>

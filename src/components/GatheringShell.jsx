@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { GatheringProvider, useGathering } from '@/lib/gatheringContext';
 import { gatheringDateStatus, deriveGatheringMeta } from '@/lib/gatheringDates';
@@ -35,6 +35,10 @@ function ShellInner() {
   const { t, fmt } = useI18n();
   const onesignal = useOneSignal(user?.id);
   const location = useLocation();
+  // Reduced header: a page can collapse the cover header to give its content the
+  // space (the route map in full screen does). Pages reset it on unmount, so
+  // navigating away always restores the header.
+  const [compactHeader, setCompactHeader] = useState(false);
 
   // Populate the offline IndexedDB cache from successfully loaded gathering
   // context. Fires only after a non-error, non-loading load — auth/network
@@ -95,8 +99,9 @@ function ShellInner() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TopBar gatheringId={id} />
-      {/* Cover-photo header — hidden on journey item detail */}
-      {!isItemDetail && (
+      {/* Cover-photo header — hidden on journey item detail, and collapsed while
+          a page asks for the reduced header */}
+      {!isItemDetail && !compactHeader && (
         <GatheringHero
           id={id}
           gathering={gathering}
@@ -109,7 +114,7 @@ function ShellInner() {
       <NotificationOptInBanner onesignal={onesignal} gatheringId={id} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-2.5 pb-36">
-        <Outlet context={{ onesignal }} />
+        <Outlet context={{ onesignal, setCompactHeader }} />
       </main>
 
       <FabButton />
