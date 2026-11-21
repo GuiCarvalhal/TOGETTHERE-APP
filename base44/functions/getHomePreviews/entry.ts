@@ -24,6 +24,9 @@ import { listUserConnections, maybeSyncInboxInBackground, sanitizeConnection } f
 // once something else is about to start inside it, the card hands over instead
 // of showing the same hotel until check-out.
 const CONTAINER_TYPES = new Set(['hotel', 'cruise', 'car']);
+// Order the member preview so the card's two avatar groups are stable: the
+// owner/admin lead the participant group, viewers always trail it.
+const ROLE_RANK = { owner: 0, admin: 1, member: 2, viewer: 3 };
 // A container only steps aside for something starting within this window, so a
 // 10-day cruise is not displaced by an excursion five days away.
 // Nothing hands over the instant it ends either: END_GRACE_MS keeps the finished
@@ -157,9 +160,19 @@ export default async function(req) {
       // anything reads these items. (It used to be applied only to the
       // projection, which left the featured pick reading the raw rows.)
       const its = (itemsByGatheringRaw[gid] || []).filter((it) => it.is_deleted !== true);
-      previews[gid] = overlaidMs
-        .map((m) => ({ full_name: m.full_name, photo: m.photo, role: m.role }))
-        .slice(0, 8);
+      // Bounded preview, but the bound must never swallow a whole group: the
+      // card draws viewers apart from the participants, so truncating the raw
+      // list dropped them entirely (a viewer then read as one more member of
+      // the crowd). Each group gets its own budget instead.
+      const rankedMembers = [...overlaidMs].sort(
+        (a, b) => (ROLE_RANK[a.role] ?? 2) - (ROLE_RANK[b.role] ?? 2)
+      );
+      const shownMembers = [
+        ...rankedMembers.filter((m) => m.role !== 'viewer').slice(0, 8),
+        ...rankedMembers.filter((m) => m.role === 'viewer').slice(0, 4),
+      ];
+      previews[gid] = shownMembers
+        .map((m) => ({ full_name: m.full_name, photo: m.photo, role: m.role }));
       itemsByGathering[gid] = its.map((it) => ({
         type: it.type || null,
         start_datetime: it.start_datetime || null,

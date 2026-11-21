@@ -22,9 +22,10 @@ import { useI18n } from '@/lib/i18n';
 export default function GatheringCard({ gathering, dateLabel, meta, role, people = [], to }) {
   const { t } = useI18n();
   const g = gathering;
-  // Two avatar groups: everyone who takes part (owner, admin, member) stays
-  // together on the left; viewers are a separate, more muted group set apart to
-  // their right — near the right side but never flush with the card edge.
+  // Two avatar groups, split by the member's own role: everyone who takes part
+  // (owner, admin, member) stays together on the left; viewers are a separate,
+  // more muted group pushed into the card's right corner (the card's padding
+  // keeps them off the border).
   const members = people.filter((p) => p.role !== 'viewer');
   const viewers = people.filter((p) => p.role === 'viewer');
   return (
@@ -58,7 +59,7 @@ export default function GatheringCard({ gathering, dateLabel, meta, role, people
           <div className="flex items-center mt-2.5">
             <AvatarStack people={members} max={4} size="xs" />
             {viewers.length > 0 && (
-              <div className="flex items-center gap-1.5 ml-auto mr-4 pl-2">
+              <div className="flex items-center gap-1.5 ml-auto pl-2">
                 <span aria-hidden="true" className="h-4 w-px bg-white/30" />
                 <div className="opacity-80">
                   <AvatarStack people={viewers} max={2} size="xs" />
