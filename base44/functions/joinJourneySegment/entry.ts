@@ -1,9 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
 import { getMyMember } from '../../shared/gatheringAcl.ts';
 
-// Self-service "I'm on this too": adds the current user to the segment's
-// attendee_user_ids (the opt-in attendees list, distinct from the ACL
-// member_user_ids). Verifies the caller is a member of the gathering.
+// Attendance toggle for a journey segment: adds or removes ONE person from the
+// segment's attendee_user_ids (the opt-in list, distinct from the ACL
+// member_user_ids). The caller may act for themselves, or for a member of their
+// own family (Family: owner_user_id + member_user_ids) who is part of this
+// gathering — that is what lets a traveler put their household on a flight or a
+// dinner in one tap. Anyone else is refused, so a crafted request can never edit
+// a stranger's attendance. The segment's creator is always a participant and can
+// never be removed here.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -25,11 +30,30 @@ export default async function(req) {
     // compatibility). The creator can never leave their own item via this flow
     // — they're always a participant; they manage others via the edit form.
     const action = body.action === 'leave' ? 'leave' : 'join';
+    const requested = typeof body.user_id === 'string' ? body.user_id.trim() : '';
+    const targetId = requested || user.id;
+
+    if (targetId !== user.id) {
+      const families = await base44.asServiceRole.entities.Family.list().catch(() => []);
+      const sameFamily = (families || []).some((f) => {
+        const ids = [f.owner_user_id, ...(f.member_user_ids || [])].filter(Boolean);
+        return ids.includes(user.id) && ids.includes(targetId);
+      });
+      if (!sameFamily) {
+        return Response.json({ error: 'You can only add or remove members of your own family' }, { status: 403 });
+      }
+      const targetRows = await base44.asServiceRole.entities.Member
+        .filter({ gathering_id: item.gathering_id, user_id: targetId }).catch(() => []);
+      const target = (targetRows || [])[0];
+      if (!target) return Response.json({ error: 'Not a member of this gathering' }, { status: 400 });
+      if (target.role === 'viewer') return Response.json({ error: 'Viewers cannot join journey segments' }, { status: 403 });
+    }
+
     let ids = [...(item.attendee_user_ids || [])];
     if (action === 'join') {
-      if (!ids.includes(user.id)) ids.push(user.id);
-    } else if (item.owner_id !== user.id) {
-      ids = ids.filter((id) => id !== user.id);
+      if (!ids.includes(targetId)) ids.push(targetId);
+    } else if (item.owner_id !== targetId) {
+      ids = ids.filter((id) => id !== targetId);
     }
     await base44.asServiceRole.entities.JourneyItem.update(itemId, { attendee_user_ids: ids });
     return Response.json({ attendee_user_ids: ids });

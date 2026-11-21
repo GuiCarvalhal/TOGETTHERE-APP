@@ -27,8 +27,23 @@ export default async function(req) {
     if (!fields) return Response.json({ error: 'fields required' }, { status: 400 });
 
     // No gathering context — the global update (display_name, photo, etc.)
-    // already happened via updateMe in the client. Nothing to sync.
-    if (!gathering_id) return Response.json({ ok: true });
+    // already happened via updateMe in the client. Mirror the identity fields
+    // onto EVERY member row of this user, so the per-gathering copies that some
+    // surfaces read directly (avatar stacks, the family picker, past members)
+    // always show the same face and name as the global profile.
+    if (!gathering_id) {
+      const identity = {};
+      if (typeof fields.photo === 'string') identity.photo = fields.photo;
+      if (typeof fields.full_name === 'string' && fields.full_name.trim()) identity.full_name = fields.full_name.trim();
+      if (!Object.keys(identity).length) return Response.json({ ok: true });
+      const rows = await base44.asServiceRole.entities.Member.filter({ user_id: user.id }).catch(() => []);
+      if (rows.length) {
+        await base44.asServiceRole.entities.Member
+          .bulkUpdate(rows.map((r) => ({ id: r.id, ...identity })))
+          .catch(() => {});
+      }
+      return Response.json({ ok: true, synced: rows.length });
+    }
 
     const me = await getMyMember(base44, gathering_id, user.id);
     if (!me) return Response.json({ error: 'Not a member' }, { status: 403 });

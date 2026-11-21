@@ -7,7 +7,7 @@ import AvatarStack from '@/components/tt/AvatarStack';
 import SegmentMap from '@/components/journey/SegmentMap';
 import FlightStatusCard from '@/components/journey/FlightStatusCard';
 import FlightDetailHeader from '@/components/journey/FlightDetailHeader';
-import JoinSegmentButton from '@/components/journey/JoinSegmentButton';
+import SegmentAttendeesPicker from '@/components/journey/SegmentAttendeesPicker';
 import SegmentInfoSections from '@/components/journey/SegmentInfoSections';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
@@ -49,20 +49,21 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
         </div>
       )}
 
-      {/* People — avatar row + compact Join/Leave on the right */}
+      {/* People — who is on this flight, then the family avatar toggles */}
       <div className="tt-card-hairline p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="tt-label text-ink-deep/40 mb-2">{t('journeyDetail.people')}</p>
-            {attendees.length > 0 ? (
-              <AvatarStack people={attendees} max={8} size="sm" />
-            ) : (
-              <p className="text-sm text-ink-deep/50">{t('journeyDetail.noOneJoinedFlight')}</p>
-            )}
-          </div>
-          <div className="shrink-0">
-            <JoinSegmentButton item={item} currentMember={currentMember} onJoined={onReload} compact />
-          </div>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <p className="tt-label text-ink-deep/40">{t('journeyDetail.people')}</p>
+          {attendees.length > 0 && (
+            <span className="text-xs text-ink-deep/45">{t('journeyDetail.onSegment', { count: attendees.length })}</span>
+          )}
+        </div>
+        {attendees.length > 0 ? (
+          <AvatarStack people={attendees} max={8} size="sm" />
+        ) : (
+          <p className="text-sm text-ink-deep/50">{t('journeyDetail.noOneJoinedFlight')}</p>
+        )}
+        <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
+          <SegmentAttendeesPicker item={item} members={members} currentMember={currentMember} onChanged={onReload} compact />
         </div>
       </div>
 

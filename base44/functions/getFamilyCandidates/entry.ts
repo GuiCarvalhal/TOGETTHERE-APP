@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
+import { overlayUserDisplay } from '../../shared/gatheringAcl.ts';
 
 // Returns all people the current user has traveled with — every participant
 // (owner/admin/member, never viewers) from every gathering the user is a
@@ -39,6 +40,10 @@ export default async function(req) {
       }
     }
 
+    // Candidates carry the global profile photo (not the per-gathering copy),
+    // so the family picker shows the same face as every other avatar surface.
+    const withPhotos = await overlayUserDisplay(base44, candidates);
+
     // Family membership for each candidate
     const allFams = await base44.asServiceRole.entities.Family.list().catch(() => []);
     const familyOfUid = {};
@@ -49,7 +54,7 @@ export default async function(req) {
     }
 
     return Response.json({
-      candidates: candidates.map((c) => ({
+      candidates: withPhotos.map((c) => ({
         ...c,
         family: familyOfUid[c.user_id] || null,
       })),

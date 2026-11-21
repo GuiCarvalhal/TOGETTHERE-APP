@@ -88,10 +88,7 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSave
       // built-in that can't be overridden, so display_name is the editable
       // name). photo is also global.
       // Own-profile writes target ONLY the authenticated account globally via
-      // updateMe (display_name, photo, home_city, etc.). No Member/ACL/role
-      // writes here — gathering member displays read the authoritative User
-      // display_name/photo via overlayUserDisplay in getGatheringContext /
-      // getHomePreviews, so they stay current without syncing Member records.
+      // updateMe (display_name, photo, home_city, etc.). No ACL or role writes.
       await base44.auth.updateMe({
         display_name: form.full_name.trim(),
         home_city: form.home_city.trim(),
@@ -102,6 +99,14 @@ const OwnProfileEdit = forwardRef(function OwnProfileEdit({ data, userId, onSave
         dietary_preferences: form.dietary_preferences,
         photo: form.photo,
       });
+      // Mirror the name + photo onto the per-gathering member rows: some
+      // surfaces (avatar stacks, the family picker, past members) read that
+      // copy directly, and it must never drift from the global profile. A
+      // failure here must not fail the save — the global profile is already
+      // written and every overlaid surface is current.
+      await base44.functions
+        .invoke('updateMyProfile', { fields: { photo: form.photo, full_name: form.full_name.trim() } })
+        .catch(() => {});
       toast({ title: t('profileEdit.profileSaved') });
       onSaved();
       onSaveDone?.();

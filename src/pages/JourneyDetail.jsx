@@ -24,7 +24,7 @@ import FlightDetailView from '@/components/journey/FlightDetailView';
 import RouteDetailsCard from '@/components/journey/RouteDetailsCard';
 import VenueInfoBlock from '@/components/journey/VenueInfoBlock';
 import SegmentInfoSections from '@/components/journey/SegmentInfoSections';
-import JoinSegmentButton from '@/components/journey/JoinSegmentButton';
+import SegmentAttendeesPicker from '@/components/journey/SegmentAttendeesPicker';
 import DetailActionBar from '@/components/tt/DetailActionBar';
 
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
@@ -330,7 +330,7 @@ export default function JourneyDetail() {
           <p className="text-sm text-ink-deep/50">{t('journeyDetail.noOneJoined')}</p>
         )}
         <div className="mt-3 pt-3 border-t border-ink-charcoal/10">
-          <JoinSegmentButton item={item} currentMember={currentMember} onJoined={() => load(true)} />
+          <SegmentAttendeesPicker item={item} members={members} currentMember={currentMember} onChanged={() => load(true)} />
         </div>
       </div>
 
