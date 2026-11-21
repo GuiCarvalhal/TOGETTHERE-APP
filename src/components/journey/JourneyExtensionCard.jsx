@@ -6,6 +6,7 @@ import JourneyExtensionInfo from '@/components/journey/JourneyExtensionInfo';
 import JourneyAttachmentButton from '@/components/journey/JourneyAttachmentButton';
 import { Button } from '@/components/ui/button';
 import { itemMapPoints } from '@/lib/journeyMap';
+import { FROM_JOURNEY_STATE } from '@/lib/journeyScrollTarget';
 import { useI18n } from '@/lib/i18n';
 
 // Desktop companion to a journey card (map OFF). It sits in the SAME grid row as
@@ -26,7 +27,10 @@ export default function JourneyExtensionCard({ item, gatheringId, attendees = []
 
   // Opens the edit flow directly: flights edit on the full-page flight surface,
   // every other type on the detail page with its edit form already open.
-  const onEdit = () => navigate(item.type === 'flight' ? `${base}/edit` : `${base}?edit=1`);
+  const onEdit = () => navigate(
+    item.type === 'flight' ? `${base}/edit` : `${base}?edit=1`,
+    { state: FROM_JOURNEY_STATE }
+  );
 
   return (
     <div className="tt-card-hairline p-2.5 h-full min-h-[10.5rem] flex gap-3 overflow-hidden">
@@ -53,7 +57,7 @@ export default function JourneyExtensionCard({ item, gatheringId, attendees = []
         <div className="shrink-0 flex items-start gap-2">
           <p className="flex-1 min-w-0 font-display text-sm font-bold text-ink-deep leading-tight truncate">{item.title}</p>
           <div className="flex items-center gap-1 shrink-0">
-            <JourneyAttachmentButton urls={item.attachments || []} detailPath={base} />
+            <JourneyAttachmentButton urls={item.attachments || []} detailPath={base} navState={FROM_JOURNEY_STATE} />
             {canEdit && (
               <Button
                 size="sm"

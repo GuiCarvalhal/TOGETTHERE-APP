@@ -9,7 +9,7 @@ import { useI18n } from '@/lib/i18n';
 // instead of a footer. One file opens straight away (public URLs directly,
 // private files through a short-lived signed URL); several files open the
 // segment's detail page, which lists them all.
-export default function JourneyAttachmentButton({ urls = [], detailPath }) {
+export default function JourneyAttachmentButton({ urls = [], detailPath, navState }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [opening, setOpening] = useState(false);
@@ -19,7 +19,7 @@ export default function JourneyAttachmentButton({ urls = [], detailPath }) {
   async function open(e) {
     e.preventDefault();
     if (count > 1) {
-      navigate(detailPath);
+      navigate(detailPath, navState ? { state: navState } : undefined);
       return;
     }
     const url = urls[0];

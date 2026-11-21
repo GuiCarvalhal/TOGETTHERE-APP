@@ -13,6 +13,7 @@ import JourneyDayHeader from '@/components/journey/JourneyDayHeader';
 import JourneyLegRow from '@/components/journey/JourneyLegRow';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import { invalidateHomeShell } from '@/lib/homeShellCache';
+import { consumeJourneyReturn, FROM_JOURNEY_STATE } from '@/lib/journeyScrollTarget';
 import FullscreenMapLayer from '@/components/journey/FullscreenMapLayer';
 import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
@@ -61,6 +62,10 @@ export default function GatheringJourney() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
+  // Segment the list must land on, when the user is coming back from one (or
+  // asked to open this journey from one). Read ONCE on mount: it is consumed
+  // here, so any later visit through normal navigation lands on today.
+  const [returnItemId] = useState(() => consumeJourneyReturn());
   // Desktop only: the segment hovered in the list, highlighted in place on the
   // route map (never a zoom/fit change — the overview stays put). Phones and
   // portrait tablets have no hover, so it stays null there.
@@ -241,32 +246,39 @@ export default function GatheringJourney() {
     (byDay[k] = byDay[k] || []).push(e);
   });
   const days = Object.keys(byDay).sort();
-  // Auto-scroll target: the day of the first entry at or after the start of
-  // today (viewer-local). If today has an activity, that day; if not, the next
-  // upcoming day; if everything is in the past, the most recent day. Computed
-  // from the sorted entries so it respects the active scope/type filters.
-  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
-  const withAt = entries.filter((e) => e.at);
-  const upcomingEntry = withAt.find((e) => new Date(e.at).getTime() >= startOfToday.getTime());
-  const targetEntry = upcomingEntry || withAt[withAt.length - 1];
-  const targetDay = targetEntry ? dayKey(targetEntry.at, tzMap[targetEntry.item.id]) : null;
+  // Landing position on mount, in priority order:
+  //  1. coming back from a segment (or "Open gathering" on one) → that segment;
+  //  2. normal navigation into the journey → TODAY's day row (viewer-local);
+  //  3. today is not in the list → the top of the page (no scroll at all).
+  const localToday = new Date();
+  const todayKey = `${localToday.getFullYear()}-${String(localToday.getMonth() + 1).padStart(2, '0')}-${String(localToday.getDate()).padStart(2, '0')}`;
+  const targetDay = days.includes(todayKey) ? todayKey : null;
   const targetDayRef = useRef(null);
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
-    if (loading || didAutoScrollRef.current || !targetDayRef.current) return;
-    // Anchor the target day's HEADER (calendar icon + date) flush below the
-    // pinned sticky toolbar. The pinned bottom = TopBar(48px) + safe-area-inset-top
-    // + the sticky bar's live content height (scope row + filter row + open map
-    // row). We measure the sticky element's offsetHeight and fold in
-    // env(safe-area-inset-top) via a CSS calc so it resolves per-device (notch
-    // vs desktop) — a static scroll-mt-36 can't, which is why the header was
-    // hidden behind the bar on notched phones and the first card showed instead.
+    if (loading || didAutoScrollRef.current) return;
+    // Anchor the target flush below the pinned sticky toolbar. The pinned bottom
+    // = TopBar(48px) + safe-area-inset-top + the sticky bar's live content height
+    // (scope row + filter row + open map row). We measure the sticky element's
+    // offsetHeight and fold in env(safe-area-inset-top) via a CSS calc so it
+    // resolves per-device (notch vs desktop) — a static scroll-mt-36 can't, which
+    // is why the header was hidden behind the bar on notched phones.
     const stickyEl = document.querySelector('[data-sticky-toolbar]');
     const stickyH = stickyEl ? stickyEl.offsetHeight : 0;
-    targetDayRef.current.style.scrollMarginTop = `calc(${48 + stickyH + 8}px + env(safe-area-inset-top))`;
-    targetDayRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
+    const returnCard = returnItemId
+      ? document.querySelector(`[data-journey-item="${returnItemId}"]`)
+      : null;
+    const anchor = returnCard || targetDayRef.current;
+    if (!anchor) {
+      // No segment to return to and no today on the list: start at the top.
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      didAutoScrollRef.current = true;
+      return;
+    }
+    anchor.style.scrollMarginTop = `calc(${48 + stickyH + 8}px + env(safe-area-inset-top))`;
+    anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
     didAutoScrollRef.current = true;
-  }, [loading, targetDay]);
+  }, [loading, returnItemId, targetDay]);
   const canAdd = canAddJourney(role);
   const routeNumbers = itemRouteNumbers(effectiveMapOpen ? filteredMapItems : []);
   const mapRow = (
@@ -393,6 +405,7 @@ export default function GatheringJourney() {
                         />
                       )}
                       <div
+                        data-journey-item={entry.item.id}
                         className={pairRight ? 'col-span-1 min-w-0 [&>*]:h-full' : undefined}
                         onMouseEnter={isDesktop && effectiveMapOpen ? () => setHoverId(entry.item.id) : undefined}
                         onMouseLeave={isDesktop && effectiveMapOpen ? () => setHoverId(null) : undefined}
@@ -407,6 +420,7 @@ export default function GatheringJourney() {
                           routeNumber={effectiveMapOpen ? routeNumbers.get(entry.item.id) : undefined}
                           minHeightClass={isDesktop ? 'min-h-[10.5rem]' : undefined}
                           to={`/gathering/${gatheringId}/journey/${entry.item.id}`}
+                          navState={FROM_JOURNEY_STATE}
                         />
                       </div>
                       {pairRight && (

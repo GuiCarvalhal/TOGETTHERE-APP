@@ -35,7 +35,7 @@ const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 // reserved min-height participant slot pushed to the bottom via mt-auto so
 // the height never depends on whether avatars are present. On narrow screens
 // where the timing row wraps, the card grows instead of clipping.
-export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, routeNumber, onSelect, embedded, minHeightClass = 'min-h-[131.5px]' }) {
+export default function JourneyCard({ item, leg, typeColor, icon: Icon, participants, showImages, to, navState, routeNumber, onSelect, embedded, minHeightClass = 'min-h-[131.5px]' }) {
   const navigate = useNavigate();
   const { t } = useI18n();
   // `embedded` drops the card's own surface (border + fill) and the rail's
@@ -99,7 +99,7 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const interactive = !!to || !!onSelect;
   const open = () => {
     if (onSelect) { onSelect(); return; }
-    if (to) navigate(to);
+    if (to) navigate(to, navState ? { state: navState } : undefined);
   };
 
   const mainText = onCover ? 'text-white' : 'text-ink-deep';

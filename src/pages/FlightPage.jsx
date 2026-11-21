@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { canAddJourney, canEditJourneyItem } from '@/lib/gatheringHelpers';
@@ -35,6 +35,7 @@ export default function FlightPage() {
   const isEdit = !!itemId;
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { t } = useI18n();
 
@@ -165,7 +166,9 @@ export default function FlightPage() {
       const payload = buildJourneyPayload({ form, attendeeIds, startTz, endTz, meta: TYPE_META_FLIGHT, currentMember, item, gatheringId });
       await submitJourneyItem({ isEdit, gatheringId, itemId, payload });
       toast({ title: isEdit ? t('journeyForm.flightUpdated') : t('journeyForm.flightAdded') });
-      if (isEdit) navigate(`/gathering/${gatheringId}/journey/${itemId}`, { replace: true });
+      // Keep the detail page's navigation state, so a segment opened from the
+      // journey list still returns the list to its own position.
+      if (isEdit) navigate(`/gathering/${gatheringId}/journey/${itemId}`, { replace: true, state: location.state });
       else navigate(`/gathering/${gatheringId}/journey`, { replace: true });
     } catch (err) {
       toast({ title: t('journeyForm.couldNotSaveFlight'), description: err.message || t('common.error'), variant: 'destructive' });

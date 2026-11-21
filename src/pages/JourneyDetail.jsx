@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useGathering } from '@/lib/gatheringContext';
 import { JOURNEY_TYPES, canEditJourneyItem, canDeleteJourneyItem } from '@/lib/gatheringHelpers';
@@ -26,6 +26,7 @@ import VenueInfoBlock from '@/components/journey/VenueInfoBlock';
 import SegmentInfoSections from '@/components/journey/SegmentInfoSections';
 import SegmentAttendeesPicker from '@/components/journey/SegmentAttendeesPicker';
 import DetailActionBar from '@/components/tt/DetailActionBar';
+import { markJourneyReturn } from '@/lib/journeyScrollTarget';
 
 const ICONS = { flight: Plane, car: Car, train: Train, hotel: Hotel, activity: Compass, cruise: Ship, other: MapPin };
 const TYPE_LABEL = Object.fromEntries(JOURNEY_TYPES.map((t) => [t.key, t.label]));
@@ -50,6 +51,12 @@ export default function JourneyDetail() {
   const { itemId } = useParams();
   const { gatheringId, members, currentMember, role, setFab } = useGathering();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Opened FROM the journey list (the card, its extension card or its
+  // attachment link stamp this): Back then returns to the list, which reopens
+  // on this very segment. Arriving from Home or anywhere else, Back just goes
+  // back and the list keeps its normal "today" landing.
+  const cameFromJourney = location.state?.fromJourney === true;
   const { t } = useI18n();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -144,18 +151,24 @@ export default function JourneyDetail() {
   const canDelete = item && canDeleteJourneyItem(role, item, currentMember);
   // Flights edit on the full-page flight surface, not the sheet form.
   const onEdit = () => {
-    if (item?.type === 'flight') navigate(`/gathering/${gatheringId}/journey/${item.id}/edit`);
+    if (item?.type === 'flight') navigate(`/gathering/${gatheringId}/journey/${item.id}/edit`, { state: location.state });
     else setEditing(true);
   };
 
   // Straight to this item's gathering: Back only retraces the history, which is
   // not always the gathering's journey (e.g. arriving from Home's up-next card).
-  const openGathering = () => navigate(`/gathering/${gatheringId}/journey`);
+  const openGathering = () => {
+    // The user asked for THIS segment's journey: open it on this segment.
+    markJourneyReturn(itemId);
+    navigate(`/gathering/${gatheringId}/journey`);
+  };
 
   const back = () => {
     // Return to the previous page when there's browser history (e.g. coming
     // from Home's "Up next" card or the Journey list). Fall back to the
     // journey list on a direct deep-link/refresh with no prior entry.
+    // Coming back to the list, remember this segment so it reopens here.
+    if (cameFromJourney) markJourneyReturn(itemId);
     if (window.history.state && window.history.state.idx > 0) navigate(-1);
     else navigate(`/gathering/${gatheringId}/journey`);
   };
