@@ -281,38 +281,65 @@ export default function GatheringJourney() {
     if (landedForRef.current === gatheringId) return undefined;
     // The reader already took control before the list settled: leave them be.
     if (userMovedRef.current) { landedForRef.current = gatheringId; return undefined; }
-    // Anchor the target flush below the pinned sticky stack. The offset is built
-    // from LIVE geometry measured at scroll time: the app header's own height
-    // (which already carries the notch inset) + the journey toolbar's current
-    // height (it grows when the route-map row opens) + a stable 12px gap. The
-    // previous approach used scrollIntoView with a calc() scroll-margin: on iOS
-    // that calc containing env() was dropped, leaving the anchor pinned ~56px
-    // down — right behind the toolbar. Measuring the real boxes cannot drift,
-    // and it resolves per-device and per-layout (map open or closed).
-    const scrollToAnchor = () => {
+    // Land the target flush below the pinned sticky stack, then VERIFY the result.
+    // Two things made this fragile: a scroll-margin built with env() (iOS drops
+    // that calc, leaving the anchor behind the bar) and a single measurement taken
+    // before late layout settled (wrapped filter pills, the map row, images above
+    // the anchor). So the offset comes from live geometry AND the outcome is
+    // measured afterwards, nudging by the exact residual delta until the anchor
+    // really sits below the stack.
+    //
+    // The notch inset needs no separate term: it is part of the header's own
+    // height, so measuring the header's bottom edge includes it exactly once.
+    // Gap: 20px on phones (thumb-friendly clearance under the bar), 12px above.
+    const extraGap = () => (window.matchMedia('(max-width: 767px)').matches ? 20 : 12);
+    // Bottom edge of the region the pinned chrome occupies. While the bar is
+    // pinned under the header its own bottom edge is authoritative (it grows with
+    // the filter row and the map row); before it pins, header height + bar height
+    // is that same edge once pinned.
+    const stackBottom = () => {
+      const headerEl = document.querySelector('[data-app-header]');
+      const barEl = document.querySelector('[data-sticky-toolbar]');
+      const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom : 0;
+      if (!barEl) return headerBottom;
+      const r = barEl.getBoundingClientRect();
+      return r.top <= headerBottom + 1 ? r.bottom : headerBottom + r.height;
+    };
+    // 'none' = nothing to land on, 'ok' = in place (or already at the page's
+    // limit), 'adjust' = a correction was applied.
+    const land = () => {
       const returnCard = returnItemId
         ? document.querySelector(`[data-journey-item="${returnItemId}"]`)
         : null;
       const anchor = returnCard || targetDayRef.current;
-      if (!anchor) return false;
-      const headerEl = document.querySelector('[data-app-header]');
-      const barEl = document.querySelector('[data-sticky-toolbar]');
-      const stackH = (headerEl ? headerEl.getBoundingClientRect().height : 0)
-        + (barEl ? barEl.getBoundingClientRect().height : 0);
-      const anchorTop = anchor.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: Math.max(0, anchorTop - stackH - 12), left: 0, behavior: 'auto' });
-      return true;
+      if (!anchor) return 'none';
+      const delta = anchor.getBoundingClientRect().top - (stackBottom() + extraGap());
+      if (Math.abs(delta) <= 2) return 'ok';
+      const before = window.scrollY;
+      window.scrollBy(0, delta);
+      // The document ran out of scroll: the target is as high as it can go.
+      return window.scrollY === before ? 'ok' : 'adjust';
     };
     landedForRef.current = gatheringId;
-    if (!scrollToAnchor()) {
+    if (land() === 'none') {
       // No segment to return to and no day ahead: start at the top.
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       return undefined;
     }
-    // One settle pass, never a loop: the sticky bar's final height (wrapped
-    // filters, the map row) and any image above the anchor land a frame later.
-    const raf = requestAnimationFrame(() => { if (!userMovedRef.current) scrollToAnchor(); });
-    return () => cancelAnimationFrame(raf);
+    // Bounded settle, never a loop and never a second landing: keep checking for
+    // ~0.9s so a bar that resized or an image that loaded above the anchor is
+    // corrected, stop after two clean frames, and stop instantly if the reader
+    // scrolls. Same gathering only (landedForRef is already stamped).
+    let raf = 0;
+    let clean = 0;
+    const deadline = Date.now() + 900;
+    const settle = () => {
+      if (userMovedRef.current || Date.now() > deadline || clean >= 2) return;
+      clean = land() === 'ok' ? clean + 1 : 0;
+      raf = requestAnimationFrame(settle);
+    };
+    raf = requestAnimationFrame(settle);
+    return () => { if (raf) cancelAnimationFrame(raf); };
   }, [loading, returnItemId, targetDay, gatheringId]);
   const canAdd = canAddJourney(role);
   const routeNumbers = itemRouteNumbers(effectiveMapOpen ? filteredMapItems : []);

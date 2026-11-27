@@ -29,7 +29,7 @@ export default function BottomTabBar({ gatheringId, role }) {
   return (
     <nav
       aria-label={t('tabs.sections')}
-      className="fixed inset-x-0 z-40 flex justify-center bottom-[calc(env(safe-area-inset-bottom)+0.5rem)]"
+      className="fixed inset-x-0 z-40 flex justify-center bottom-[calc(env(safe-area-inset-bottom)+3px)]"
     >
       {/* Higher surface opacity + a hairline border instead of a drop shadow: the
           page keeps scrolling behind the dock (blur retained), but labels stay
