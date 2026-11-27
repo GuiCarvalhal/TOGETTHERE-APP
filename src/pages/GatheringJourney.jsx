@@ -281,65 +281,109 @@ export default function GatheringJourney() {
     if (landedForRef.current === gatheringId) return undefined;
     // The reader already took control before the list settled: leave them be.
     if (userMovedRef.current) { landedForRef.current = gatheringId; return undefined; }
-    // Land the target flush below the pinned sticky stack, then VERIFY the result.
-    // Two things made this fragile: a scroll-margin built with env() (iOS drops
-    // that calc, leaving the anchor behind the bar) and a single measurement taken
-    // before late layout settled (wrapped filter pills, the map row, images above
-    // the anchor). So the offset comes from live geometry AND the outcome is
-    // measured afterwards, nudging by the exact residual delta until the anchor
-    // really sits below the stack.
-    //
-    // The notch inset needs no separate term: it is part of the header's own
-    // height, so measuring the header's bottom edge includes it exactly once.
-    // Gap: 20px on phones (thumb-friendly clearance under the bar), 12px above.
-    const extraGap = () => (window.matchMedia('(max-width: 767px)').matches ? 20 : 12);
-    // Bottom edge of the region the pinned chrome occupies. While the bar is
-    // pinned under the header its own bottom edge is authoritative (it grows with
-    // the filter row and the map row); before it pins, header height + bar height
-    // is that same edge once pinned.
+    // ── Deterministic landing ────────────────────────────────────────────────
+    // Pure geometry, no inferred offsets. Two live boxes define the band the
+    // pinned chrome occupies:
+    //   headerBottom   = [data-app-header].getBoundingClientRect().bottom
+    //   controlsBottom = [data-sticky-toolbar].getBoundingClientRect().bottom
+    //                    (StickyBar: action row + filter chips + optional map row)
+    //   stackBottom    = max(headerBottom, controlsBottom)
+    //   targetY        = scrollY + dayHeaderRect.top - stackBottom - GAP
+    // The notch inset is already inside the header's own height, so it is
+    // included exactly once here — no separate env() term, and no scroll-margin.
+    const GAP = window.matchMedia('(max-width: 767px)').matches ? 16 : 12;
+
+    // The day header itself: the day block's first child is the header row
+    // (JourneyDayHeader + its agent button). Returning from an item instead
+    // targets that item's card.
+    const dayHeaderEl = () => {
+      if (returnItemId) {
+        const card = document.querySelector(`[data-journey-item="${returnItemId}"]`);
+        if (card) return card;
+      }
+      const block = targetDayRef.current;
+      return block ? (block.firstElementChild || block) : null;
+    };
+
     const stackBottom = () => {
       const headerEl = document.querySelector('[data-app-header]');
-      const barEl = document.querySelector('[data-sticky-toolbar]');
+      const controlsEl = document.querySelector('[data-sticky-toolbar]');
       const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom : 0;
-      if (!barEl) return headerBottom;
-      const r = barEl.getBoundingClientRect();
-      return r.top <= headerBottom + 1 ? r.bottom : headerBottom + r.height;
+      if (!controlsEl) return headerBottom;
+      const r = controlsEl.getBoundingClientRect();
+      // Pinned under the header → its own bottom edge is the real one. Not pinned
+      // yet (page still at the top, hero above) → the band it will occupy once
+      // pinned is the header plus its full height.
+      const controlsBottom = r.top <= headerBottom + 1 ? r.bottom : headerBottom + r.height;
+      return Math.max(headerBottom, controlsBottom);
     };
-    // 'none' = nothing to land on, 'ok' = in place (or already at the page's
-    // limit), 'adjust' = a correction was applied.
+
+    // Is the day header fully clear of the pinned band (with the gap)?
+    const clearOfStack = () => {
+      const el = dayHeaderEl();
+      if (!el) return true;
+      return el.getBoundingClientRect().top >= stackBottom() + GAP - 1;
+    };
+
     const land = () => {
-      const returnCard = returnItemId
-        ? document.querySelector(`[data-journey-item="${returnItemId}"]`)
-        : null;
-      const anchor = returnCard || targetDayRef.current;
-      if (!anchor) return 'none';
-      const delta = anchor.getBoundingClientRect().top - (stackBottom() + extraGap());
-      if (Math.abs(delta) <= 2) return 'ok';
-      const before = window.scrollY;
-      window.scrollBy(0, delta);
-      // The document ran out of scroll: the target is as high as it can go.
-      return window.scrollY === before ? 'ok' : 'adjust';
+      const el = dayHeaderEl();
+      if (!el) return 'none';
+      const targetY = window.scrollY + el.getBoundingClientRect().top - stackBottom() - GAP;
+      if (Math.abs(targetY - window.scrollY) > 1) {
+        window.scrollTo({ top: Math.max(0, targetY), left: 0, behavior: 'auto' });
+      }
+      return 'ok';
     };
+
     landedForRef.current = gatheringId;
     if (land() === 'none') {
       // No segment to return to and no day ahead: start at the top.
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       return undefined;
     }
-    // Bounded settle, never a loop and never a second landing: keep checking for
-    // ~0.9s so a bar that resized or an image that loaded above the anchor is
-    // corrected, stop after two clean frames, and stop instantly if the reader
-    // scrolls. Same gathering only (landedForRef is already stamped).
+
+    // Corrective nudges. Late layout (a wrapping filter row, the map row, an
+    // image above the header, iOS settling its visual viewport) can move the
+    // header after the first scroll, so the RESULT is measured, never trusted:
+    // nudge until the header is clear, then keep a short cheap watchdog so a bar
+    // that grows a moment later is still corrected. Bounded in corrections and
+    // in time, and cancelled the instant the reader scrolls.
     let raf = 0;
-    let clean = 0;
-    const deadline = Date.now() + 900;
-    const settle = () => {
-      if (userMovedRef.current || Date.now() > deadline || clean >= 2) return;
-      clean = land() === 'ok' ? clean + 1 : 0;
-      raf = requestAnimationFrame(settle);
+    let timer = 0;
+    let corrections = 0;
+    let stable = 0;
+    const started = Date.now();
+    const MAX_CORRECTIONS = 12;
+    const WATCH_MS = 2500;
+
+    const nudgeIfNeeded = () => {
+      if (userMovedRef.current) return false;
+      if (clearOfStack()) return false;
+      if (corrections >= MAX_CORRECTIONS) return false;
+      corrections += 1;
+      stable = 0;
+      land();
+      return true;
     };
-    raf = requestAnimationFrame(settle);
-    return () => { if (raf) cancelAnimationFrame(raf); };
+
+    const frame = () => {
+      if (userMovedRef.current) return;
+      if (nudgeIfNeeded()) { raf = requestAnimationFrame(frame); return; }
+      stable += 1;
+      if (Date.now() - started < 400 || stable < 4) { raf = requestAnimationFrame(frame); return; }
+      // Watchdog phase: a cheap periodic re-check for late shifts.
+      const tick = () => {
+        if (userMovedRef.current || Date.now() - started > WATCH_MS) return;
+        timer = setTimeout(tick, nudgeIfNeeded() ? 60 : 150);
+      };
+      timer = setTimeout(tick, 150);
+    };
+    raf = requestAnimationFrame(frame);
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
+    };
   }, [loading, returnItemId, targetDay, gatheringId]);
   const canAdd = canAddJourney(role);
   const routeNumbers = itemRouteNumbers(effectiveMapOpen ? filteredMapItems : []);
