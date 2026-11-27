@@ -76,7 +76,7 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
           <Skeleton className="h-7 w-28 rounded-full" />
           <Skeleton className="h-6 w-20 ml-auto rounded-full" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <Skeleton className="h-16" tone="cream" />
           <Skeleton className="h-16" tone="cream" />
         </div>
@@ -159,10 +159,13 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
         {refreshButton}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* Origin and destination stack full width: side by side on a phone the two
+          panels clipped the airport name, the scheduled-vs-actual time and the
+          terminal/gate line. Same tokens and surfaces, one column. */}
+      <div className="grid grid-cols-1 gap-3">
         <div className="tt-ink-panel p-3 min-w-0">
           <p className="font-display text-base font-bold text-ink-deep mb-0.5 truncate">{dep.iata || t('flightStatus.departure')}</p>
-          <p className="text-xs text-ink-deep/55 truncate">{dep.airport || dep.iata || '—'}</p>
+          <p className="text-xs text-ink-deep/55">{dep.airport || dep.iata || '—'}</p>
           <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(dep.actual || dep.revised || dep.scheduled, depTz, originCountry) || '—'}</p>
           {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(dep.scheduled, depTz, originCountry) })}</p>}
           {(dep.terminal || dep.gate) && (
@@ -171,7 +174,7 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
         </div>
         <div className="tt-ink-panel p-3 min-w-0">
           <p className="font-display text-base font-bold text-ink-deep mb-0.5 truncate">{arr.iata || t('flightStatus.arrival')}</p>
-          <p className="text-xs text-ink-deep/55 truncate">{arr.airport || arr.iata || '—'}</p>
+          <p className="text-xs text-ink-deep/55">{arr.airport || arr.iata || '—'}</p>
           <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" /><span className="text-ink-deep/45">{t('flightStatus.eta')}</span>{formatOffsetLocal(arr.actual || arr.revised || arr.scheduled, arrTz, destinationCountry) || '—'}</p>
           {(arr.actual || arr.revised) && arr.scheduled && (arr.actual || arr.revised) !== arr.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(arr.scheduled, arrTz, destinationCountry) })}</p>}
           {(arr.terminal || arr.gate) && (
