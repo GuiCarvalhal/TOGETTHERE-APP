@@ -9,6 +9,12 @@ import FlightStatusCard from '@/components/journey/FlightStatusCard';
 import FlightDetailHeader from '@/components/journey/FlightDetailHeader';
 import SegmentAttendeesPicker from '@/components/journey/SegmentAttendeesPicker';
 import SegmentInfoSections from '@/components/journey/SegmentInfoSections';
+import { useFlightLive } from '@/lib/useFlightLive';
+import { interpolatedPosition } from '@/lib/flightTracking';
+import { flightStatusKey } from '@/lib/flightStatusLabel';
+
+// Only an aircraft already in the air has a position worth drawing.
+const AIRBORNE = ['departed', 'approaching'];
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
@@ -25,6 +31,19 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
   const { origin, destination, point } = itemMapPoints(item);
   const images = (item.attachments || []).filter(isImg);
   const docs = (item.attachments || []).filter((u) => !isImg(u));
+  // The feed carries no coordinates, so while the aircraft is airborne the map
+  // shows an ESTIMATE along the stored route (labelled as such). With no live
+  // answer the map keeps the planned route line, exactly as before.
+  const live = useFlightLive(item);
+  const liveStatus = live.data?.found ? flightStatusKey(live.data.status) : '';
+  const livePosition = AIRBORNE.includes(liveStatus)
+    ? interpolatedPosition({
+      from: item.from_place,
+      to: item.to_place,
+      startMs: Date.parse(item.start_datetime || ''),
+      endMs: Date.parse(item.end_datetime || ''),
+    })
+    : null;
 
   return (
     <div className="mt-4 space-y-4">
@@ -46,7 +65,15 @@ export default function FlightDetailView({ item, members, currentMember, onReloa
       {(origin || destination || point) && (
         <div className="tt-card-hairline p-4">
           <p className="tt-label text-ink-deep/40 mb-2.5">{t('journeyDetail.where')}</p>
-          <SegmentMap key={item.id} origin={origin} destination={destination} point={point} isFlight />
+          <SegmentMap
+            key={item.id}
+            origin={origin}
+            destination={destination}
+            point={point}
+            isFlight
+            livePosition={livePosition}
+            liveEstimated={!!livePosition}
+          />
         </div>
       )}
 

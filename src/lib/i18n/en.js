@@ -254,6 +254,8 @@ export const en = {
       hourMin: '{hours} h {minutes} min',
       updatedNow: 'Live status just updated',
       updatedAgo: 'Live status updated {minutes} min ago',
+      // Field-level trust wording appended to a live line (terminal, gate).
+      confidence: { verified: 'verified', likely: 'likely', unverified: 'unverified' },
       // Additive-only: the featured card already prints the title/route and the
       // departure/arrival clock times, so no template may repeat them.
       flightOnTimeGate: 'On time · gate {gate} · terminal {terminal}',
@@ -1251,6 +1253,20 @@ export const en = {
   flightStatus: {
     flightStatus: 'Flight status',
     refresh: 'Refresh flight status',
+    // Card chip vocabulary (one word, always translated).
+    chip: {
+      scheduled: 'Scheduled',
+      boarding: 'Boarding',
+      delayed: 'Delayed',
+      inAir: 'In the air',
+      landed: 'Landed',
+      cancelled: 'Cancelled',
+      diverted: 'Diverted',
+    },
+    eta: 'ETA',
+    liveTracking: 'Live tracking',
+    positionEstimate: 'Estimated position',
+    confidence: { verified: 'verified', likely: 'likely', unverified: 'unverified' },
     departure: 'Departure',
     arrival: 'Arrival',
     sched: 'Sched {time}',

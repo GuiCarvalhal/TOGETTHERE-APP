@@ -5,6 +5,9 @@ import Skeleton from '@/components/tt/Skeleton';
 import { useI18n } from '@/lib/i18n';
 import { formatOffsetLocal, formatOffsetTime } from '@/lib/formatPlaceTime';
 import { flightStatusKey, FLIGHT_STATUS_TONE, OPERATIONAL_STATUSES } from '@/lib/flightStatusLabel';
+import {
+  chipKey, fieldConfidence, freshness, trackingPhase,
+} from '@/lib/flightTracking';
 
 // Provider local strings look like "2026-11-26 23:15-03:00".
 function providerMs(raw) {
@@ -108,6 +111,19 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
   const arr = data.arrival || {};
   const statusKey = flightStatusKey(data.status);
   const tone = FLIGHT_STATUS_TONE[statusKey] || FLIGHT_STATUS_TONE.scheduled;
+  const chip = chipKey(statusKey);
+  // The feed's own stamp drives the trust wording and the footer age.
+  const updatedMs = Date.parse(String(data.lastUpdatedUtc || '').replace(' ', 'T'));
+  const feedFreshness = freshness({ updatedMs });
+  const gateConf = fieldConfidence({
+    hasValue: !!(dep.gate || dep.terminal), live: data.live !== false, updatedMs, nowMs: Date.now(),
+  });
+  // Tracking is emphasised from T-6h until 2h after landing; outside it the
+  // card keeps its regular view.
+  const phase = trackingPhase({
+    startMs: providerMs(dep.actual || dep.revised || dep.scheduled) ?? Date.parse(departureAt || ''),
+    endMs: providerMs(arr.actual || arr.revised || arr.scheduled) ?? NaN,
+  });
   // The provider only holds the schedule for some airports (GRU answers
   // "Expected" with no gate even for a flight that already left), so its status
   // word is not live data. Printing it as a live stamp is what made a departed
@@ -132,8 +148,12 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
           <span className="tt-stamp ml-auto bg-ink-deep/8 text-ink-deep/60 border-ink-charcoal/15">{t('flightStatus.noUpdate')}</span>
         ) : (
           <>
-            {statusKey && <span className={`tt-stamp ml-auto ${tone}`}>{t(`flightStatus.status.${statusKey}`)}</span>}
-            {!statusKey && <span className="ml-auto" />}
+            {(chip || statusKey) && (
+              <span className={`tt-stamp ml-auto ${tone}`}>
+                {chip ? t(`flightStatus.chip.${chip}`) : t(`flightStatus.status.${statusKey}`)}
+              </span>
+            )}
+            {!chip && !statusKey && <span className="ml-auto" />}
           </>
         )}
         {refreshButton}
@@ -146,13 +166,13 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
           <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(dep.actual || dep.revised || dep.scheduled, depTz, originCountry) || '—'}</p>
           {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(dep.scheduled, depTz, originCountry) })}</p>}
           {(dep.terminal || dep.gate) && (
-            <p className="text-xs font-semibold text-ink-deep mt-1.5">{dep.terminal && t('flightStatus.terminal', { terminal: dep.terminal })}{dep.terminal && dep.gate && ' · '}{dep.gate && t('flightStatus.gate', { gate: dep.gate })}{!dep.gate && !moving && <>{dep.terminal && ' · '}<span className="font-normal text-ink-deep/50">{t('flightStatus.gateNotPublished')}</span></>}</p>
+            <p className="text-xs font-semibold text-ink-deep mt-1.5">{dep.terminal && t('flightStatus.terminal', { terminal: dep.terminal })}{dep.terminal && dep.gate && ' · '}{dep.gate && t('flightStatus.gate', { gate: dep.gate })}{!dep.gate && !moving && <>{dep.terminal && ' · '}<span className="font-normal text-ink-deep/50">{t('flightStatus.gateNotPublished')}</span></>}{gateConf !== 'none' && <span className="font-normal text-ink-deep/45"> · {t(`flightStatus.confidence.${gateConf}`)}</span>}</p>
           )}
         </div>
         <div className="tt-ink-panel p-3 min-w-0">
           <p className="font-display text-base font-bold text-ink-deep mb-0.5 truncate">{arr.iata || t('flightStatus.arrival')}</p>
           <p className="text-xs text-ink-deep/55 truncate">{arr.airport || arr.iata || '—'}</p>
-          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(arr.actual || arr.revised || arr.scheduled, arrTz, destinationCountry) || '—'}</p>
+          <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" /><span className="text-ink-deep/45">{t('flightStatus.eta')}</span>{formatOffsetLocal(arr.actual || arr.revised || arr.scheduled, arrTz, destinationCountry) || '—'}</p>
           {(arr.actual || arr.revised) && arr.scheduled && (arr.actual || arr.revised) !== arr.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(arr.scheduled, arrTz, destinationCountry) })}</p>}
           {(arr.terminal || arr.gate) && (
             <p className="text-xs font-semibold text-ink-deep mt-1.5">{arr.terminal && t('flightStatus.terminal', { terminal: arr.terminal })}{arr.terminal && arr.gate && ' · '}{arr.gate && t('flightStatus.gate', { gate: arr.gate })}</p>
@@ -162,7 +182,13 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
 
       {notLive && <p className="text-[0.6875rem] text-ink-deep/45 mt-2.5">{t('flightStatus.notLiveHint')}</p>}
       {noUpdate && <p className="text-[0.6875rem] text-ink-deep/45 mt-2.5">{t('flightStatus.noUpdateHint')}</p>}
-      {!notLive && !noUpdate && data.lastUpdatedUtc && <p className="text-[0.625rem] text-ink-deep/40 mt-2.5">{t('flightStatus.updated', { time: timeAgo(data.lastUpdatedUtc, t) })}</p>}
+      {!notLive && !noUpdate && data.lastUpdatedUtc && (
+        <p className="text-[0.625rem] text-ink-deep/40 mt-2.5">
+          {phase === 'active' && <>{t('flightStatus.liveTracking')} · </>}
+          {t('flightStatus.updated', { time: timeAgo(data.lastUpdatedUtc, t) })}
+          {feedFreshness.level === 'stale' && <> · {t('flightStatus.confidence.unverified')}</>}
+        </p>
+      )}
     </div>
   );
 }

@@ -242,6 +242,7 @@ export const ptBR = {
       hourMin: '{hours} h {minutes} min',
       updatedNow: 'Status ao vivo recém-atualizado',
       updatedAgo: 'Status atualizado há {minutes} min',
+      confidence: { verified: 'confirmado', likely: 'provável', unverified: 'não verificado' },
       // Somente informação nova: o card acima já mostra rota e horários.
       flightOnTimeGate: 'No horário · portão {gate} · terminal {terminal}',
       flightGateNoTerminal: 'No horário · portão {gate}',
@@ -1236,6 +1237,19 @@ export const ptBR = {
   flightStatus: {
     flightStatus: 'Status do voo',
     refresh: 'Atualizar status do voo',
+    chip: {
+      scheduled: 'Programado',
+      boarding: 'Embarque',
+      delayed: 'Atrasado',
+      inAir: 'Em voo',
+      landed: 'Pousou',
+      cancelled: 'Cancelado',
+      diverted: 'Desviado',
+    },
+    eta: 'Previsto',
+    liveTracking: 'Acompanhamento ao vivo',
+    positionEstimate: 'Posição estimada',
+    confidence: { verified: 'confirmado', likely: 'provável', unverified: 'não verificado' },
     departure: 'Partida',
     arrival: 'Chegada',
     sched: 'Prog. {time}',

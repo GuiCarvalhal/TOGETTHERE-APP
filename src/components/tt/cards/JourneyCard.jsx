@@ -11,6 +11,9 @@ import { useItemStartTz, useItemStartCountry, useItemEndTz, useItemEndCountry } 
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
 import { alpha2ToAlpha3 } from '@/lib/isoCountries';
 import { useI18n } from '@/lib/i18n';
+import { useFlightLive } from '@/lib/useFlightLive';
+import { chipKey, fieldConfidence, freshness } from '@/lib/flightTracking';
+import { flightStatusKey, FLIGHT_STATUS_TONE } from '@/lib/flightStatusLabel';
 
 const isImg = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u || '');
 
@@ -48,6 +51,8 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const startCc = useItemStartCountry(item, isFlight);
   const endCc = useItemEndCountry(item, isFlight);
   const placePhoto = usePlacePhoto(item, isFlight);
+  // Only a flight inside its tracking window fetches anything (see the hook).
+  const flightLive = useFlightLive(item);
   const imageAtt = (item.attachments || []).find(isImg);
   const cover = showImages ? (imageAtt || placePhoto) : null;
   const onCover = !!cover;
@@ -85,6 +90,21 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
   const fromLabel = fromCity ? (fromIata ? `${fromCity} (${fromIata})` : fromCity) : (fromIata ? `(${fromIata})` : '');
   const toLabel = toCity ? (toIata ? `${toCity} (${toIata})` : toCity) : (toIata ? `(${toIata})` : '');
   const flightRoute = (fromLabel || toLabel) ? { from: fromLabel, to: toLabel } : null;
+
+  // Live flight line: present only while the segment is inside its tracking
+  // window and the feed answered, so every other card renders as before.
+  const liveFlight = flightLive.data?.found ? flightLive.data : null;
+  const liveStatusKey = liveFlight ? flightStatusKey(liveFlight.status) : '';
+  const liveChip = chipKey(liveStatusKey);
+  const liveDep = liveFlight?.departure || {};
+  const liveGate = String(liveDep.gate || '').trim();
+  const liveTerminal = String(liveDep.terminal || '').trim();
+  const liveUpdatedMs = liveFlight?.lastUpdatedUtc
+    ? Date.parse(String(liveFlight.lastUpdatedUtc).replace(' ', 'T')) : NaN;
+  const liveConf = fieldConfidence({
+    hasValue: !!(liveGate || liveTerminal), live: liveFlight?.live !== false, updatedMs: liveUpdatedMs,
+  });
+  const liveAge = freshness({ updatedMs: liveUpdatedMs });
 
   // Rail time block uses the primary instant's wall clock + abbreviation.
   const railTime = leg === 'check-out' ? endTime : startTime;
@@ -195,6 +215,30 @@ export default function JourneyCard({ item, leg, typeColor, icon: Icon, particip
               </>
             )}
           </div>
+
+          {/* Live tracking line for an in-window flight: status chip, terminal and
+              gate with their own trust wording, and how old the feed answer is. */}
+          {liveChip && (
+            <div className={`flex items-center gap-1.5 mt-1 flex-wrap text-[0.625rem] ${metaText}`}>
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full border font-semibold ${onCover ? 'bg-white/20 text-white border-transparent' : (FLIGHT_STATUS_TONE[liveStatusKey] || FLIGHT_STATUS_TONE.scheduled)}`}>
+                {t(`flightStatus.chip.${liveChip}`)}
+              </span>
+              {(liveTerminal || liveGate) && (
+                <span className="truncate">
+                  {[
+                    liveTerminal && t('flightStatus.terminal', { terminal: liveTerminal }),
+                    liveGate && t('flightStatus.gate', { gate: liveGate }),
+                  ].filter(Boolean).join(' · ')}
+                  {liveConf !== 'none' && <span className="opacity-70"> · {t(`flightStatus.confidence.${liveConf}`)}</span>}
+                </span>
+              )}
+              {liveAge.minutes !== null && (
+                <span className="opacity-70">
+                  {t('flightStatus.updated', { time: t('flightStatus.mAgo', { count: liveAge.minutes }) })}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Reserved participant slot (fixed min-height) so card height never
               depends on whether avatars are present. Shows only the actual

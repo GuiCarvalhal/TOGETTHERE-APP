@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Navigation } from 'lucide-react';
 import { loadMapsApi } from '@/lib/loadMapsApi';
+import { useI18n } from '@/lib/i18n';
 
 // The Google Maps JS API loader lives in src/lib/loadMapsApi.js and is shared
 // with the journey route map so the <script> tag + google.maps namespace are
@@ -23,12 +24,22 @@ const TERRA = '#E05A47';
 // origin/destination/point are { lat, lng } (from the item's stored
 // from_place / to_place / place). `query` is the free-text fallback for the
 // embed. Mount one instance per item (parent keys it by item id).
-export default function SegmentMap({ origin, destination, point, query, isFlight, heightClass = 'h-48' }) {
+export default function SegmentMap({
+  origin, destination, point, query, isFlight, livePosition, liveEstimated = false, heightClass = 'h-48',
+}) {
+  const { t } = useI18n();
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'fallback'
 
   const hasTwo = !!(origin && destination && origin.lat != null && destination.lat != null);
   const hasOne = !hasTwo && !!(point && point.lat != null);
+  // In-flight position, when one exists. Without it the planned route line is
+  // the fallback — and it is never drawn together with the live split.
+  const live = livePosition
+    && Number.isFinite(Number(livePosition.lat)) && Number.isFinite(Number(livePosition.lng))
+    ? { lat: Number(livePosition.lat), lng: Number(livePosition.lng) }
+    : null;
+  const hasLive = hasTwo && !!live;
 
   const openMapsUrl = hasTwo
     ? `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`
@@ -71,7 +82,17 @@ export default function SegmentMap({ origin, destination, point, query, isFlight
           const d = { lat: destination.lat, lng: destination.lng };
           overlays.push(new maps.Marker({ position: o, map, label: { text: 'A', color: '#fff', fontSize: '11px', fontWeight: '700' }, icon: pin() }));
           overlays.push(new maps.Marker({ position: d, map, label: { text: 'B', color: '#fff', fontSize: '11px', fontWeight: '700' }, icon: pin() }));
-          overlays.push(new maps.Polyline({ path: [o, d], map, geodesic: !!isFlight, strokeColor: TERRA, strokeOpacity: 0.9, strokeWeight: 3 }));
+          if (hasLive) {
+            // One geometry only: the route split at the aircraft. The full A→B
+            // line is deliberately NOT drawn, so the route never renders twice.
+            overlays.push(new maps.Marker({
+              position: live, map, zIndex: 5, icon: { ...pin(), fillColor: '#0C131D', scale: 7 },
+            }));
+            overlays.push(new maps.Polyline({ path: [o, live], map, geodesic: !!isFlight, strokeColor: TERRA, strokeOpacity: 0.45, strokeWeight: 2 }));
+            overlays.push(new maps.Polyline({ path: [live, d], map, geodesic: !!isFlight, strokeColor: TERRA, strokeOpacity: 0.95, strokeWeight: 3 }));
+          } else {
+            overlays.push(new maps.Polyline({ path: [o, d], map, geodesic: !!isFlight, strokeColor: TERRA, strokeOpacity: 0.9, strokeWeight: 3 }));
+          }
           const bounds = new maps.LatLngBounds(); bounds.extend(o); bounds.extend(d);
           map.fitBounds(bounds, 64);
         } else {
@@ -88,7 +109,7 @@ export default function SegmentMap({ origin, destination, point, query, isFlight
       cancelled = true;
       overlays.forEach((o) => { try { o.setMap(null); } catch { /* ignore */ } });
     };
-  }, [hasTwo, hasOne, isFlight, origin?.lat, origin?.lng, destination?.lat, destination?.lng, point?.lat, point?.lng]);
+  }, [hasTwo, hasOne, hasLive, isFlight, origin?.lat, origin?.lng, destination?.lat, destination?.lng, point?.lat, point?.lng, live?.lat, live?.lng]);
 
   if (!hasTwo && !hasOne && !query) return null;
 
@@ -126,6 +147,11 @@ export default function SegmentMap({ origin, destination, point, query, isFlight
           <span className="absolute top-2 right-2 z-20 pointer-events-none inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-[11px] font-semibold">
             <Navigation className="w-3 h-3" /> Tap to open
           </span>
+          {hasLive && liveEstimated && (
+            <span className="absolute bottom-2 left-2 z-20 pointer-events-none px-2 py-1 rounded-full bg-black/45 backdrop-blur-sm text-white text-[10px] font-semibold">
+              {t('flightStatus.positionEstimate')}
+            </span>
+          )}
         </>
       )}
     </div>

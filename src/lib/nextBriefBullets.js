@@ -1,5 +1,6 @@
 import { formatTimeOnly, tzLabel } from './formatPlaceTime';
 import { flightStatusKey, OPERATIONAL_STATUSES } from './flightStatusLabel';
+import { fieldConfidence } from './flightTracking';
 import { formatDistanceMeters } from './journeyDistance';
 import { alpha2ToAlpha3 } from './isoCountries';
 
@@ -256,6 +257,15 @@ function flightBullets({ item, live, unit, t, now }) {
   // Boarding / gate closed / departed / arrived: the aircraft is already moving,
   // so the state itself is the news and the gate stopped being useful.
   const moving = OPERATIONAL_STATUSES.includes(statusKey);
+  // Field-level trust: a gate or terminal is only as good as the feed that
+  // published it, so the existing line carries its own confidence wording.
+  const updatedMs = providerInstant(flight?.lastUpdatedUtc)?.getTime() ?? null;
+  const confOf = (hasValue) => fieldConfidence({
+    hasValue, live: flight?.live !== false, updatedMs, nowMs: now.getTime(),
+  });
+  const withConf = (value, conf) => (conf && conf !== 'none'
+    ? `${value} · ${t(`home.brief.confidence.${conf}`)}`
+    : value);
 
   const schedMs = providerInstant(dep?.scheduled)?.getTime()
     ?? (item.start_datetime ? new Date(item.start_datetime).getTime() : null);
@@ -297,7 +307,7 @@ function flightBullets({ item, live, unit, t, now }) {
       primary.push({
         id: 'status',
         icon: 'status',
-        text: t(terminal ? 'home.brief.flightOnTimeGate' : 'home.brief.flightGateNoTerminal', { gate, terminal }),
+        text: withConf(t(terminal ? 'home.brief.flightOnTimeGate' : 'home.brief.flightGateNoTerminal', { gate, terminal }), confOf(!!gate)),
       });
       gateInStatus = true;
     } else if (flight && flight.live === false) {
@@ -332,7 +342,7 @@ function flightBullets({ item, live, unit, t, now }) {
     primary.push({
       id: 'gate',
       icon: 'status',
-      text: t(terminal ? 'home.brief.flightGateWithTerminal' : 'home.brief.flightGate', { gate, terminal }),
+      text: withConf(t(terminal ? 'home.brief.flightGateWithTerminal' : 'home.brief.flightGate', { gate, terminal }), confOf(!!gate)),
     });
   }
 
@@ -407,7 +417,7 @@ function flightBullets({ item, live, unit, t, now }) {
     });
   }
   if (terminal && !gate) {
-    extras.push({ id: 'terminal', icon: 'status', text: t('home.brief.flightTerminal', { terminal }) });
+    extras.push({ id: 'terminal', icon: 'status', text: withConf(t('home.brief.flightTerminal', { terminal }), confOf(true)) });
   }
   const feed = freshnessBullet(flight, t, now);
   if (feed) extras.push(feed);
