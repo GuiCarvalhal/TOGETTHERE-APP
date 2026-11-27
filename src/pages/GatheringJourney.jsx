@@ -281,22 +281,26 @@ export default function GatheringJourney() {
     if (landedForRef.current === gatheringId) return undefined;
     // The reader already took control before the list settled: leave them be.
     if (userMovedRef.current) { landedForRef.current = gatheringId; return undefined; }
-    // Anchor the target flush below the pinned sticky toolbar. The pinned bottom
-    // = TopBar(48px) + safe-area-inset-top + the sticky bar's live content height
-    // (scope row + filter row + open map row). Measured at scroll time, so it
-    // resolves per-device AND per-layout (map open or closed); a static
-    // scroll-mt cannot, which is why the header hid behind the bar on notched
-    // phones.
+    // Anchor the target flush below the pinned sticky stack. The offset is built
+    // from LIVE geometry measured at scroll time: the app header's own height
+    // (which already carries the notch inset) + the journey toolbar's current
+    // height (it grows when the route-map row opens) + a stable 12px gap. The
+    // previous approach used scrollIntoView with a calc() scroll-margin: on iOS
+    // that calc containing env() was dropped, leaving the anchor pinned ~56px
+    // down — right behind the toolbar. Measuring the real boxes cannot drift,
+    // and it resolves per-device and per-layout (map open or closed).
     const scrollToAnchor = () => {
       const returnCard = returnItemId
         ? document.querySelector(`[data-journey-item="${returnItemId}"]`)
         : null;
       const anchor = returnCard || targetDayRef.current;
       if (!anchor) return false;
-      const stickyEl = document.querySelector('[data-sticky-toolbar]');
-      const stickyH = stickyEl ? stickyEl.offsetHeight : 0;
-      anchor.style.scrollMarginTop = `calc(${48 + stickyH + 8}px + env(safe-area-inset-top))`;
-      anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
+      const headerEl = document.querySelector('[data-app-header]');
+      const barEl = document.querySelector('[data-sticky-toolbar]');
+      const stackH = (headerEl ? headerEl.getBoundingClientRect().height : 0)
+        + (barEl ? barEl.getBoundingClientRect().height : 0);
+      const anchorTop = anchor.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: Math.max(0, anchorTop - stackH - 12), left: 0, behavior: 'auto' });
       return true;
     };
     landedForRef.current = gatheringId;

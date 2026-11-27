@@ -42,7 +42,13 @@ export default function TopBar({ gatheringId }) {
   }, [user]);
 
   return (
-    <div className="sticky top-0 z-40 bg-background border-b border-foreground/8 tt-safe-top">
+    <div data-app-header className="overflow-hidden sticky top-0 z-40 bg-background border-b border-foreground/8 tt-safe-top">
+      {/* Status-bar band: when the platform still reports a top inset, that strip
+          is a designed brand treatment instead of blank canvas — a faint
+          terracotta wash over the opaque bar. The height is the live inset, so it
+          collapses to nothing on Android, desktop and any notchless device. It
+          stays fully opaque: a translucent top is what reads as a cloudy header. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[env(safe-area-inset-top)] bg-gradient-to-b from-terra/10 to-transparent" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
         <Link
           to="/"

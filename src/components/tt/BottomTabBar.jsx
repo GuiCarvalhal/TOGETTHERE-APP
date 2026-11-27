@@ -29,9 +29,12 @@ export default function BottomTabBar({ gatheringId, role }) {
   return (
     <nav
       aria-label={t('tabs.sections')}
-      className="fixed inset-x-0 z-40 flex justify-center bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]"
+      className="fixed inset-x-0 z-40 flex justify-center bottom-[calc(env(safe-area-inset-bottom)+0.5rem)]"
     >
-      <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-background/70 backdrop-blur-xl border border-foreground/10 shadow-[0_8px_30px_rgba(0,0,0,0.18)] w-[90vw] max-w-md">
+      {/* Higher surface opacity + a hairline border instead of a drop shadow: the
+          page keeps scrolling behind the dock (blur retained), but labels stay
+          legible over it and the flat system is preserved. */}
+      <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-background/90 backdrop-blur-xl border border-foreground/12 w-[90vw] max-w-md">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = isActive(t.path);
@@ -40,7 +43,7 @@ export default function BottomTabBar({ gatheringId, role }) {
               key={t.key}
               to={t.to || `/gathering/${gatheringId}/${t.path}`}
               aria-current={active ? 'page' : undefined}
-              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] rounded-full transition-colors ${active ? 'text-terra' : 'text-foreground/55 hover:text-foreground'}`}
+              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[44px] rounded-full transition-colors ${active ? 'text-terra' : 'text-foreground/70 hover:text-foreground'}`}
             >
               {active && <span className="absolute inset-0 rounded-full bg-terra/15" />}
               <Icon className="w-5 h-5 relative z-10" strokeWidth={active ? 2.4 : 2} />

@@ -9,7 +9,11 @@
     <meta name="theme-color" content="#F4EFE6" />
     <meta name="theme-color" content="#0C131D" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Opaque system status bar. With black-translucent the web view runs under
+         the status bar and recent iOS composites its glass scrim over the app
+         header, which read as a cloudy/blurred band. default keeps the status bar
+         outside the page, so no scrim is drawn over the header. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="TOGETTHERE" />
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="manifest" href="/manifest.json" />
