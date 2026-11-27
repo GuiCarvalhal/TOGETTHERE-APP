@@ -28,6 +28,7 @@ const CATEGORIES = [
 const STATUS_COPY = {
   [DEVICE_STATE.UNCONFIGURED]: 'account.pushNotConfigured',
   [DEVICE_STATE.UNSUPPORTED]: 'account.browserUnsupported',
+  [DEVICE_STATE.NEEDS_INSTALL]: 'account.notifInstallRequired',
   [DEVICE_STATE.BLOCKED]: 'account.notifBlocked',
   [DEVICE_STATE.LOADING]: 'account.notifLoading',
   [DEVICE_STATE.ON]: 'account.notifDeviceOn',

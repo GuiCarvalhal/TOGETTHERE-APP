@@ -1,23 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { deriveDeviceState } from '@/lib/notificationDeviceState';
+import { DEVICE_STATE, deriveDeviceState, detectPushCapability } from '@/lib/notificationDeviceState';
 
 // Client-side OneSignal Web SDK hook. Initializes with the App ID (fetched
 // server-side via getOneSignalConfig — the REST API key never reaches the
 // client), associates the device with the Base44 user id, and exposes the REAL
 // subscription state of this device.
 //
-// The device switch reads OneSignal's own push subscription (optedIn /
-// subscribed) instead of the notification permission alone: a user who turned
-// push off keeps a granted permission, so permission-only state reported the
-// device as ON again after every refresh. No secrets are stored or exposed.
+// The device switch reads OneSignal's own subscription intent, not a local
+// permission snapshot: on iOS the browser permission and the `subscribed` flag
+// both lag behind a grant (the Apple token registers later), which left the
+// switch disabled or stuck OFF after a reinstall. No secrets are stored or
+// exposed.
+
+// How long to wait for the SDK's deferred callback before falling back to the
+// browser APIs. Without this a blocked/slow SDK left `ready` false forever and
+// the switch permanently disabled.
+const SDK_WAIT_MS = 4000;
+// Delayed re-reads after a toggle: the subscription id/token can arrive seconds
+// after optIn, and iOS often only settles once the app is focused again.
+const RECONCILE_MS = [1000, 4000, 10000];
+
+// OneSignal v16 exposes the raw permission as `permissionNative` (string) and
+// `permission` (boolean). Prefer the SDK's own view, then the browser's.
+function readPermission(OS) {
+  const native = OS?.Notifications?.permissionNative;
+  if (typeof native === 'string' && native) return native;
+  const flag = OS?.Notifications?.permission;
+  if (typeof flag === 'boolean') return flag ? 'granted' : 'default';
+  if (typeof Notification !== 'undefined') return Notification.permission;
+  return 'denied';
+}
 
 function readSubscription(OS) {
   const sub = OS?.User?.PushSubscription;
   return {
-    permission: typeof Notification !== 'undefined' ? Notification.permission : 'denied',
+    permission: readPermission(OS),
     optedIn: typeof sub?.optedIn === 'boolean' ? sub.optedIn : null,
     subscribed: typeof sub?.subscribed === 'boolean' ? sub.subscribed : null,
+  };
+}
+
+function detectEnv() {
+  if (typeof window === 'undefined') {
+    return { hasNotification: false, hasServiceWorker: false, ios: false, standalone: false };
+  }
+  const ua = navigator.userAgent || '';
+  const ios = /iPad|iPhone|iPod/.test(ua)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = window.navigator.standalone === true
+    || (typeof window.matchMedia === 'function'
+      && window.matchMedia('(display-mode: standalone)').matches);
+  return {
+    hasNotification: 'Notification' in window,
+    hasServiceWorker: 'serviceWorker' in navigator,
+    ios,
+    standalone,
   };
 }
 
@@ -33,7 +71,10 @@ async function waitFor(check, timeout = 2500) {
 }
 
 export function useOneSignal(userId) {
-  const [supported, setSupported] = useState(false);
+  const [capability, setCapability] = useState({
+    supported: false,
+    status: DEVICE_STATE.UNSUPPORTED,
+  });
   const [configured, setConfigured] = useState(false);
   const [ready, setReady] = useState(false);
   const [sub, setSub] = useState({ permission: 'default', optedIn: null, subscribed: null });
@@ -50,9 +91,16 @@ export function useOneSignal(userId) {
     return () => { mounted.current = false; };
   }, []);
 
+  // Capability is decided from the environment itself, before any network call,
+  // so a failed config fetch can never present the device as unsupported.
+  useEffect(() => {
+    setCapability(detectPushCapability(detectEnv()));
+  }, []);
+
   useEffect(() => {
     if (!userId || typeof window === 'undefined') return;
     let cancelled = false;
+    let sdkTimer = null;
     (async () => {
       try {
         const res = await base44.functions.invoke('getOneSignalConfig');
@@ -61,13 +109,10 @@ export function useOneSignal(userId) {
         setConfigured(Boolean(cfg.configured && cfg.appId));
         if (!cfg.configured || !cfg.appId) return;
 
-        const natSupported = 'Notification' in window && 'serviceWorker' in navigator;
-        setSupported(natSupported);
-        if (!natSupported) return;
-
         if (typeof window.OneSignalDeferred === 'undefined') window.OneSignalDeferred = [];
         window.OneSignalDeferred.push(async (OneSignal) => {
           if (cancelled) return;
+          if (sdkTimer) clearTimeout(sdkTimer);
           try {
             await OneSignal.init({ appId: cfg.appId, allowLocalhostAsSecureOrigin: true });
             await OneSignal.login(userId);
@@ -93,9 +138,22 @@ export function useOneSignal(userId) {
             sync();
           }
         });
-      } catch { /* ignore */ }
+
+        // Never leave the control disabled waiting on an SDK that may not load
+        // (a reinstalled iOS app re-registers its worker and can miss the queue).
+        sdkTimer = setTimeout(() => {
+          if (cancelled) return;
+          setReady(true);
+          sync();
+        }, SDK_WAIT_MS);
+      } catch {
+        if (!cancelled) setReady(true);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (sdkTimer) clearTimeout(sdkTimer);
+    };
   }, [userId, sync]);
 
   // A permission changed in the browser settings while the app was in the
@@ -111,28 +169,35 @@ export function useOneSignal(userId) {
     };
   }, [ready, sync]);
 
+  // Late SDK flags (the iOS push token) must reach the UI without a manual reload.
+  const reconcile = useCallback(() => {
+    RECONCILE_MS.forEach((ms) => {
+      setTimeout(() => { if (mounted.current) sync(); }, ms);
+    });
+  }, [sync]);
+
   const subscribe = useCallback(async () => {
     const OS = window._ttOneSignal;
     if (!OS) return false;
     try {
-      let granted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+      let granted = readPermission(OS) === 'granted';
       if (!granted) granted = await OS.Notifications.requestPermission();
       if (!granted) {
         sync();
         return false;
       }
       await OS.User.PushSubscription.optIn();
-      await waitFor(() => {
-        const current = OS.User?.PushSubscription;
-        return current?.optedIn === true && current?.subscribed === true;
-      });
+      // `optedIn` is the subscription intent and flips immediately; the Apple
+      // token (`subscribed`) can take much longer, so it must not gate success.
+      const optedIn = await waitFor(() => OS.User?.PushSubscription?.optedIn === true, 3000);
       sync();
-      return true;
+      reconcile();
+      return optedIn;
     } catch {
       sync();
       return false;
     }
-  }, [sync]);
+  }, [sync, reconcile]);
 
   const unsubscribe = useCallback(async () => {
     const OS = window._ttOneSignal;
@@ -141,16 +206,18 @@ export function useOneSignal(userId) {
       await OS.User.PushSubscription.optOut();
       await waitFor(() => OS.User?.PushSubscription?.optedIn === false);
       sync();
+      reconcile();
       return true;
     } catch {
       sync();
       return false;
     }
-  }, [sync]);
+  }, [sync, reconcile]);
 
   const device = deriveDeviceState({
     configured,
-    supported,
+    supported: capability.supported,
+    capabilityStatus: capability.status,
     ready,
     permission: sub.permission,
     optedIn: sub.optedIn,
@@ -158,7 +225,7 @@ export function useOneSignal(userId) {
   });
 
   return {
-    supported,
+    supported: capability.supported,
     configured,
     ready,
     permission: sub.permission,

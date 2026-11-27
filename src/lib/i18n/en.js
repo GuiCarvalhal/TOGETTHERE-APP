@@ -482,6 +482,7 @@ export const en = {
     notifDeviceOn: 'Active on this device',
     notifDeviceOff: 'Off on this device',
     notifBlocked: 'Blocked in your browser. Allow notifications for this site to turn them back on.',
+    notifInstallRequired: 'Add TOGETTHERE to your Home screen first. On iPhone, notifications only work from the installed app.',
     notifCategoriesHint: 'Applies to every gathering you belong to.',
     notifSaveFailed: 'Could not update your notification settings.',
     notifLoading: 'Checking this device…',

@@ -467,6 +467,7 @@ export const ptBR = {
     notifDeviceOn: 'Ativas neste dispositivo',
     notifDeviceOff: 'Desativadas neste dispositivo',
     notifBlocked: 'Bloqueadas no navegador. Permita notificações para este site para reativá-las.',
+    notifInstallRequired: 'Adicione o TOGETTHERE à Tela de Início primeiro. No iPhone, as notificações só funcionam no app instalado.',
     notifCategoriesHint: 'Vale para todos os encontros dos quais você participa.',
     notifSaveFailed: 'Não foi possível atualizar suas notificações.',
     notifLoading: 'Verificando este dispositivo…',
