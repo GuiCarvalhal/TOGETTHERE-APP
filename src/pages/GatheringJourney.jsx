@@ -56,7 +56,7 @@ export default function GatheringJourney() {
   const { t } = useI18n();
   const { gatheringId, gathering, members, currentMember, role, setFab } = useGathering();
   const TYPE_FILTER_OPTIONS = TYPE_FILTER_KEYS.map((o) => ({ key: o.key, label: t(o.tk) }));
-  const { scope, setScope, images, setImages, mapOpen, setMapOpen } = useViewPrefs(gatheringId);
+  const { scope, setScope, images, setImages, mapOpen, setMapOpen, ready: prefsReady } = useViewPrefs(gatheringId);
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -276,6 +276,10 @@ export default function GatheringJourney() {
   }, []);
   useEffect(() => {
     if (loading) return undefined;
+    // Wait for the saved view prefs: the map row lives INSIDE the pinned
+    // toolbar, so landing before they hydrate would measure a toolbar that is
+    // about to grow — the exact cause of the late post-load jump.
+    if (!prefsReady) return undefined;
     // Never act on a previous gathering's list while a switch is loading.
     if (itemsGatheringRef.current !== gatheringId) return undefined;
     if (landedForRef.current === gatheringId) return undefined;
@@ -342,49 +346,26 @@ export default function GatheringJourney() {
       return undefined;
     }
 
-    // Corrective nudges. Late layout (a wrapping filter row, the map row, an
-    // image above the header, iOS settling its visual viewport) can move the
-    // header after the first scroll, so the RESULT is measured, never trusted:
-    // nudge until the header is clear, then keep a short cheap watchdog so a bar
-    // that grows a moment later is still corrected. Bounded in corrections and
-    // in time, and cancelled the instant the reader scrolls.
+    // Convergence INSIDE the landing task only (≤400ms, ≤6 passes): the same
+    // single landing correcting itself against the measured stack, not a second
+    // one. Then the page is LOCKED — this effect is the only programmatic scroll
+    // in the page and it is closed after this window, so a late map state, image
+    // load, toolbar resize, poll refresh or focus/visibility event can no longer
+    // move the page (that late second pass was the jump). Manual scrolling keeps
+    // priority throughout: any touch/wheel/key cancels immediately.
     let raf = 0;
-    let timer = 0;
     let corrections = 0;
-    let stable = 0;
-    const started = Date.now();
-    const MAX_CORRECTIONS = 12;
-    const WATCH_MS = 2500;
-
-    const nudgeIfNeeded = () => {
-      if (userMovedRef.current) return false;
-      if (clearOfStack()) return false;
-      if (corrections >= MAX_CORRECTIONS) return false;
+    const deadline = Date.now() + 400;
+    const settle = () => {
+      if (userMovedRef.current || corrections >= 6 || Date.now() > deadline) return;
+      if (clearOfStack()) return;
       corrections += 1;
-      stable = 0;
       land();
-      return true;
+      raf = requestAnimationFrame(settle);
     };
-
-    const frame = () => {
-      if (userMovedRef.current) return;
-      if (nudgeIfNeeded()) { raf = requestAnimationFrame(frame); return; }
-      stable += 1;
-      if (Date.now() - started < 400 || stable < 4) { raf = requestAnimationFrame(frame); return; }
-      // Watchdog phase: a cheap periodic re-check for late shifts.
-      const tick = () => {
-        if (userMovedRef.current || Date.now() - started > WATCH_MS) return;
-        timer = setTimeout(tick, nudgeIfNeeded() ? 60 : 150);
-      };
-      timer = setTimeout(tick, 150);
-    };
-    raf = requestAnimationFrame(frame);
-
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      if (timer) clearTimeout(timer);
-    };
-  }, [loading, returnItemId, targetDay, gatheringId]);
+    raf = requestAnimationFrame(settle);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [loading, prefsReady, returnItemId, targetDay, gatheringId]);
   const canAdd = canAddJourney(role);
   const routeNumbers = itemRouteNumbers(effectiveMapOpen ? filteredMapItems : []);
   const mapRow = (

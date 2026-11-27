@@ -10,8 +10,10 @@ import React, { useEffect, useRef } from 'react';
 //   - Each chip is `shrink-0` + `whitespace-nowrap`, so when the row is wider
 //     than the viewport the chips keep their natural width and the StickyBar
 //     scroll container scrolls horizontally instead of compressing them.
-//   - The active chip is scrolled into view on change (inline: 'nearest') so a
-//     newly selected filter is never hidden off-screen.
+//   - The active chip is brought into view on change by moving its OWN
+//     horizontal container only (never scrollIntoView, which also scrolls the
+//     window vertically on iOS and yanked the Journey landing out of place a
+//     moment after it had settled).
 //   - The scroll container (StickyBar footer) carries overflow-x-auto,
 //     overflow-y-hidden, touch-pan-x and tt-no-scrollbar — no visible
 //     scrollbar, touch-momentum panning, vertical page scroll preserved.
@@ -22,9 +24,15 @@ import React, { useEffect, useRef } from 'react';
 export default function FilterChips({ options, value, onChange }) {
   const activeRef = useRef(null);
   useEffect(() => {
-    if (activeRef.current && typeof activeRef.current.scrollIntoView === 'function') {
-      activeRef.current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
+    const el = activeRef.current;
+    const box = el && el.parentElement;
+    if (!el || !box || box.scrollWidth <= box.clientWidth + 1) return;
+    // Horizontal only, on the container: the page itself never moves.
+    const boxRect = box.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    const left = rect.left - boxRect.left;
+    if (left < 0) box.scrollLeft += left - 8;
+    else if (rect.right > boxRect.right) box.scrollLeft += rect.right - boxRect.right + 8;
   }, [value]);
   return options.map((o) => (
     <button

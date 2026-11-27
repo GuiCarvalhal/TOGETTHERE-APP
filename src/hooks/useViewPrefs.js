@@ -9,11 +9,16 @@ export function useViewPrefs(gatheringId) {
   const [images, setImages] = useState(true);
   const [mapOpen, setMapOpen] = useState(false);
   const [graphOpen, setGraphOpen] = useState(false);
+  // false until the saved values have been read back. Consumers that position
+  // the page from layout (the Journey landing) wait for this, so the pinned
+  // toolbar is already at its final height when they measure it.
+  const [ready, setReady] = useState(false);
   // Agent length preference — persisted per gathering/device, independent
   // of the Mine/Group scope used by Journey/Expenses. 'short' = 5+5, 'long' = 10+10.
   const [agentLength, setAgentLength] = useState('short');
 
   useEffect(() => {
+    setReady(false);
     try {
       const raw = localStorage.getItem(key);
       if (raw) {
@@ -25,11 +30,12 @@ export function useViewPrefs(gatheringId) {
         if (p.agentLength === 'short' || p.agentLength === 'long') setAgentLength(p.agentLength);
       }
     } catch { /* ignore */ }
+    setReady(true);
   }, [key]);
 
   useEffect(() => {
     try { localStorage.setItem(key, JSON.stringify({ scope, images, mapOpen, graphOpen, agentLength })); } catch { /* ignore */ }
   }, [key, scope, images, mapOpen, graphOpen, agentLength]);
 
-  return { scope, setScope, images, setImages, mapOpen, setMapOpen, graphOpen, setGraphOpen, agentLength, setAgentLength };
+  return { scope, setScope, images, setImages, mapOpen, setMapOpen, graphOpen, setGraphOpen, agentLength, setAgentLength, ready };
 }
