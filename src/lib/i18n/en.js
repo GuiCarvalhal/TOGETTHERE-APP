@@ -779,6 +779,7 @@ export const en = {
     ratesUnavailable: 'Exchange rates unavailable ??? showing original amounts.',
     balance: 'Balance',
     individualStatement: 'Individual Statement',
+    goToExpenses: 'Expenses',
     yourExpenses: 'Your expenses',
     allExpenses: 'All expenses',
     noExpensesType: 'No expenses of this type',

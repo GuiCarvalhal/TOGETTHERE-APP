@@ -13,8 +13,7 @@ import FilterChips from '@/components/tt/FilterChips';
 import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { Button } from '@/components/ui/button';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
-import ExpenseGraphPanel from '@/components/expenses/ExpenseGraphPanel';
-import { Plus, Receipt as ReceiptIcon, AlertTriangle, Scale, FileText } from 'lucide-react';
+import { Plus, Receipt as ReceiptIcon, AlertTriangle, Scale } from 'lucide-react';
 import { participationOf } from '@/lib/expenseParticipation';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
@@ -78,7 +77,7 @@ export default function GatheringExpenses() {
   const d = useExpensesData();
   const CAT_FILTER_OPTIONS = CAT_FILTER_KEYS.map((o) => ({ key: o.key, label: t(o.tk) }));
   const { gatheringId, setFab, role, currentMember } = d;
-  const { scope, setScope, images, setImages, graphOpen, setGraphOpen } = useViewPrefs(gatheringId);
+  const { scope, setScope, images, setImages } = useViewPrefs(gatheringId);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [catFilter, setCatFilter] = useState('all');
@@ -180,37 +179,23 @@ export default function GatheringExpenses() {
     }
   }
 
-  const graphRow = (
-    <ExpenseGraphPanel
-      expenses={visibleExpenses}
-      memberById={memberById}
-      expenseInBase={expenseInBase}
-      displayFor={displayFor}
-      baseCurrency={baseCurrency}
-      ratesAvailable={ratesAvailable}
-      scope={scope}
-    />
+  // Top action row, fixed order: scope (toolbar switcher) · Balance · images
+  // toggle (toolbar) · Add. The chart and the individual statement are not page
+  // actions anymore — they live on the Balance page, which owns the advanced
+  // expense actions.
+  const balanceAction = (
+    <Button asChild variant="outline" size="sm" className="shrink-0 px-2" aria-label={t('expenses.balance')} title={t('expenses.balance')}>
+      <Link to={`/gathering/${gatheringId}/expenses/balance`}><Scale /><span className="hidden sm:inline">{t('expenses.balance')}</span></Link>
+    </Button>
   );
 
-  // Balance + Individual Statement now sit in the page's top action row
-  // (icon-only on phones, labelled from sm up), next to Add.
-  const topActions = (
-    <>
-      {canAddExpense(role) && (
-        <Button variant="default" size="sm" onClick={() => { setEditing(null); setOpen(true); }} className="shrink-0">
-          <Plus />
-          <span className="hidden sm:inline">{t('expenses.addExpense')}</span>
-          <span className="sm:hidden">{t('toolbar.add')}</span>
-        </Button>
-      )}
-      <Button asChild variant="outline" size="sm" className="shrink-0 px-2" aria-label={t('expenses.balance')} title={t('expenses.balance')}>
-        <Link to={`/gathering/${gatheringId}/expenses/balance`}><Scale /><span className="hidden sm:inline">{t('expenses.balance')}</span></Link>
-      </Button>
-      <Button asChild variant="outline" size="sm" className="shrink-0 px-2" aria-label={t('expenses.individualStatement')} title={t('expenses.individualStatement')}>
-        <Link to={`/gathering/${gatheringId}/expenses/statement/${currentMember?.id || ''}`}><FileText /><span className="hidden sm:inline">{t('expenses.individualStatement')}</span></Link>
-      </Button>
-    </>
-  );
+  const addAction = canAddExpense(role) ? (
+    <Button variant="default" size="sm" onClick={() => { setEditing(null); setOpen(true); }} className="shrink-0">
+      <Plus />
+      <span className="hidden sm:inline">{t('expenses.addExpense')}</span>
+      <span className="sm:hidden">{t('toolbar.add')}</span>
+    </Button>
+  ) : null;
 
   return (
     <PageToolbar
@@ -219,16 +204,13 @@ export default function GatheringExpenses() {
       images={images}
       setImages={setImages}
       showImagesToggle
-      showGraphToggle
-      graphOpen={graphOpen}
-      setGraphOpen={setGraphOpen}
-      graphRow={graphRow}
-      action={topActions}
+      leadAction={balanceAction}
+      action={addAction}
       filterRow={<FilterChips options={CAT_FILTER_OPTIONS} value={catFilter} onChange={setCatFilter} />}
     >
       <div className={isDesktop ? 'grid grid-cols-3 gap-6 items-start' : 'space-y-5'} style={isDesktop ? { '--tt-desk-top': deskTopOffset(barH) } : undefined}>
       {/* Compact summary: group total + currency, then one line of context.
-          Balance and Individual Statement moved to the page's top action row. */}
+          Balance lives in the page's top action row. */}
       <section className={`tt-card p-3 space-y-1.5${isDesktop ? ' col-span-1 order-2 self-start sticky' : ''}`} style={isDesktop ? { top: 'var(--tt-desk-top)' } : undefined}>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">

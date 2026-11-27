@@ -1,19 +1,26 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useExpensesData } from '@/hooks/useExpensesData';
+import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useI18n } from '@/lib/i18n';
 import { goBack } from '@/lib/goBack';
 import MemberAvatar from '@/components/tt/MemberAvatar';
 import AvatarStack from '@/components/tt/AvatarStack';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
+import DetailActionBar from '@/components/tt/DetailActionBar';
+import ExpenseGraphPanel from '@/components/expenses/ExpenseGraphPanel';
+import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/tt/Skeleton';
-import { ChevronLeft, ArrowRight, AlertTriangle } from 'lucide-react';
+import { ArrowRight, AlertTriangle, FileText, BarChart3 } from 'lucide-react';
 
 export default function ExpenseRunningBalance() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { t, fmt } = useI18n();
   const d = useExpensesData();
+  // The chart is no longer a main-Expenses action: the Balance page owns it, so
+  // it reads/writes the same persisted graphOpen preference here.
+  const { scope, graphOpen, setGraphOpen } = useViewPrefs(id);
 
   if (d.loading) return (
     <div className="space-y-5">
@@ -33,7 +40,7 @@ export default function ExpenseRunningBalance() {
     </div>
   );
 
-  const { participantMembers, settle, baseCurrency, changeBaseCurrency, currencyOptions, ratesAvailable, ratesLoading, ratesAsOf, balanceFor, unitOf } = d;
+  const { participantMembers, settle, baseCurrency, changeBaseCurrency, currencyOptions, ratesAvailable, ratesLoading, ratesAsOf, balanceFor, unitOf, currentMember, expenses, memberById, expenseInBase, displayFor } = d;
 
   // A settle-up party is an expense UNIT: an individual, or a whole family
   // (shown with its household name), so a household settles in one transfer.
@@ -43,12 +50,58 @@ export default function ExpenseRunningBalance() {
     : <MemberAvatar member={unit?.members?.[0]} size="sm" />);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <button onClick={() => goBack(navigate, `/gathering/${id}/expenses`)} aria-label={t('common.back')} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground"><ChevronLeft className="w-5 h-5" /></button>
+    <div>
+      {/* Action row, fixed order: Back · Expenses · Individual Statement · Chart
+          (Edit / Delete follow the same pattern once they have a target here). */}
+      <DetailActionBar
+        onBack={() => goBack(navigate, `/gathering/${id}/expenses`)}
+        onOpenGathering={() => navigate(`/gathering/${id}/expenses`)}
+        openGatheringLabel={t('expenses.goToExpenses')}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 px-2"
+              onClick={() => navigate(`/gathering/${id}/expenses/statement/${currentMember?.id || ''}`)}
+              aria-label={t('expenses.individualStatement')}
+              title={t('expenses.individualStatement')}
+            >
+              <FileText />
+              <span className="hidden sm:inline">{t('expenses.individualStatement')}</span>
+            </Button>
+            <Button
+              variant={graphOpen ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setGraphOpen(!graphOpen)}
+              aria-pressed={graphOpen}
+              aria-label={graphOpen ? t('toolbar.hideGraph') : t('toolbar.showGraph')}
+              className={`shrink-0${graphOpen ? ' bg-terra/10 text-terra-deep hover:bg-terra/15 border border-terra/25' : ''}`}
+            >
+              <BarChart3 />
+            </Button>
+          </>
+        }
+      />
+
+      <div className="mt-5 space-y-5">
+      <div className="flex items-center gap-3">
         <h1 className="font-display text-xl font-bold text-foreground">{t('expenseBalance.runningBalance')}</h1>
         <div className="ml-auto"><CurrencySelect value={baseCurrency} onChange={changeBaseCurrency} options={currencyOptions} triggerClass="w-44 h-9" /></div>
       </div>
+
+      {graphOpen && (
+        <ExpenseGraphPanel
+          expenses={expenses}
+          memberById={memberById}
+          expenseInBase={expenseInBase}
+          displayFor={displayFor}
+          baseCurrency={baseCurrency}
+          ratesAvailable={ratesAvailable}
+          scope={scope}
+        />
+      )}
+
       <p className="text-[0.6875rem] text-ink-deep/45 flex items-center gap-1">
         {ratesLoading ? t('expenseBalance.loadingRates') :
           ratesAvailable ? t('expenseBalance.liveRatesAsOf', { time: ratesAsOf ? new Date(ratesAsOf).toLocaleString(fmt.locale, { dateStyle: 'medium', timeStyle: 'short' }) : t('flightStatus.justNow') }) :
@@ -101,6 +154,7 @@ export default function ExpenseRunningBalance() {
           </div>
         </section>
       )}
+      </div>
     </div>
   );
 }

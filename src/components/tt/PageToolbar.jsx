@@ -34,7 +34,11 @@ import { useI18n } from '@/lib/i18n';
 // `switcher` (optional): replaces the default ScopeSwitcher on the left — used
 // by the Members page for its Summary/Details toggle, and by the Journey page
 // for the viewer's member-avatar filter (replaces Mine/Group).
-export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, graphOpen, setGraphOpen, showGraphToggle = false, graphRow = null, onAdd, canAdd, addLabel = 'item', action, filterRow, hideBar = false, switcher, onRefreshRoutes, refreshingRoutes = false, children }) {
+//
+// `leadAction` (optional): a control rendered FIRST in the right-hand action
+// group, before the toggles and the main action — used by the Expenses page so
+// its row reads scope · Balance · images · Add.
+export default function PageToolbar({ scope, setScope, images, setImages, showImagesToggle = true, mapOpen, setMapOpen, showMapToggle = false, mapRow = null, graphOpen, setGraphOpen, showGraphToggle = false, graphRow = null, onAdd, canAdd, addLabel = 'item', action, leadAction = null, filterRow, hideBar = false, switcher, onRefreshRoutes, refreshingRoutes = false, children }) {
   const { t } = useI18n();
   if (hideBar) {
     return <div className="mt-5">{children}</div>;
@@ -45,6 +49,7 @@ export default function PageToolbar({ scope, setScope, images, setImages, showIm
       <StickyBar footer={filterRow} mapRow={overlayRow}>
         {switcher != null ? switcher : <ScopeSwitcher scope={scope} setScope={setScope} />}
         <div className="ml-auto flex items-center gap-2 shrink-0">
+          {leadAction}
           {/* Journey only: re-measure the routes and travel times (a forced
               Directions refresh, otherwise served from the session cache). */}
           {onRefreshRoutes != null && (

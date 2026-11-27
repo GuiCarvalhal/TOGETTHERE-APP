@@ -763,6 +763,7 @@ export const ptBR = {
     ratesUnavailable: 'Taxas de c??mbio indispon??veis ??? mostrando valores originais.',
     balance: 'Saldo',
     individualStatement: 'Extrato individual',
+    goToExpenses: 'Despesas',
     yourExpenses: 'Suas despesas',
     allExpenses: 'Todas as despesas',
     noExpensesType: 'Nenhuma despesa deste tipo',

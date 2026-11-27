@@ -12,7 +12,7 @@ import { useI18n } from '@/lib/i18n';
 //  - Edit: Pencil + "Edit" label, secondary (neutral filled).
 //  - Delete: icon-only trash, destructive (solid red) — compact sticky bar
 //    exception. Keeps its confirmation dialog (caller's onDelete).
-export default function DetailActionBar({ onBack, onOpenGathering, canEdit, canDelete, onEdit, onDelete, deleting, actions, backDisabled }) {
+export default function DetailActionBar({ onBack, onOpenGathering, openGatheringLabel, canEdit, canDelete, onEdit, onDelete, deleting, actions, backDisabled }) {
   const { t } = useI18n();
   const showActions = actions || canEdit || canDelete;
   return (
@@ -24,9 +24,9 @@ export default function DetailActionBar({ onBack, onOpenGathering, canEdit, canD
       {/* Straight to the gathering this item belongs to — Back only retraces the
           history, which is not always the gathering's journey. */}
       {onOpenGathering && (
-        <Button variant="secondary" size="sm" onClick={onOpenGathering} aria-label={t('detailActionBar.openGathering')} className="shrink-0">
+        <Button variant="secondary" size="sm" onClick={onOpenGathering} aria-label={openGatheringLabel || t('detailActionBar.openGathering')} className="shrink-0">
           <Route />
-          <span className="hidden sm:inline">{t('detailActionBar.openGathering')}</span>
+          <span className="hidden sm:inline">{openGatheringLabel || t('detailActionBar.openGathering')}</span>
         </Button>
       )}
 
