@@ -13,7 +13,7 @@ import JourneyDayHeader from '@/components/journey/JourneyDayHeader';
 import JourneyLegRow from '@/components/journey/JourneyLegRow';
 import JourneyMapPanel from '@/components/journey/JourneyMapPanel';
 import { invalidateHomeShell } from '@/lib/homeShellCache';
-import { consumeJourneyReturn, FROM_JOURNEY_STATE } from '@/lib/journeyScrollTarget';
+import { consumeJourneyReturn, FROM_JOURNEY_STATE, pickLandingDay, todayKeyInTz } from '@/lib/journeyScrollTarget';
 import FullscreenMapLayer from '@/components/journey/FullscreenMapLayer';
 import JourneyExtensionCard from '@/components/journey/JourneyExtensionCard';
 import DayAgentButton from '@/components/journey/DayAgentButton';
@@ -60,6 +60,10 @@ export default function GatheringJourney() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Which gathering the items in state belong to. The route element is reused
+  // when the user opens another gathering, so the landing effect must never act
+  // on the previous gathering's list during the switch.
+  const itemsGatheringRef = useRef(null);
   const [error, setError] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
   // Segment the list must land on, when the user is coming back from one (or
@@ -118,6 +122,7 @@ export default function GatheringJourney() {
       data.sort((a, b) => new Date(a.start_datetime || 0) - new Date(b.start_datetime || 0));
       // Soft-deleted segments moved to Recently deleted never reach the list,
       // map, day totals or summaries.
+      itemsGatheringRef.current = gatheringId;
       setItems(activeRecords(data));
     } catch (e) {
       if (!silent) setError(e);
@@ -246,39 +251,65 @@ export default function GatheringJourney() {
     (byDay[k] = byDay[k] || []).push(e);
   });
   const days = Object.keys(byDay).sort();
-  // Landing position on mount, in priority order:
+  // Landing position on a fresh Journey visit, in priority order:
   //  1. coming back from a segment (or "Open gathering" on one) → that segment;
-  //  2. normal navigation into the journey → TODAY's day row (viewer-local);
-  //  3. today is not in the list → the top of the page (no scroll at all).
-  const localToday = new Date();
-  const todayKey = `${localToday.getFullYear()}-${String(localToday.getMonth() + 1).padStart(2, '0')}-${String(localToday.getDate()).padStart(2, '0')}`;
-  const targetDay = days.includes(todayKey) ? todayKey : null;
+  //  2. normal navigation into the journey → TODAY's day block (viewer-local);
+  //  3. today is not on the list → the closest FUTURE day block;
+  //  4. nothing ahead (a past-only list) → the top of the page, no scroll.
+  const targetDay = pickLandingDay(days, todayKeyInTz());
   const targetDayRef = useRef(null);
-  const didAutoScrollRef = useRef(false);
+  // One landing per gathering. A 25s poll, a filter tap or a manual scroll must
+  // never pull the reader back to the anchor.
+  const landedForRef = useRef(null);
+  const userMovedRef = useRef(false);
   useEffect(() => {
-    if (loading || didAutoScrollRef.current) return;
+    const markMoved = () => { userMovedRef.current = true; };
+    const opts = { passive: true };
+    window.addEventListener('wheel', markMoved, opts);
+    window.addEventListener('touchstart', markMoved, opts);
+    window.addEventListener('keydown', markMoved);
+    return () => {
+      window.removeEventListener('wheel', markMoved);
+      window.removeEventListener('touchstart', markMoved);
+      window.removeEventListener('keydown', markMoved);
+    };
+  }, []);
+  useEffect(() => {
+    if (loading) return undefined;
+    // Never act on a previous gathering's list while a switch is loading.
+    if (itemsGatheringRef.current !== gatheringId) return undefined;
+    if (landedForRef.current === gatheringId) return undefined;
+    // The reader already took control before the list settled: leave them be.
+    if (userMovedRef.current) { landedForRef.current = gatheringId; return undefined; }
     // Anchor the target flush below the pinned sticky toolbar. The pinned bottom
     // = TopBar(48px) + safe-area-inset-top + the sticky bar's live content height
-    // (scope row + filter row + open map row). We measure the sticky element's
-    // offsetHeight and fold in env(safe-area-inset-top) via a CSS calc so it
-    // resolves per-device (notch vs desktop) — a static scroll-mt-36 can't, which
-    // is why the header was hidden behind the bar on notched phones.
-    const stickyEl = document.querySelector('[data-sticky-toolbar]');
-    const stickyH = stickyEl ? stickyEl.offsetHeight : 0;
-    const returnCard = returnItemId
-      ? document.querySelector(`[data-journey-item="${returnItemId}"]`)
-      : null;
-    const anchor = returnCard || targetDayRef.current;
-    if (!anchor) {
-      // No segment to return to and no today on the list: start at the top.
+    // (scope row + filter row + open map row). Measured at scroll time, so it
+    // resolves per-device AND per-layout (map open or closed); a static
+    // scroll-mt cannot, which is why the header hid behind the bar on notched
+    // phones.
+    const scrollToAnchor = () => {
+      const returnCard = returnItemId
+        ? document.querySelector(`[data-journey-item="${returnItemId}"]`)
+        : null;
+      const anchor = returnCard || targetDayRef.current;
+      if (!anchor) return false;
+      const stickyEl = document.querySelector('[data-sticky-toolbar]');
+      const stickyH = stickyEl ? stickyEl.offsetHeight : 0;
+      anchor.style.scrollMarginTop = `calc(${48 + stickyH + 8}px + env(safe-area-inset-top))`;
+      anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
+      return true;
+    };
+    landedForRef.current = gatheringId;
+    if (!scrollToAnchor()) {
+      // No segment to return to and no day ahead: start at the top.
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      didAutoScrollRef.current = true;
-      return;
+      return undefined;
     }
-    anchor.style.scrollMarginTop = `calc(${48 + stickyH + 8}px + env(safe-area-inset-top))`;
-    anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
-    didAutoScrollRef.current = true;
-  }, [loading, returnItemId, targetDay]);
+    // One settle pass, never a loop: the sticky bar's final height (wrapped
+    // filters, the map row) and any image above the anchor land a frame later.
+    const raf = requestAnimationFrame(() => { if (!userMovedRef.current) scrollToAnchor(); });
+    return () => cancelAnimationFrame(raf);
+  }, [loading, returnItemId, targetDay, gatheringId]);
   const canAdd = canAddJourney(role);
   const routeNumbers = itemRouteNumbers(effectiveMapOpen ? filteredMapItems : []);
   const mapRow = (
