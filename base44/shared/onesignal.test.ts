@@ -187,3 +187,58 @@ test('sendToUsers: deduplicates a repeated send within the window', async () => 
     assert.equal(calls, 1);
   } finally { restore(); }
 });
+
+// ---- delivery gate: master x category combinations ----
+
+// The gate is what a toggle actually changes for delivery, so every combination
+// of the master switch and a category flag is pinned here. An absent flag means
+// "on" (the default), which is why a member record written before a category
+// existed must still receive that category.
+const gate = (member, category = 'journey', extra = {}) => memberEligibleForCategory(member, {
+  category, prefKey: `notify_${category}`, ...extra,
+});
+
+test('gate: master on + category on delivers', () => {
+  assert.equal(gate({ notify_master: true, notify_journey: true, role: 'member' }), true);
+});
+
+test('gate: master on + category off is silent', () => {
+  assert.equal(gate({ notify_master: true, notify_journey: false, role: 'member' }), false);
+});
+
+test('gate: master off + category on is silent', () => {
+  assert.equal(gate({ notify_master: false, notify_journey: true, role: 'member' }), false);
+});
+
+test('gate: master off + category off is silent', () => {
+  assert.equal(gate({ notify_master: false, notify_journey: false, role: 'member' }), false);
+});
+
+test('gate: absent flags (legacy rows) still deliver', () => {
+  assert.equal(gate({ role: 'member' }), true);
+});
+
+test('gate: the master switch alone silences every category', () => {
+  for (const category of ['journey', 'expenses', 'members', 'reminders', 'ai']) {
+    const member = { notify_master: false, notify_journey: true, notify_expenses: true, notify_members: true, notify_reminders: true, notify_ai: true, role: 'member' };
+    assert.equal(gate(member, category), false, category);
+  }
+});
+
+test('gate: a category switch silences only its own category', () => {
+  const member = { notify_master: true, notify_journey: false, notify_expenses: true, role: 'member' };
+  assert.equal(gate(member, 'journey'), false);
+  assert.equal(gate(member, 'expenses'), true);
+});
+
+test('gate: role rules win over an enabled category', () => {
+  const viewer = { notify_master: true, notify_expenses: true, notify_journey: true, role: 'viewer' };
+  assert.equal(gate(viewer, 'expenses'), false);
+  assert.equal(gate(viewer, 'journey', { includeViewers: false }), false);
+  assert.equal(gate(viewer, 'journey'), true);
+});
+
+test('gate: an owner is gated like anyone else by their own switches', () => {
+  assert.equal(gate({ notify_master: true, notify_journey: false, role: 'owner' }), false);
+  assert.equal(gate({ notify_master: true, notify_journey: true, role: 'owner' }), true);
+});

@@ -1,14 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getMyMember } from '../../shared/gatheringAcl.ts';
-
-const ALLOWED = [
-  'notify_master',
-  'notify_journey',
-  'notify_expenses',
-  'notify_members',
-  'notify_reminders',
-  'notify_ai',
-];
+import { buildPrefsUpdate, applyPrefsToAllMemberships } from '../../shared/notificationPrefs.ts';
 
 export default async function (req) {
   try {
@@ -18,20 +10,16 @@ export default async function (req) {
     const body = await req.json().catch(() => ({}));
     const { gathering_id, fields, scope } = body;
 
-    const update = {};
-    for (const key of ALLOWED) {
-      if (fields && key in fields) update[key] = Boolean(fields[key]);
-    }
+    const update = buildPrefsUpdate(fields);
     if (!Object.keys(update).length) return Response.json({ error: 'No updatable fields' }, { status: 400 });
 
     // scope "all" = one switch for the user in EVERY gathering (used by the
-    // Account preferences area). Otherwise a single gathering's membership.
+    // Account preferences area). Every membership row that is theirs is written
+    // in one pass — by user id, plus the still-unclaimed invite rows that carry
+    // their email — and the counts come back so the client can verify.
     if (scope === 'all') {
-      await base44.asServiceRole.entities.Member.updateMany({ user_id: user.id }, { $set: update });
-      if (user.email) {
-        await base44.asServiceRole.entities.Member.updateMany({ email: user.email }, { $set: update });
-      }
-      return Response.json({ ok: true, scope: 'all' });
+      const result = await applyPrefsToAllMemberships(base44, { userId: user.id, email: user.email, update });
+      return Response.json({ ok: true, scope: 'all', ...result });
     }
 
     if (!gathering_id) return Response.json({ error: 'gathering_id and fields required' }, { status: 400 });

@@ -3,12 +3,17 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n';
 import { useOneSignal } from '@/lib/useOneSignal';
+import {
+  aggregatePrefs, beginToggle, categoryLocked, isSwitchOn, mergeMemberships, revertToggle,
+} from '@/lib/notificationPrefs';
+import { DEVICE_STATE } from '@/lib/notificationDeviceState';
 import { Switch } from '@/components/ui/switch';
 import { Bell, BellOff, BellRing, Plane, Receipt, Users, Clock, Sparkles } from 'lucide-react';
 
 // Notification controls for the Account area.
-//  • Device row: whether THIS device can receive push right now, with an
-//    explicit on/off control (OneSignal permission + opt-in/out).
+//  • Device row: whether THIS device can receive push right now, read from the
+//    real OneSignal subscription (not the permission alone), so turning it off
+//    stays off across a refresh.
 //  • Category rows: the same five categories the app already sends, stored on
 //    the user's membership in every gathering (updateMyNotificationPrefs with
 //    scope "all"), so switching one here matches the per-gathering sheet.
@@ -20,89 +25,81 @@ const CATEGORIES = [
   { key: 'notify_ai', labelKey: 'account.aiRecommendations', Icon: Sparkles },
 ];
 
-const DEFAULTS = {
-  notify_master: true,
-  notify_journey: true,
-  notify_expenses: true,
-  notify_members: true,
-  notify_reminders: true,
-  notify_ai: true,
+const STATUS_COPY = {
+  [DEVICE_STATE.UNCONFIGURED]: 'account.pushNotConfigured',
+  [DEVICE_STATE.UNSUPPORTED]: 'account.browserUnsupported',
+  [DEVICE_STATE.BLOCKED]: 'account.notifBlocked',
+  [DEVICE_STATE.LOADING]: 'account.notifLoading',
+  [DEVICE_STATE.ON]: 'account.notifDeviceOn',
+  [DEVICE_STATE.OFF]: 'account.notifDeviceOff',
 };
 
 export default function AccountNotifications() {
   const { t } = useI18n();
   const { user } = useAuth();
-  const { supported, configured, permission, ready, requestPermission, optOut } = useOneSignal(user?.id);
+  const {
+    supported, configured, status, deviceOn, canToggle, subscribe, unsubscribe, refresh,
+  } = useOneSignal(user?.id);
   const [prefs, setPrefs] = useState(null);
   const [saving, setSaving] = useState('');
   const [deviceBusy, setDeviceBusy] = useState(false);
-  const [optedOut, setOptedOut] = useState(false);
   const [error, setError] = useState('');
 
-  // Aggregate every membership: a category counts as on only when it is on in
-  // all of them, which is what "applies to every gathering" means.
+  // Every membership of this user, whether it is keyed by user id or only by
+  // email (an invite still unclaimed). Reading both is what keeps the aggregate
+  // from missing gatherings and reporting a category as on when it is not.
   const load = useCallback(async () => {
     if (!user?.id) return;
     try {
-      let rows = await base44.entities.Member.filter({ user_id: user.id });
-      if ((!rows || !rows.length) && user.email) {
-        rows = await base44.entities.Member.filter({ email: user.email });
-      }
-      const list = rows || [];
-      const next = { ...DEFAULTS };
-      for (const key of Object.keys(DEFAULTS)) {
-        if (!list.length) break;
-        next[key] = list.every((row) => row[key] !== false);
-      }
-      setPrefs(next);
+      const [byId, byEmail] = await Promise.all([
+        base44.entities.Member.filter({ user_id: user.id }).catch(() => []),
+        user.email ? base44.entities.Member.filter({ email: user.email }).catch(() => []) : [],
+      ]);
+      const rows = mergeMemberships({ byId, byEmail }, user.id, user.email);
+      setPrefs(aggregatePrefs(rows));
     } catch {
-      setPrefs({ ...DEFAULTS });
+      setPrefs(aggregatePrefs([]));
     }
   }, [user?.id, user?.email]);
 
   useEffect(() => { load(); }, [load]);
 
   const toggle = async (key, value) => {
+    if (!prefs || saving) return;
     setError('');
-    setPrefs((p) => ({ ...p, [key]: value }));
+    const { next, previous } = beginToggle(prefs, key, value);
+    setPrefs(next);
     setSaving(key);
     try {
       await base44.functions.invoke('updateMyNotificationPrefs', { scope: 'all', fields: { [key]: value } });
+      // Re-derive from the database: if a membership was not written, the
+      // switch goes back to what is actually stored instead of lying.
+      await load();
     } catch (e) {
-      setPrefs((p) => ({ ...p, [key]: !value }));
+      setPrefs((current) => revertToggle(current, key, previous));
       setError(e?.response?.data?.error || t('account.notifSaveFailed'));
     } finally {
       setSaving('');
     }
   };
 
-  const deviceOn = permission === 'granted' && !optedOut;
-
   const toggleDevice = async (next) => {
+    if (deviceBusy || !canToggle) return;
     setDeviceBusy(true);
     setError('');
     try {
-      if (next) {
-        const granted = await requestPermission();
-        setOptedOut(!granted);
-      } else {
-        await optOut();
-        setOptedOut(true);
+      const ok = next ? await subscribe() : await unsubscribe();
+      if (!ok) {
+        setError(next ? t('account.notifEnableFailed') : t('account.notifDisableFailed'));
+        refresh();
       }
     } finally {
       setDeviceBusy(false);
     }
   };
 
-  const deviceStatus = !configured
-    ? t('account.pushNotConfigured')
-    : !supported
-      ? t('account.browserUnsupported')
-      : permission === 'denied' && !deviceOn
-        ? t('account.notifBlocked')
-        : deviceOn
-          ? t('account.notifDeviceOn')
-          : t('account.notifDeviceOff');
+  const deviceStatus = t(STATUS_COPY[status] || 'account.notifDeviceOff');
+  const deviceLocked = !prefs || Boolean(saving);
 
   return (
     <div className="tt-card p-4 sm:p-5 space-y-4">
@@ -123,7 +120,7 @@ export default function AccountNotifications() {
           <Switch
             checked={deviceOn}
             onCheckedChange={toggleDevice}
-            disabled={deviceBusy || (!ready && !deviceOn)}
+            disabled={deviceBusy || !canToggle}
             aria-label={t('account.notifDevice')}
           />
         ) : null}
@@ -138,7 +135,7 @@ export default function AccountNotifications() {
           <Switch
             checked={Boolean(prefs?.notify_master)}
             onCheckedChange={(v) => toggle('notify_master', v)}
-            disabled={!prefs || saving === 'notify_master'}
+            disabled={deviceLocked}
           />
         </div>
 
@@ -149,9 +146,9 @@ export default function AccountNotifications() {
               <span className="text-sm text-ink-deep truncate">{t(labelKey)}</span>
             </div>
             <Switch
-              checked={Boolean(prefs?.notify_master && prefs?.[key])}
+              checked={isSwitchOn(prefs, key)}
               onCheckedChange={(v) => toggle(key, v)}
-              disabled={!prefs || !prefs.notify_master || saving === key}
+              disabled={deviceLocked || categoryLocked(prefs)}
             />
           </div>
         ))}
