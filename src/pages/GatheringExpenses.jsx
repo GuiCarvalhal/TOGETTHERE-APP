@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
@@ -14,7 +14,8 @@ import { Timeline, TimelineDay } from '@/components/tt/Timeline';
 import { Button } from '@/components/ui/button';
 import CurrencySelect from '@/components/expenses/CurrencySelect';
 import ExpenseGraphPanel from '@/components/expenses/ExpenseGraphPanel';
-import { Plus, Receipt as ReceiptIcon, Wallet, AlertTriangle, Scale, FileText } from 'lucide-react';
+import { Plus, Receipt as ReceiptIcon, AlertTriangle, Scale, FileText } from 'lucide-react';
+import { participationOf } from '@/lib/expenseParticipation';
 import Skeleton from '@/components/tt/Skeleton';
 import EmptyState from '@/components/tt/EmptyState';
 import { useI18n } from '@/lib/i18n';
@@ -73,6 +74,7 @@ const CAT_FILTER_KEYS = [{ key: 'all', tk: 'common.all' }, ...EXPENSE_CATEGORIES
 
 export default function GatheringExpenses() {
   const { t, fmt } = useI18n();
+  const navigate = useNavigate();
   const d = useExpensesData();
   const CAT_FILTER_OPTIONS = CAT_FILTER_KEYS.map((o) => ({ key: o.key, label: t(o.tk) }));
   const { gatheringId, setFab, role, currentMember } = d;
@@ -190,6 +192,26 @@ export default function GatheringExpenses() {
     />
   );
 
+  // Balance + Individual Statement now sit in the page's top action row
+  // (icon-only on phones, labelled from sm up), next to Add.
+  const topActions = (
+    <>
+      {canAddExpense(role) && (
+        <Button variant="default" size="sm" onClick={() => { setEditing(null); setOpen(true); }} className="shrink-0">
+          <Plus />
+          <span className="hidden sm:inline">{t('expenses.addExpense')}</span>
+          <span className="sm:hidden">{t('toolbar.add')}</span>
+        </Button>
+      )}
+      <Button asChild variant="outline" size="sm" className="shrink-0 px-2" aria-label={t('expenses.balance')} title={t('expenses.balance')}>
+        <Link to={`/gathering/${gatheringId}/expenses/balance`}><Scale /><span className="hidden sm:inline">{t('expenses.balance')}</span></Link>
+      </Button>
+      <Button asChild variant="outline" size="sm" className="shrink-0 px-2" aria-label={t('expenses.individualStatement')} title={t('expenses.individualStatement')}>
+        <Link to={`/gathering/${gatheringId}/expenses/statement/${currentMember?.id || ''}`}><FileText /><span className="hidden sm:inline">{t('expenses.individualStatement')}</span></Link>
+      </Button>
+    </>
+  );
+
   return (
     <PageToolbar
       scope={scope}
@@ -201,46 +223,36 @@ export default function GatheringExpenses() {
       graphOpen={graphOpen}
       setGraphOpen={setGraphOpen}
       graphRow={graphRow}
-      onAdd={() => { setEditing(null); setOpen(true); }}
-      canAdd={canAddExpense(role)}
+      action={topActions}
       filterRow={<FilterChips options={CAT_FILTER_OPTIONS} value={catFilter} onChange={setCatFilter} />}
     >
       <div className={isDesktop ? 'grid grid-cols-3 gap-6 items-start' : 'space-y-5'} style={isDesktop ? { '--tt-desk-top': deskTopOffset(barH) } : undefined}>
-      {/* Compact summary: group total, your balance, currency, balance + statement */}
-      <section className={`tt-card p-4 space-y-3${isDesktop ? ' col-span-1 order-2 self-start sticky' : ''}`} style={isDesktop ? { top: 'var(--tt-desk-top)' } : undefined}>
-        <div className="flex items-start justify-between gap-3">
+      {/* Compact summary: group total + currency, then one line of context.
+          Balance and Individual Statement moved to the page's top action row. */}
+      <section className={`tt-card p-3 space-y-1.5${isDesktop ? ' col-span-1 order-2 self-start sticky' : ''}`} style={isDesktop ? { top: 'var(--tt-desk-top)' } : undefined}>
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="tt-label text-ink-deep/40">{t('expenses.groupTotal')}</p>
-            <p className="font-display text-xl font-bold text-ink-deep truncate">{fmt.formatCurrency(groupTotal, baseCurrency)}</p>
-            <p className="text-xs text-ink-deep/50 mt-0.5">{t('expenses.expenseCount', { count: expenses.length })}</p>
+            <p className="font-display text-lg font-bold text-ink-deep truncate leading-tight">{fmt.formatCurrency(groupTotal, baseCurrency)}</p>
           </div>
-          <CurrencySelect value={baseCurrency} onChange={changeBaseCurrency} options={currencyOptions} triggerClass="w-36 h-9 shrink-0" />
+          <CurrencySelect value={baseCurrency} onChange={changeBaseCurrency} options={currencyOptions} triggerClass="w-32 h-8 shrink-0" />
         </div>
 
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-ink-charcoal/10">
-          <div className="flex items-center gap-2 min-w-0">
-            <Wallet className="w-4 h-4 text-terra-deep shrink-0" />
-            <span className="text-sm font-semibold text-ink-deep whitespace-nowrap">{t('expenses.yourBalance')}</span>
-          </div>
-          <p className={`font-display text-lg font-bold truncate ${myBalance > 0.01 ? 'text-terra-deep' : myBalance < -0.01 ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
-            {myBalance > 0.01 ? '+' : ''}{fmt.formatCurrency(myBalance, baseCurrency)}
-          </p>
+        <div className="flex items-center justify-between gap-2 text-[0.6875rem] text-ink-deep/50">
+          <span className="truncate">{t('expenses.expenseCount', { count: expenses.length })}</span>
+          <span className="whitespace-nowrap">
+            {t('expenses.yourBalance')}{' '}
+            <span className={`font-semibold ${myBalance > 0.01 ? 'text-terra-deep' : myBalance < -0.01 ? 'text-ink-deep/70' : 'text-ink-deep/40'}`}>
+              {myBalance > 0.01 ? '+' : ''}{fmt.formatCurrency(myBalance, baseCurrency)}
+            </span>
+          </span>
         </div>
 
-        <p className="text-[0.6875rem] text-ink-deep/45 flex items-center gap-1">
+        <p className="text-[0.625rem] text-ink-deep/40 flex items-center gap-1">
           {ratesLoading ? t('expenses.loadingRates') :
             ratesAvailable ? t('expenses.liveRatesAsOf', { time: ratesAsOf ? new Date(ratesAsOf).toLocaleString(fmt.locale, { dateStyle: 'medium', timeStyle: 'short' }) : 'now' }) :
             (<><AlertTriangle className="w-3 h-3" /> {t('expenses.ratesUnavailable')}</>)}
         </p>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          <Button asChild variant="outline" size="sm" className="w-full">
-            <Link to={`/gathering/${gatheringId}/expenses/balance`}><Scale /> {t('expenses.balance')}</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="w-full">
-            <Link to={`/gathering/${gatheringId}/expenses/statement/${currentMember?.id || ''}`}><FileText /> {t('expenses.individualStatement')}</Link>
-          </Button>
-        </div>
       </section>
 
       {/* Expense timeline — same rail, day markers and card rhythm as Journey */}
@@ -272,8 +284,8 @@ export default function GatheringExpenses() {
                         payer={memberById[exp.payer_member_id]}
                         splits={splitsByExpense[exp.id] || []}
                         members={members}
-                        canEdit={role === 'owner' || role === 'admin' || (role === 'member' && exp.payer_member_id === currentMember?.id)}
-                        onEdit={() => { setEditing(exp); setOpen(true); }}
+                        participation={participationOf(splitsByExpense[exp.id] || [], memberById, d.unitOf)}
+                        onOpen={() => navigate(`/gathering/${gatheringId}/expenses/${exp.id}`)}
                         displayAmount={disp.amount}
                         displayCurrency={disp.currency}
                         showImages={images}

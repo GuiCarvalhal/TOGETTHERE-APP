@@ -1370,7 +1370,24 @@ export const ptBR = {
     familyNote: 'Unidade familiar: {name} — os custos contam integralmente para cada membro.',
   },
 
+  expenseDetail: {
+    amount: 'Valor',
+    original: 'Original: {amount}',
+    splitMethod: 'Divisão {method}',
+    date: 'Data',
+    paidBy: 'Pago por',
+    split: 'Dividido entre',
+    noSplit: 'Ninguém dividiu ainda.',
+    place: 'Local',
+    receipt: 'Recibo',
+    notFound: 'Esta despesa não existe mais',
+    notFoundBody: 'Ela pode ter sido excluída. Veja Recentemente excluídas na página de despesas.',
+    deleteFailed: 'Não foi possível excluir esta despesa',
+  },
+
   expenseCard: {
+    participationPeople: { one: '{count} pessoa', other: '{count} pessoas' },
+    participationFamilies: { one: '{count} família', other: '{count} famílias' },
     splitEqual: 'Igual',
     splitCustom: 'Personalizada',
     splitByShare: 'Por cota',

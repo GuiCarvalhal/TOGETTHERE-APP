@@ -1387,7 +1387,24 @@ export const en = {
     familyNote: 'Family unit: {name} — its costs count in full for each member.',
   },
 
+  expenseDetail: {
+    amount: 'Amount',
+    original: 'Original: {amount}',
+    splitMethod: 'Split {method}',
+    date: 'Date',
+    paidBy: 'Paid by',
+    split: 'Split between',
+    noSplit: 'No one is split on this yet.',
+    place: 'Place',
+    receipt: 'Receipt',
+    notFound: 'This expense is gone',
+    notFoundBody: 'It may have been deleted. Check Recently deleted on the expenses page.',
+    deleteFailed: 'Could not delete this expense',
+  },
+
   expenseCard: {
+    participationPeople: { one: '{count} person', other: '{count} people' },
+    participationFamilies: { one: '{count} family', other: '{count} families' },
     splitEqual: 'Equal',
     splitCustom: 'Custom',
     splitByShare: 'By share',
