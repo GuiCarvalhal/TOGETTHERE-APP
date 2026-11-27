@@ -267,6 +267,9 @@ export const en = {
       // No live feed at all for this flight (e.g. the segment stores the
       // airline's booking code instead of a flight number).
       flightNoFeed: 'No live status · check the gate on the airport board',
+      flightNoLive: 'No live status for this airport · check the gate on the airport board',
+      flightNoLiveWithTerminal: 'No live status for this airport · terminal {terminal} · check the gate on the airport board',
+      flightNoUpdate: 'No update from the airline yet · check the gate on the airport board',
       flightStatus: {
         boarding: 'Boarding',
         gateClosed: 'Gate closed',
@@ -1257,6 +1260,11 @@ export const en = {
     dAgo: '{count}d ago',
     unavailable: 'Live status unavailable right now',
     unavailableHint: 'The airline feed did not answer. Try again in a few minutes.',
+    notLive: 'No live status',
+    notLiveHint: 'This airline and airport do not publish live updates here, so the times and terminal come from your booking.',
+    noUpdate: 'No update yet',
+    noUpdateHint: 'Past the scheduled time and the airline has not posted a new status. Times and terminal are the last published.',
+    gateNotPublished: 'Gate not published',
     status: {
       scheduled: 'Scheduled',
       checkIn: 'Check-in',

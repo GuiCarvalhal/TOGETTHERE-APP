@@ -289,6 +289,10 @@ function flightBullets({ item, live, unit, t, now }) {
       });
     } else if (moving) {
       primary.push({ id: 'status', icon: 'status', text: t(`home.brief.flightStatus.${statusKey}`) });
+    } else if (statusKey === 'scheduled' && depMs && depMs < now.getTime() - 20 * 60000) {
+      // Past the scheduled departure and the feed still says "Expected": the
+      // airline never pushed the movement. Say that instead of "on time".
+      primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightNoUpdate') });
     } else if (gate) {
       primary.push({
         id: 'status',
@@ -296,6 +300,15 @@ function flightBullets({ item, live, unit, t, now }) {
         text: t(terminal ? 'home.brief.flightOnTimeGate' : 'home.brief.flightGateNoTerminal', { gate, terminal }),
       });
       gateInStatus = true;
+    } else if (flight && flight.live === false) {
+      // The provider answered, but only with the schedule for this airport: no
+      // live status and no gate exist to report. Saying "gate not published
+      // yet" would promise something the feed will never deliver.
+      primary.push({
+        id: 'status',
+        icon: 'status',
+        text: t(terminal ? 'home.brief.flightNoLiveWithTerminal' : 'home.brief.flightNoLive', { terminal }),
+      });
     } else if (statusKey) {
       // The feed answered and the gate is simply not out yet: report the
       // terminal when there is one, without inventing an hour for the gate.

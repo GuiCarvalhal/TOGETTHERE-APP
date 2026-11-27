@@ -64,6 +64,9 @@ export default async function (req) {
       number: text(flight?.number) || flightNumber,
       airline: text(flight?.airline),
       lastUpdatedUtc: text(flight?.lastUpdatedUtc),
+      // false = the provider only holds the schedule for this airport, so the
+      // status word and the gate are not live data (see aeroDataBox.ts).
+      live: flight?.live === true,
       departure: side(flight?.departure),
       arrival: side(flight?.arrival),
       aircraft: { model: text(flight?.aircraft?.model), reg: text(flight?.aircraft?.reg) },

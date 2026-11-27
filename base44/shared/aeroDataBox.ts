@@ -95,10 +95,15 @@ export async function fetchFlightsLiveByNumber(key, flightNumber, date) {
     scheduled: text(s?.scheduledTime?.local), revised: text(s?.revisedTime?.local),
     actual: text(s?.actualTime?.local), terminal: text(s?.terminal), gate: text(s?.gate),
   });
+  // "Basic" means the provider only holds the schedule for that airport: the
+  // status word never moves and no gate is ever filled in (GRU answers this way
+  // even for a flight that already left). "Live" means the record is fed by
+  // real movement data. Callers must not present a Basic record as a live status.
+  const liveQuality = (s) => Array.isArray(s?.quality) && s.quality.includes('Live');
   return data.map(f => ({
     number: text(f.number), codeshare: f.isCodeshare === true,
     status: text(f.status), airline: text(f.airline?.name),
-    lastUpdatedUtc: text(f.lastUpdatedUtc),
+    lastUpdatedUtc: text(f.lastUpdatedUtc), live: liveQuality(f.departure) || liveQuality(f.arrival),
     departure: side(f.departure), arrival: side(f.arrival),
     aircraft: { model: text(f.aircraft?.model), reg: text(f.aircraft?.reg) },
   }));

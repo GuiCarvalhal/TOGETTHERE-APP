@@ -251,6 +251,9 @@ export const ptBR = {
       flightGateNotYet: 'No horário · portão ainda não divulgado',
       flightGateNotYetWithTerminal: 'No horário · terminal {terminal} · portão ainda não divulgado',
       flightNoFeed: 'Sem status ao vivo · confira o portão no painel do aeroporto',
+      flightNoLive: 'Sem status ao vivo neste aeroporto · confira o portão no painel',
+      flightNoLiveWithTerminal: 'Sem status ao vivo neste aeroporto · terminal {terminal} · confira o portão no painel',
+      flightNoUpdate: 'A companhia ainda não atualizou · confira o portão no painel do aeroporto',
       flightStatus: {
         boarding: 'Embarque',
         gateClosed: 'Embarque encerrado',
@@ -1242,6 +1245,11 @@ export const ptBR = {
     dAgo: 'há {count} d',
     unavailable: 'Status ao vivo indisponível agora',
     unavailableHint: 'A companhia aérea não respondeu. Tente de novo em alguns minutos.',
+    notLive: 'Sem status ao vivo',
+    notLiveHint: 'A companhia e o aeroporto não publicam status ao vivo aqui: horário e terminal vêm da sua reserva.',
+    noUpdate: 'Sem atualização',
+    noUpdateHint: 'Passou do horário previsto e a companhia não publicou um novo status. Horário e terminal são os últimos divulgados.',
+    gateNotPublished: 'Portão não publicado',
     status: {
       scheduled: 'Programado',
       checkIn: 'Check-in',

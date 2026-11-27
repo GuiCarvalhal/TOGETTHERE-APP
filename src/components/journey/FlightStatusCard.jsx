@@ -4,7 +4,15 @@ import { Plane, RefreshCw, Clock } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import { useI18n } from '@/lib/i18n';
 import { formatOffsetLocal, formatOffsetTime } from '@/lib/formatPlaceTime';
-import { flightStatusKey, FLIGHT_STATUS_TONE } from '@/lib/flightStatusLabel';
+import { flightStatusKey, FLIGHT_STATUS_TONE, OPERATIONAL_STATUSES } from '@/lib/flightStatusLabel';
+
+// Provider local strings look like "2026-11-26 23:15-03:00".
+function providerMs(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim().replace(' ', 'T').replace(/(\d{2}:\d{2})([+-]\d{2}:\d{2})$/, '$1:00$2');
+  const ms = Date.parse(s);
+  return Number.isNaN(ms) ? null : ms;
+}
 
 function timeAgo(iso, t) {
   if (!iso) return '';
@@ -100,14 +108,34 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
   const arr = data.arrival || {};
   const statusKey = flightStatusKey(data.status);
   const tone = FLIGHT_STATUS_TONE[statusKey] || FLIGHT_STATUS_TONE.scheduled;
+  // The provider only holds the schedule for some airports (GRU answers
+  // "Expected" with no gate even for a flight that already left), so its status
+  // word is not live data. Printing it as a live stamp is what made a departed
+  // flight read "Scheduled".
+  const notLive = data.live === false;
+  const moving = OPERATIONAL_STATUSES.includes(statusKey);
+  // The feed can still say "Expected" long after the scheduled departure — some
+  // airports never push the departure movement. Past the scheduled time with no
+  // actual or revised departure, the honest label is that the airline has not
+  // updated it, not "Scheduled".
+  const noUpdate = !notLive && statusKey === 'scheduled'
+    && (providerMs(dep.actual || dep.revised || dep.scheduled) ?? Infinity) < Date.now() - 20 * 60000;
 
   return (
     <div className="tt-card-hairline p-4">
       <div className="flex items-center gap-2 mb-3">
         <Plane className="w-4 h-4 text-terra-deep shrink-0" />
         <span className="tt-label text-ink-deep/50">{t('flightStatus.flightStatus')}</span>
-        {statusKey && <span className={`tt-stamp ml-auto ${tone}`}>{t(`flightStatus.status.${statusKey}`)}</span>}
-        {!statusKey && <span className="ml-auto" />}
+        {notLive ? (
+          <span className="tt-stamp ml-auto bg-ink-deep/8 text-ink-deep/60 border-ink-charcoal/15">{t('flightStatus.notLive')}</span>
+        ) : noUpdate ? (
+          <span className="tt-stamp ml-auto bg-ink-deep/8 text-ink-deep/60 border-ink-charcoal/15">{t('flightStatus.noUpdate')}</span>
+        ) : (
+          <>
+            {statusKey && <span className={`tt-stamp ml-auto ${tone}`}>{t(`flightStatus.status.${statusKey}`)}</span>}
+            {!statusKey && <span className="ml-auto" />}
+          </>
+        )}
         {refreshButton}
       </div>
 
@@ -118,7 +146,7 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
           <p className="text-xs text-ink-deep/65 mt-1 flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{formatOffsetLocal(dep.actual || dep.revised || dep.scheduled, depTz, originCountry) || '—'}</p>
           {(dep.actual || dep.revised) && dep.scheduled && (dep.actual || dep.revised) !== dep.scheduled && <p className="text-[0.625rem] text-ink-deep/40 mt-0.5">{t('flightStatus.sched', { time: formatOffsetTime(dep.scheduled, depTz, originCountry) })}</p>}
           {(dep.terminal || dep.gate) && (
-            <p className="text-xs font-semibold text-ink-deep mt-1.5">{dep.terminal && t('flightStatus.terminal', { terminal: dep.terminal })}{dep.terminal && dep.gate && ' · '}{dep.gate && t('flightStatus.gate', { gate: dep.gate })}</p>
+            <p className="text-xs font-semibold text-ink-deep mt-1.5">{dep.terminal && t('flightStatus.terminal', { terminal: dep.terminal })}{dep.terminal && dep.gate && ' · '}{dep.gate && t('flightStatus.gate', { gate: dep.gate })}{!dep.gate && !moving && <>{dep.terminal && ' · '}<span className="font-normal text-ink-deep/50">{t('flightStatus.gateNotPublished')}</span></>}</p>
           )}
         </div>
         <div className="tt-ink-panel p-3 min-w-0">
@@ -132,7 +160,9 @@ export default function FlightStatusCard({ flightNumber, date, departureAt, orig
         </div>
       </div>
 
-      {data.lastUpdatedUtc && <p className="text-[0.625rem] text-ink-deep/40 mt-2.5">{t('flightStatus.updated', { time: timeAgo(data.lastUpdatedUtc, t) })}</p>}
+      {notLive && <p className="text-[0.6875rem] text-ink-deep/45 mt-2.5">{t('flightStatus.notLiveHint')}</p>}
+      {noUpdate && <p className="text-[0.6875rem] text-ink-deep/45 mt-2.5">{t('flightStatus.noUpdateHint')}</p>}
+      {!notLive && !noUpdate && data.lastUpdatedUtc && <p className="text-[0.625rem] text-ink-deep/40 mt-2.5">{t('flightStatus.updated', { time: timeAgo(data.lastUpdatedUtc, t) })}</p>}
     </div>
   );
 }
