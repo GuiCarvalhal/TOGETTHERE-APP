@@ -1,5 +1,4 @@
 import React from 'react';
-import { Calendar } from 'lucide-react';
 import { formatDayHeader } from '@/lib/formatPlaceTime';
 
 // Shared vertical timeline rail used by Journey and Expenses so the two pages
@@ -17,10 +16,12 @@ export function Timeline({ children }) {
   );
 }
 
-// Day marker on the rail: a terra-coral calendar medallion over the line, with
-// the day label + full date header to its right. `day` is a YYYY-MM-DD string
-// (or 'unscheduled'); formatDayHeader parses the calendar date directly so it
-// never shifts across timezones.
+// Day marker on the rail — same treatment as the Journey day header: no icon,
+// just a small terra dot as the day anchor, with the date block immediately
+// beside it (gap-2 = the cards' own gutter, so the header text lines up with
+// the card content column). `day` is a YYYY-MM-DD string (or 'unscheduled');
+// formatDayHeader parses the calendar date directly so it never shifts across
+// timezones.
 // Relative day caption for the day marker: "Today", "Tomorrow", "Yesterday",
 // "in 2 days", "3 days ago", etc. — replaces the generic "Day" label which
 // carried no useful information. `day` is a YYYY-MM-DD string parsed as local
@@ -37,18 +38,16 @@ export function relativeDayLabel(day) {
   return `${-delta} days ago`;
 }
 
-export function TimelineDay({ day, icon: Icon = Calendar, label }) {
+export function TimelineDay({ day, label }) {
   const cap = label ?? relativeDayLabel(day);
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-12 flex justify-center shrink-0">
-        <div className="w-10 h-10 rounded-full bg-background border-2 border-terra-coral flex items-center justify-center relative z-10">
-          <Icon className="w-4 h-4 text-terra-coral" />
-        </div>
-      </div>
-      <div>
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="w-12 shrink-0 flex justify-center" aria-hidden>
+        <span className="w-1.5 h-1.5 rounded-full bg-terra-coral" />
+      </span>
+      <div className="min-w-0">
         <p className="tt-label text-terra-coral">{cap}</p>
-        <p className="font-display text-lg text-foreground">{formatDayHeader(day)}</p>
+        <p className="font-display text-lg text-foreground truncate">{formatDayHeader(day)}</p>
       </div>
     </div>
   );
