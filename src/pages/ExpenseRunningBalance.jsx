@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
+import { canManageGathering } from '@/lib/gatheringHelpers';
 import { useExpensesData } from '@/hooks/useExpensesData';
 import { useViewPrefs } from '@/hooks/useViewPrefs';
 import { useI18n } from '@/lib/i18n';
@@ -11,7 +13,11 @@ import DetailActionBar from '@/components/tt/DetailActionBar';
 import ExpenseGraphPanel from '@/components/expenses/ExpenseGraphPanel';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/tt/Skeleton';
-import { ArrowRight, AlertTriangle, FileText, BarChart3 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ArrowRight, AlertTriangle, FileText, BarChart3, Pencil, Trash2, Loader2 } from 'lucide-react';
 
 export default function ExpenseRunningBalance() {
   const navigate = useNavigate();
@@ -21,6 +27,8 @@ export default function ExpenseRunningBalance() {
   // The chart is no longer a main-Expenses action: the Balance page owns it, so
   // it reads/writes the same persisted graphOpen preference here.
   const { scope, graphOpen, setGraphOpen } = useViewPrefs(id);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (d.loading) return (
     <div className="space-y-5">
@@ -41,6 +49,21 @@ export default function ExpenseRunningBalance() {
   );
 
   const { participantMembers, settle, baseCurrency, changeBaseCurrency, currencyOptions, ratesAvailable, ratesLoading, ratesAsOf, balanceFor, unitOf, currentMember, expenses, memberById, expenseInBase, displayFor } = d;
+
+  // Gathering-level edit/delete: same gate as the settings page (owner only) and
+  // the same delete function it calls, so nothing about permissions changes.
+  const canManage = canManageGathering(d.role);
+
+  async function handleDeleteGathering() {
+    setDeleting(true);
+    try {
+      await base44.functions.invoke('deleteGathering', { gathering_id: id });
+      navigate('/');
+    } catch (err) {
+      setDeleting(false);
+      alert(err.response?.data?.error || err.message || t('settings.couldNotDelete'));
+    }
+  }
 
   // A settle-up party is an expense UNIT: an individual, or a whole family
   // (shown with its household name), so a household settles in one transfer.
@@ -80,6 +103,31 @@ export default function ExpenseRunningBalance() {
             >
               <BarChart3 />
             </Button>
+            {canManage && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0 px-2"
+                onClick={() => navigate(`/gathering/${id}/settings`)}
+                aria-label={t('detailActionBar.edit')}
+                title={t('detailActionBar.edit')}
+              >
+                <Pencil />
+                <span className="hidden sm:inline">{t('detailActionBar.edit')}</span>
+              </Button>
+            )}
+            {canManage && (
+              <Button
+                variant="destructive"
+                size="icon"
+                className="shrink-0"
+                onClick={() => setDeleteOpen(true)}
+                aria-label={t('settings.deleteGathering')}
+                title={t('settings.deleteGathering')}
+              >
+                <Trash2 />
+              </Button>
+            )}
           </>
         }
       />
@@ -155,6 +203,28 @@ export default function ExpenseRunningBalance() {
         </section>
       )}
       </div>
+
+      {/* Delete gathering — the same confirmation and function the settings
+          page uses (soft delete with a 30-day restore window). */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent className="bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings.deleteGathering')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('settings.dangerDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteGathering}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              {t('settings.deleteGathering')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
