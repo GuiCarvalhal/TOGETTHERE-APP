@@ -154,9 +154,6 @@ export default function ExpenseDetail() {
             <div className="min-w-0">
               <span className="tt-label" style={{ color: catColor }}>{t('expenseCategories.' + exp.category)}</span>
               <h1 className="font-display text-2xl font-bold text-ink-deep leading-tight tt-text-balance">{exp.title}</h1>
-              {exp.settled && (
-                <span className="tt-stamp mt-2 bg-emerald-100 text-emerald-700 border-emerald-200">{t('expenses.settled')}</span>
-              )}
             </div>
           </div>
         </div>

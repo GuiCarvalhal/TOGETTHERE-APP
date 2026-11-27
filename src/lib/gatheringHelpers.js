@@ -378,8 +378,9 @@ export function computeBalances(expenses, splits, memberIds) {
     if (!splitByExpense[s.expense_id]) splitByExpense[s.expense_id] = [];
     splitByExpense[s.expense_id].push(s);
   });
+  // No per-expense settlement exists: every expense counts toward the running
+  // balance until the gathering is settled up as a whole.
   expenses.forEach((e) => {
-    if (e.settled) return;
     bal[e.payer_member_id] = (bal[e.payer_member_id] || 0) + Number(e.amount || 0);
     (splitByExpense[e.id] || []).forEach((s) => {
       bal[s.member_id] = (bal[s.member_id] || 0) - Number(s.amount || 0);

@@ -164,7 +164,7 @@ export function useExpensesData() {
   // the canonical per-expense amount + proportional splits (same rate per
   // expense, no mixed-rate math). `id` is carried so computeBalances can match
   // each expense's splits to it.
-  const baseExpensesForBalances = expenses.map((e) => ({ id: e.id, payer_member_id: e.payer_member_id, amount: expenseInBase(e), settled: e.settled }));
+  const baseExpensesForBalances = expenses.map((e) => ({ id: e.id, payer_member_id: e.payer_member_id, amount: expenseInBase(e) }));
   const baseSplitsForBalances = splits.map((s) => ({ expense_id: s.expense_id, member_id: s.member_id, amount: splitInBase(s) }));
   const balances = computeBalances(baseExpensesForBalances, baseSplitsForBalances, participantMembers.map((m) => m.id));
 

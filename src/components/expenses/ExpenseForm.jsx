@@ -5,7 +5,6 @@ import FormSheet from '@/components/tt/FormSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   computeUnitAmounts, expandUnitAmountsToMembers, reconstructEditSelection,
@@ -61,7 +60,6 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
     receipt: expense?.receipt || '',
     place_name: expense?.place_name || '',
     place_photo: expense?.place_photo || '',
-    settled: expense?.settled || false,
   });
 
   // Legacy viewer guard: if an existing expense has a split (or payer) for a
@@ -183,7 +181,6 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
         place_name: form.place_name.trim(),
         place_photo: form.place_photo,
         date: form.date,
-        settled: form.settled,
         display_currency: baseCurrency || '',
       };
       // Expand selected units to per-member splits (one per member). Family
@@ -346,13 +343,6 @@ export default function ExpenseForm({ gatheringId, members, currentMember, expen
               <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && uploadReceipt(e.target.files[0])} />
             </label>
           </div>
-        </div>
-        <div className="flex items-center justify-between gap-3 rounded-lg bg-cream-pale p-3 border border-ink-charcoal/15">
-          <div>
-            <Label className="text-ink-deep">{t('expenseForm.markSettled')}</Label>
-            <p className="text-xs text-ink-deep/50">{t('expenseForm.markSettledDesc')}</p>
-          </div>
-          <Switch checked={form.settled} onCheckedChange={(v) => setForm({ ...form, settled: v })} />
         </div>
         <DialogFooter className="pt-2 gap-2 flex-wrap">
           {expense && onDelete && (

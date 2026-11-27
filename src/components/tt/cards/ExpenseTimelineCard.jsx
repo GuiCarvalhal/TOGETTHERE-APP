@@ -66,7 +66,7 @@ export default function ExpenseTimelineCard({
 
       {/* Card — photo cards carry their own scrim, so they need no border. */}
       <div
-        className={`flex-1 min-w-0 rounded-2xl overflow-hidden relative cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40 border ${onCover ? 'border-transparent' : 'border-ink-charcoal/15 bg-card'} ${exp.settled ? 'opacity-60' : ''}`}
+        className={`flex-1 min-w-0 rounded-2xl overflow-hidden relative cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-terra/40 border ${onCover ? 'border-transparent' : 'border-ink-charcoal/15 bg-card'}`}
         onClick={onOpen}
         role="button"
         tabIndex={0}
