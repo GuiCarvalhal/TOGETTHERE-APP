@@ -10,11 +10,11 @@ const CAT_COLOR = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.key, c.col
 
 // Timeline expense row — structural twin of JourneyCard. The left rail column
 // carries ONLY the category medallion (the type is shown OUTSIDE the card, on
-// the rail). The card itself is dense and holds exactly three lines plus the
+// the rail). The card itself is dense and holds exactly TWO lines plus the
 // payer avatar on the left, spanning them:
 //   1. title + converted value in the current display currency
-//   2. who shares it — people / families count
-//   3. the original amount in its original currency
+//   2. who shares it — people / families count — and the original amount in its
+//      original currency, on the same line
 // No date (the list is already grouped by day) and no icon inside the card.
 // A receipt/place photo is the card's BACKGROUND (same treatment as Journey
 // cards: cover image + ink scrim), never a block stacked above the content.
@@ -92,10 +92,12 @@ export default function ExpenseTimelineCard({
                 {fmt.formatCurrency(displayAmount, displayCurrency)}
               </span>
             </div>
-            {/* 2 — participation summary */}
-            <p className={`text-[0.6875rem] truncate mt-0.5 ${metaText}`}>{participationLabel}</p>
-            {/* 3 — original amount, original currency */}
-            <p className={`text-[0.6875rem] truncate mt-0.5 ${subText}`}>{fmt.formatCurrency(exp.amount, exp.currency || 'USD')}</p>
+            {/* 2 — participation summary + the original amount, always ONE line:
+                the summary truncates, the amount never wraps. */}
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className={`text-[0.6875rem] truncate min-w-0 flex-1 ${metaText}`}>{participationLabel}</span>
+              <span className={`text-[0.6875rem] whitespace-nowrap shrink-0 ${subText}`}>{fmt.formatCurrency(exp.amount, exp.currency || 'USD')}</span>
+            </div>
           </div>
           <ChevronRight className="w-4 h-4 shrink-0" style={{ color: onCover ? 'rgba(255,255,255,0.75)' : undefined }} />
         </div>
