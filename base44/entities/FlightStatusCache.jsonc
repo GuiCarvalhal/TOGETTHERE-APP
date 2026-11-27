@@ -1,0 +1,64 @@
+{
+  "name": "FlightStatusCache",
+  "type": "object",
+  "properties": {
+    "cache_key": {
+      "type": "string",
+      "description": "Flight designator plus the queried calendar date (e.g. 'AA930|2026-11-27'). One row per query, shared by every caller \u2014 Home's Next/Now brief and the flight item detail card \u2014 so the provider is asked once per refresh window instead of once per screen."
+    },
+    "flight_number": {
+      "type": "string"
+    },
+    "flight_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Normalized live flight from the provider: status, airline, lastUpdatedUtc, departure/arrival (scheduled, revised, actual, terminal, gate) and aircraft. Null when the provider had no such flight for that date \u2014 a miss is cached too, so it never re-costs a call on every load."
+    },
+    "found": {
+      "type": "boolean",
+      "default": false
+    },
+    "fetched_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the provider last answered (found or not). Absent means attempts were made but never succeeded, so nothing is served from here."
+    },
+    "last_attempt_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time the provider was called, successful or not. The failure backoff is measured from here, so a quota error (429) is not retried on every page load."
+    },
+    "last_updated_utc": {
+      "type": "string",
+      "description": "The provider's own last-updated stamp, used for the 'updated N min ago' line."
+    }
+  },
+  "required": [
+    "cache_key"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

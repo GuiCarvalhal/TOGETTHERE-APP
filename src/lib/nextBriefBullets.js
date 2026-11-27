@@ -1,4 +1,5 @@
 import { formatTimeOnly, tzLabel } from './formatPlaceTime';
+import { flightStatusKey, OPERATIONAL_STATUSES } from './flightStatusLabel';
 import { formatDistanceMeters } from './journeyDistance';
 import { alpha2ToAlpha3 } from './isoCountries';
 
@@ -251,7 +252,10 @@ function flightBullets({ item, live, unit, t, now }) {
   const dep = flight?.departure || null;
   const terminal = text(dep?.terminal);
   const gate = text(dep?.gate);
-  const status = text(flight?.status).toLowerCase();
+  const statusKey = flightStatusKey(flight?.status);
+  // Boarding / gate closed / departed / arrived: the aircraft is already moving,
+  // so the state itself is the news and the gate stopped being useful.
+  const moving = OPERATIONAL_STATUSES.includes(statusKey);
 
   const schedMs = providerInstant(dep?.scheduled)?.getTime()
     ?? (item.start_datetime ? new Date(item.start_datetime).getTime() : null);
@@ -268,8 +272,10 @@ function flightBullets({ item, live, unit, t, now }) {
   let gateInStatus = false;
 
   // 1. Live status — only facts the card cannot know. No clock time is repeated:
-  // an unchanged departure is not news, a delayed one is (new time).
-  if (status.includes('cancel')) {
+  // an unchanged departure is not news, a delayed one is (new time). Nothing
+  // here promises WHEN a gate will be published: it either came with the feed or
+  // it did not, and the airline often posts it hours earlier than any rule.
+  if (statusKey === 'cancelled') {
     primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightCancelled') });
   } else {
     const delayMin = (schedMs && revised) ? Math.round((revised.getTime() - schedMs) / 60000) : 0;
@@ -281,6 +287,8 @@ function flightBullets({ item, live, unit, t, now }) {
           minutes: delayMin, time: timeIn(depIso, depTz), abbr: abbrIn(depIso, depTz, depCountry),
         }),
       });
+    } else if (moving) {
+      primary.push({ id: 'status', icon: 'status', text: t(`home.brief.flightStatus.${statusKey}`) });
     } else if (gate) {
       primary.push({
         id: 'status',
@@ -288,20 +296,26 @@ function flightBullets({ item, live, unit, t, now }) {
         text: t(terminal ? 'home.brief.flightOnTimeGate' : 'home.brief.flightGateNoTerminal', { gate, terminal }),
       });
       gateInStatus = true;
-    } else if (status) {
-      primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightScheduled') });
+    } else if (statusKey) {
+      // The feed answered and the gate is simply not out yet: report the
+      // terminal when there is one, without inventing an hour for the gate.
+      primary.push({
+        id: 'status',
+        icon: 'status',
+        text: t(terminal ? 'home.brief.flightGateNotYetWithTerminal' : 'home.brief.flightGateNotYet', { terminal }),
+      });
     } else {
       // No live feed at all for this flight (the airline's booking code was
       // stored instead of a flight number, or the provider has no match yet):
-      // the gate line is the most important thing here, so say when it lands
-      // rather than going silent about it.
-      primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightGatePending') });
+      // say so instead of promising a gate at a given hour.
+      primary.push({ id: 'status', icon: 'status', text: t('home.brief.flightNoFeed') });
     }
   }
 
   // A known gate is the most useful line on this card, so it is never dropped
-  // just because the status line had to spend itself on a delay.
-  if (gate && !gateInStatus) {
+  // just because the status line had to spend itself on a delay — but a flight
+  // that already left has no use for it.
+  if (gate && !gateInStatus && !moving) {
     primary.push({
       id: 'gate',
       icon: 'status',

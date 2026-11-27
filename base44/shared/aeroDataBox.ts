@@ -79,22 +79,33 @@ export async function fetchFlightByNumber(key, flightNumber, date) {
 // cancelled, gates, terminals, scheduled vs revised local times and the
 // provider's own last-updated stamp. Goes through the same paced `request` as
 // the metadata resolver, so both share the provider's per-second limit instead
-// of doubling the call rate. Returns null when the provider has no such flight.
-export async function fetchFlightLiveByNumber(key, flightNumber, date) {
+// of doubling the call rate.
+//
+// Returns EVERY rotation the provider files under that date, in provider order:
+// one number can come back twice (asking for 26 Nov for a nightly flight also
+// returns the 25 Nov one), so the caller picks the rotation that matches its own
+// segment instead of trusting the first entry.
+export async function fetchFlightsLiveByNumber(key, flightNumber, date) {
   const source = 'aerodatabox.flight';
   const data = await request(key, `/flights/number/${encodeURIComponent(flightNumber)}/${encodeURIComponent(date)}`, source);
-  if (data === null) return null;
+  if (data === null) return [];
   if (!Array.isArray(data) || data.some(f => !f || typeof f.number !== 'string' || !f.departure || !f.arrival)) throw invalidProviderShape(source);
-  if (!data.length) return null;
-  const f = data.find(value => !value.isCodeshare) || data[0];
   const side = (s) => ({
     iata: text(s?.airport?.iata), name: text(s?.airport?.name),
     scheduled: text(s?.scheduledTime?.local), revised: text(s?.revisedTime?.local),
     actual: text(s?.actualTime?.local), terminal: text(s?.terminal), gate: text(s?.gate),
   });
-  return {
+  return data.map(f => ({
+    number: text(f.number), codeshare: f.isCodeshare === true,
     status: text(f.status), airline: text(f.airline?.name),
     lastUpdatedUtc: text(f.lastUpdatedUtc),
     departure: side(f.departure), arrival: side(f.arrival),
-  };
+    aircraft: { model: text(f.aircraft?.model), reg: text(f.aircraft?.reg) },
+  }));
+}
+
+// Single-flight convenience: the first scheduled rotation the provider returns.
+export async function fetchFlightLiveByNumber(key, flightNumber, date) {
+  const list = await fetchFlightsLiveByNumber(key, flightNumber, date);
+  return list.find(f => !f.codeshare) || list[0] || null;
 }

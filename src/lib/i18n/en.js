@@ -260,11 +260,22 @@ export const en = {
       flightGateNoTerminal: 'On time · gate {gate}',
       flightGateWithTerminal: 'Gate {gate} · terminal {terminal}',
       flightGate: 'Gate {gate}',
-      flightScheduled: 'On time · gate posts about 2h before departure',
-      // No live feed for this flight (e.g. the segment stores the airline's
-      // booking code instead of a flight number): say when the gate appears
-      // instead of dropping the most important line.
-      flightGatePending: 'Gate and terminal are shared about 2h before departure',
+      // A gate either came with the feed or it did not. Never promise an hour for
+      // it: the airline may publish it much earlier, or never through this feed.
+      flightGateNotYet: 'On time · gate not published yet',
+      flightGateNotYetWithTerminal: 'On time · terminal {terminal} · gate not published yet',
+      // No live feed at all for this flight (e.g. the segment stores the
+      // airline's booking code instead of a flight number).
+      flightNoFeed: 'No live status · check the gate on the airport board',
+      flightStatus: {
+        boarding: 'Boarding',
+        gateClosed: 'Gate closed',
+        departed: 'Departed',
+        approaching: 'Landing soon',
+        arrived: 'Arrived',
+        diverted: 'Diverted',
+        delayed: 'Delayed',
+      },
       flightDelayed: 'Delayed {minutes} min · departs {time} ({abbr})',
       flightCancelled: 'Cancelled · rebook before you set off',
       // `origin` names where the route starts (a hotel, an airport, home) and is
@@ -1244,6 +1255,20 @@ export const en = {
     mAgo: '{count}m ago',
     hAgo: '{count}h ago',
     dAgo: '{count}d ago',
+    unavailable: 'Live status unavailable right now',
+    unavailableHint: 'The airline feed did not answer. Try again in a few minutes.',
+    status: {
+      scheduled: 'Scheduled',
+      checkIn: 'Check-in',
+      boarding: 'Boarding',
+      gateClosed: 'Gate closed',
+      departed: 'Departed',
+      approaching: 'Landing soon',
+      arrived: 'Arrived',
+      diverted: 'Diverted',
+      delayed: 'Delayed',
+      cancelled: 'Cancelled',
+    },
   },
 
   journeyCard: {

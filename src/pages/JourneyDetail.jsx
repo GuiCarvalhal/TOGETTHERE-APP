@@ -271,8 +271,11 @@ export default function JourneyDetail() {
         <FlightStatusCard
           flightNumber={item.confirmation_number}
           date={item.start_datetime ? item.start_datetime.slice(0, 10) : ''}
+          departureAt={item.start_datetime}
           originTimezone={item.from_place?.tz}
           destinationTimezone={item.to_place?.tz}
+          originCountry={item.from_place?.country_alpha3 || item.from_place?.country}
+          destinationCountry={item.to_place?.country_alpha3 || item.to_place?.country}
         />
       )}
 

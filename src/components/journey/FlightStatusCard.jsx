@@ -4,23 +4,15 @@ import { Plane, RefreshCw, Clock } from 'lucide-react';
 import Skeleton from '@/components/tt/Skeleton';
 import { useI18n } from '@/lib/i18n';
 import { formatOffsetLocal, formatOffsetTime } from '@/lib/formatPlaceTime';
-
-const STATUS_TONE = {
-  Scheduled: 'bg-ink-deep/8 text-ink-deep/70 border-ink-charcoal/15',
-  Boarding: 'bg-terra/15 text-terra-deep border-terra/30',
-  Departed: 'bg-terra/15 text-terra-deep border-terra/30',
-  EnRoute: 'bg-terra/15 text-terra-deep border-terra/30',
-  GateClosed: 'bg-terra/15 text-terra-deep border-terra/30',
-  Arrived: 'bg-[#4a8b6f]/15 text-[#3f7a5e] border-[#4a8b6f]/30',
-  Completed: 'bg-[#4a8b6f]/15 text-[#3f7a5e] border-[#4a8b6f]/30',
-  Cancelled: 'bg-destructive/12 text-destructive border-destructive/30',
-  Delayed: 'bg-amber-100 text-amber-700 border-amber-300',
-  Diverted: 'bg-amber-100 text-amber-700 border-amber-300',
-};
+import { flightStatusKey, FLIGHT_STATUS_TONE } from '@/lib/flightStatusLabel';
 
 function timeAgo(iso, t) {
   if (!iso) return '';
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  // The provider stamps look like "2026-11-27 02:26Z" — the space makes Safari
+  // parse it as an invalid date, which printed "há NaN min".
+  const ms = Date.parse(String(iso).replace(' ', 'T'));
+  if (Number.isNaN(ms)) return '';
+  const s = Math.floor((Date.now() - ms) / 1000);
   if (s < 0 || s < 45) return t('flightStatus.justNow');
   const m = Math.floor(s / 60);
   if (m < 60) return t('flightStatus.mAgo', { count: m });
@@ -29,7 +21,7 @@ function timeAgo(iso, t) {
   return t('flightStatus.dAgo', { count: Math.floor(h / 24) });
 }
 
-export default function FlightStatusCard({ flightNumber, date, originTimezone, destinationTimezone, originCountry, destinationCountry }) {
+export default function FlightStatusCard({ flightNumber, date, departureAt, originTimezone, destinationTimezone, originCountry, destinationCountry }) {
   const { t } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,21 +33,30 @@ export default function FlightStatusCard({ flightNumber, date, originTimezone, d
   const depTz = originTimezone || null;
   const arrTz = destinationTimezone || null;
 
-  const load = useCallback(async (silent) => {
+  // The function owns the refresh cadence (6h, or every load inside the 4h
+  // departure window), so opening this card costs nothing until the window
+  // allows it. The refresh button is the only thing that forces a call.
+  const load = useCallback(async (silent, force) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const res = await base44.functions.invoke('getFlightStatus', { flight_number: flightNumber, date });
+      const res = await base44.functions.invoke('getFlightStatus', {
+        flight_number: flightNumber,
+        date,
+        departure_at: departureAt || '',
+        origin_timezone: originTimezone || '',
+        force: force === true,
+      });
       setData(res.data || res);
     } catch {
-      setData(null);
+      setData({ found: false });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [flightNumber, date]);
+  }, [flightNumber, date, departureAt, originTimezone]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(false, false); }, [load]);
 
   if (loading) {
     return (
@@ -71,21 +72,43 @@ export default function FlightStatusCard({ flightNumber, date, originTimezone, d
       </div>
     );
   }
-  if (!data) return null; // graceful hide on any failure
 
-  const tone = STATUS_TONE[data.status] || STATUS_TONE.Scheduled;
+  const refreshButton = (
+    <button onClick={() => load(true, true)} disabled={refreshing} aria-label={t('flightStatus.refresh')} className="p-1.5 rounded-full text-ink-deep/50 hover:text-terra-deep hover:bg-foreground/5 shrink-0">
+      <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+    </button>
+  );
+
+  // The feed has no flight for this number/date (or did not answer). Say so —
+  // hiding the card made a rate-limited lookup look like a flight with no
+  // details at all.
+  if (!data?.found) {
+    return (
+      <div className="tt-card-hairline p-4">
+        <div className="flex items-center gap-2">
+          <Plane className="w-4 h-4 text-terra-deep shrink-0" />
+          <span className="tt-label text-ink-deep/50">{t('flightStatus.flightStatus')}</span>
+          <span className="ml-auto">{refreshButton}</span>
+        </div>
+        <p className="text-sm text-ink-deep/65 mt-2">{t('flightStatus.unavailable')}</p>
+        <p className="text-[0.6875rem] text-ink-deep/40 mt-1">{t('flightStatus.unavailableHint')}</p>
+      </div>
+    );
+  }
+
   const dep = data.departure || {};
   const arr = data.arrival || {};
+  const statusKey = flightStatusKey(data.status);
+  const tone = FLIGHT_STATUS_TONE[statusKey] || FLIGHT_STATUS_TONE.scheduled;
 
   return (
     <div className="tt-card-hairline p-4">
       <div className="flex items-center gap-2 mb-3">
         <Plane className="w-4 h-4 text-terra-deep shrink-0" />
         <span className="tt-label text-ink-deep/50">{t('flightStatus.flightStatus')}</span>
-        <span className={`tt-stamp ml-auto ${tone}`}>{data.status || t('flightStatus.scheduled')}</span>
-        <button onClick={() => load(true)} disabled={refreshing} aria-label={t('flightStatus.refresh')} className="p-1.5 rounded-full text-ink-deep/50 hover:text-terra-deep hover:bg-foreground/5 shrink-0">
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-        </button>
+        {statusKey && <span className={`tt-stamp ml-auto ${tone}`}>{t(`flightStatus.status.${statusKey}`)}</span>}
+        {!statusKey && <span className="ml-auto" />}
+        {refreshButton}
       </div>
 
       <div className="grid grid-cols-2 gap-3">

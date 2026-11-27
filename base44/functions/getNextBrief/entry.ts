@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { secrets } from 'base44:runtime';
 import { resolveMyMembers } from '../../shared/gatheringAcl.ts';
-import { fetchFlightLiveByNumber } from '../../shared/aeroDataBox.ts';
+import { resolveLiveFlight } from '../../shared/flightStatus.ts';
 import { fetchDrivingRoute } from '../../shared/googleDirections.ts';
 import { fetchWeatherAt } from '../../shared/openMeteo.ts';
 import { loungeForAirline } from '../../shared/airlineLounges.ts';
@@ -84,21 +84,6 @@ function flightDates(item, originTz) {
   const utc = text(item.start_datetime).slice(0, 10);
   const local = localDate(item.start_datetime, originTz);
   return [...new Set([utc, local].filter(Boolean))];
-}
-
-// Try each candidate designator (and, for each, the candidate dates) and keep
-// the first real match. Capped, so a miss cannot chain into many paced calls.
-async function lookupLiveFlight(key, codes, dates) {
-  let attempts = 0;
-  for (const date of dates) {
-    for (const code of codes) {
-      if (attempts >= 3) return null;
-      attempts += 1;
-      const found = await fetchFlightLiveByNumber(key, code, date).catch(() => null);
-      if (found) return found;
-    }
-  }
-  return null;
 }
 
 export default async function (req) {
@@ -234,7 +219,14 @@ export default async function (req) {
     const [routeRes, flightRes, weatherRes] = await Promise.allSettled([
       wantsRoute ? fetchDrivingRoute(mapsKey, originAddress, destinationAddress) : Promise.resolve(null),
       wantsFlight
-        ? lookupLiveFlight(rapidKey, flightCodes, flightDates(item, originTz))
+        // Same cache the flight item's own status card reads: one provider call
+        // per refresh window, shared by both screens.
+        ? resolveLiveFlight(base44, {
+            rapidKey,
+            codes: flightCodes,
+            dates: flightDates(item, originTz),
+            departureAt: item.start_datetime,
+          })
         : Promise.resolve(null),
       weatherPoint && weatherInstant
         ? fetchWeatherAt(weatherPoint.lat, weatherPoint.lng, weatherInstant)
@@ -246,7 +238,7 @@ export default async function (req) {
     const weather = weatherRes.status === 'fulfilled' ? weatherRes.value : null;
 
     const routeOk = !!(route && route.ok);
-    const liveFlight = flight || null;
+    const liveFlight = flight?.flight || null;
     const terminal = text(liveFlight?.departure?.terminal);
     const lounge = family === 'flight'
       ? loungeForAirline(text(item.airline) || text(liveFlight?.airline), terminal)
